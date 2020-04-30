@@ -24,7 +24,7 @@
 
 import React from 'react'
 import {
-    Box,
+    Space,
     Flex, 
     ButtonOutline,
     InputSearch,
@@ -42,17 +42,17 @@ export function ActionsBar(props) {
           borderColor='palette.charcoal300'
           justifyContent='space-between'
         >
-            <Box>
+            <Space>
                 <Confirm
                     title="Create Email Creds"
                     message={`This will create email creds for ${props.numSelectedUsers} selected users. It will use the email address already assigned to the user by the other cred types. It won't do anything for accounts that already have an email cred. Later you can update the address manually or by using a bulk mapping, if needed. `}
                     onConfirm={props.onConfirmCreateEmailCreds}
                 >
-                  {(open) => <ButtonOutline size="small" mr="small" onClick={open}>Create Email Creds</ButtonOutline>}
+                  {(open) => <ButtonOutline size="small" onClick={open}>Create Email Creds</ButtonOutline>}
                 </Confirm> 
                 <Menu>
                     <MenuDisclosure>
-                        <ButtonOutline size="small" mr="small" iconAfter="ArrowDown">Delete Creds</ButtonOutline>
+                        <ButtonOutline size="small" iconAfter="ArrowDown">Delete Creds</ButtonOutline>
                     </MenuDisclosure>
                     <MenuList placement="right-start">
                         <Confirm
@@ -65,8 +65,13 @@ export function ActionsBar(props) {
                         <MenuItem>SAML</MenuItem>
                     </MenuList>
                 </Menu>
-            </Box>
-            <InputSearch />
+            </Space>
+            <InputSearch 
+                value={props.searchText} 
+                onChange={props.onChangeSearch} 
+                width="20rem" 
+                placeholder="Search by name, email, id"
+            />
         </Flex>
     )
 }

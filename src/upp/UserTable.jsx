@@ -23,6 +23,7 @@
  */
 
 import React from 'react'
+import { ExtensionContext } from '@looker/extension-sdk-react'
 import { CREDENTIALS_INFO, TABLE_COLUMNS } from './Constants.js'
 import {
     ActionListManager,
@@ -30,24 +31,20 @@ import {
     ActionListItem,
     ActionListItemColumn,
     ActionListItemAction,
-    doDefaultActionListSort,
     Box,
     Text,
     InlineInputText,
     Link,
     Icon,
-    Checkbox
+    Checkbox,
+    Space
 } from '@looker/components'
 
 export class UserTable extends React.Component {
+    static contextType = ExtensionContext
 
     constructor(props) {
         super(props)
-
-        this.state = {
-            sortColumnId: "id",
-            sortDirection: "asc"
-        }
     }
 
     renderOtherCreds(sdkUser) {
@@ -88,13 +85,12 @@ export class UserTable extends React.Component {
     }
 
     renderUser(sdkUser) {
-        const groups = sdkUser.group_ids.map(gid => this.props.sdkGroupsById.get(gid))
-        const roles = sdkUser.role_ids.map(rid => this.props.sdkRolesById.get(rid))
+        const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid))
+        const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid))
         const actions = (
             <ActionListItemAction>
                 <Link
-                    href={`/admin/users/${sdkUser.id}/edit`}
-                    target="_blank"
+                    onClick={() => this.context.extensionSDK.openBrowserWindow(`/admin/users/${sdkUser.id}/edit`, '_blank')}
                 >
                     Edit <Icon name="External" />
                 </Link>
@@ -121,30 +117,25 @@ export class UserTable extends React.Component {
         )
     }
 
-    onSort(new_sortColumnId, new_sortDirection) {
-        this.setState({
-            sortColumnId: new_sortColumnId,
-            sortDirection: new_sortDirection
-        })
-    }
-
     render() {
-        const { 
-            columns, 
-            data: sortedUserList 
-        } = doDefaultActionListSort(this.props.sdkUsersList, TABLE_COLUMNS, this.state.sortColumnId, this.state.sortDirection)
         return (
             <>
-            <Checkbox checked={this.props.selectAllIsChecked} onChange={this.props.toggleSelectAllCheckbox} />
+            <Space pl="20px">
+                <Checkbox
+                    checked={this.props.selectAllIsChecked} 
+                    onChange={() => this.props.toggleSelectAllCheckbox()} 
+                />
+                <Text>{this.props.selectedUserIds.size} users selected</Text>
+            </Space>
             <ActionListManager isLoading={this.props.isLoading} noResults={false}>
                 <ActionList
                     canSelect
                     onSelect={(user_id) => this.props.toggleUserCheckbox(user_id)}
                     itemsSelected={Array.from(this.props.selectedUserIds)}
-                    onSort={this.onSort.bind(this)}
-                    columns={columns}
+                    onSort={this.props.onSort}
+                    columns={this.props.tableColumns}
                 >
-                    {sortedUserList.map(u => this.renderUser(u))}
+                    {this.props.usersList.map(u => this.renderUser(u))}
                 </ActionList>
             </ActionListManager>
             </>
