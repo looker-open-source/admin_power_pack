@@ -42,30 +42,30 @@ export function ActionsBar(props) {
           borderColor='palette.charcoal300'
           justifyContent='space-between'
         >
-            <Space>
-                <Confirm
-                    title="Create Email Creds"
-                    message={`This will create email creds for ${props.numSelectedUsers} selected users. It will use the email address already assigned to the user by the other cred types. It won't do anything for accounts that already have an email cred. Later you can update the address manually or by using a bulk mapping, if needed. `}
-                    onConfirm={props.onConfirmCreateEmailCreds}
-                >
-                  {(open) => <ButtonOutline size="small" onClick={open}>Create Email Creds</ButtonOutline>}
-                </Confirm> 
-                <Menu>
-                    <MenuDisclosure>
-                        <ButtonOutline size="small" iconAfter="ArrowDown">Delete Creds</ButtonOutline>
-                    </MenuDisclosure>
-                    <MenuList placement="right-start">
-                        <Confirm
-                        title="Delete Email Creds"
-                        message={`This will delete email creds for ${props.numSelectedUsers} selected users. If the users have no other credential types, they won't be able to login and you will not be able to re-create the email creds without manually supplying an email address.`}
-                        onConfirm={props.onConfirmDeleteEmailCreds}
-                        >
-                            {(open) => <MenuItem onClick={open}>Email</MenuItem>}
-                        </Confirm>
-                        <MenuItem>SAML</MenuItem>
-                    </MenuList>
-                </Menu>
-            </Space>
+<Space>
+    <Confirm
+        title="Create Email Creds"
+        message={`This will create email creds for ${props.numSelectedUsers} selected users. It will use the email address already assigned to the user by the other cred types. It won't do anything for accounts that already have an email cred. Later you can update the address manually or by using a bulk mapping, if needed. `}
+        onConfirm={props.onConfirmCreateEmailCreds}
+    >
+      {(open) => <ButtonOutline size="small" onClick={open}>Create Email Creds</ButtonOutline>}
+    </Confirm> 
+    <Menu>
+        <MenuDisclosure>
+            <ButtonOutline size="small" iconAfter="ArrowDown">Delete Creds</ButtonOutline>
+        </MenuDisclosure>
+        <MenuList placement="right-start">
+            <Confirm
+                title="Delete Email Creds"
+                message={`This will delete email creds for ${props.numSelectedUsers} selected users. If the users have no other credential types, they won't be able to login and you will not be able to re-create the email creds without manually supplying an email address.`}
+                onConfirm={props.onConfirmDeleteEmailCreds}
+            >
+                {(open) => <MenuItem onClick={open}>Email</MenuItem>}
+            </Confirm>
+            <MenuItem>SAML</MenuItem>
+        </MenuList>
+    </Menu>
+</Space>
             <InputSearch 
                 value={props.searchText} 
                 onChange={props.onChangeSearch} 

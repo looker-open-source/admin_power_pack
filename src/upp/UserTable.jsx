@@ -25,15 +25,17 @@
 import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { CREDENTIALS_INFO, TABLE_COLUMNS } from './Constants.js'
+import { InlineEditEmail } from './InlineEditEmail.jsx'
 import {
     ActionListManager,
     ActionList,
     ActionListItem,
     ActionListItemColumn,
     ActionListItemAction,
+    Flex,
     Box,
     Text,
-    InlineInputText,
+    Tooltip,
     Link,
     Icon,
     Checkbox,
@@ -84,7 +86,34 @@ export class UserTable extends React.Component {
         )
     }
 
+    getFormatter(sdkUser) {
+        const args = {}
+        if (sdkUser.is_disabled) {
+           args["color"] = "palette.charcoal400"
+        }
+        return (text) => { return <Box {...args} >{text}</Box> }
+    }
+
+    renderDisplayName(sdkUser) {
+        if (sdkUser.is_disabled) {
+            return (
+                <Tooltip content="User is disabled">
+                    {(eventHandlers, ref) => {
+                        return (
+                            <Flex alignItems="center" ref={ref} {...eventHandlers}>
+                                {sdkUser.display_name} &nbsp;
+                                <Icon name="Block" size={12}/>
+                            </Flex>
+                        )
+                    }}
+                </Tooltip>
+            )
+        }
+        return <span>{sdkUser.display_name}</span>
+    }
+
     renderUser(sdkUser) {
+        const formatIfDisabled = this.getFormatter(sdkUser)
         const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid))
         const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid))
         const actions = (
@@ -102,17 +131,14 @@ export class UserTable extends React.Component {
                 id={sdkUser.id}
                 actions={actions}
             >
-                <ActionListItemColumn>{sdkUser.id}</ActionListItemColumn>
-                <ActionListItemColumn>{sdkUser.display_name}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(sdkUser.id)}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(sdkUser))}</ActionListItemColumn>
                 <ActionListItemColumn>
-                    <InlineInputText
-                        value={sdkUser?.credentials_email?.email}
-                        onBlur={(e) => console.log(e)}
-                        onFocus={(e) => console.log(e)} />
+                    {formatIfDisabled(<InlineEditEmail sdkUser={sdkUser} />)}
                 </ActionListItemColumn>
-                <ActionListItemColumn>{this.renderOtherCreds(sdkUser)}</ActionListItemColumn>
-                <ActionListItemColumn>{groups.map(g => g.name).join(", ")}</ActionListItemColumn>
-                <ActionListItemColumn>{roles.map(r => r.name).join(", ")}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderOtherCreds(sdkUser))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(groups.map(g => g.name).join(", "))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(roles.map(r => r.name).join(", "))}</ActionListItemColumn>
             </ActionListItem>
         )
     }

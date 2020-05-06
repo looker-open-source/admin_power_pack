@@ -312,6 +312,7 @@ class UppExtensionInternal extends React.Component {
     } 
 
     onConfirmDeleteEmailCreds(closeCallback) {
+        console.log("onConfirmDeleteEmailCreds")
         this.runFuncOnSelectedUsers(this.deleteUserEmailCreds, "delete email creds")
         closeCallback()
     }
