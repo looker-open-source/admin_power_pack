@@ -29,6 +29,7 @@ import {
     Box,
     Flex,
     Icon,
+    Paragraph,
     InlineInputText
 } from '@looker/components'
 
@@ -65,6 +66,7 @@ export function InlineEditEmail(props) {
             ).then((result) => {
                 setLastSavedEmail(value)
                 setStatus("Saved")
+                console.log("updated email")
                 inputRef.current.blur()
             })
             .catch(error => {
@@ -100,6 +102,11 @@ export function InlineEditEmail(props) {
         return icon
     }
 
+    if (props.sdkUser.is_disabled) {
+        return (
+            value
+        )
+    }
     return (
         <Flex>
             <InlineInputText
