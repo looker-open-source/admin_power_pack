@@ -917,22 +917,22 @@
     debug "^2.2.0"
     es6-promise "^4.2.5"
 
-"@looker/components-providers@^0.7.29":
-  version "0.7.29"
-  resolved "https://registry.yarnpkg.com/@looker/components-providers/-/components-providers-0.7.29.tgz#52e92de01d8e1c27383c7f138b425fe3f47e5c6c"
-  integrity sha512-Pbu5Y3uQu5ZowuMqeUkeEHCOQQKSnQX2hmdm1dKHHuboO9BYiwgvPwlp/sPZzAXiKce73c/YAd9GuMMhNWGA8Q==
+"@looker/components-providers@^0.7.30":
+  version "0.7.30"
+  resolved "https://registry.yarnpkg.com/@looker/components-providers/-/components-providers-0.7.30.tgz#acdec8e18f6ba61b764dff9f8cad311eeb79f44f"
+  integrity sha512-4Vrd5n+slL554b49HBiimbLhBumKvxhDyWZgaXLttw+CG24y5vX+vNe6vktn7UQT8j26caq4zfP36wTCaqyy9w==
   dependencies:
-    "@looker/design-tokens" "^0.7.29"
+    "@looker/design-tokens" "^0.7.30"
 
 "@looker/components@^0.7.27":
-  version "0.7.29"
-  resolved "https://registry.yarnpkg.com/@looker/components/-/components-0.7.29.tgz#e75544cb21b9df4fe5f4372ddfe1e83b19028562"
-  integrity sha512-ZZJ72rO83AhWWvFGTa7s5Z+JC2znnU6lgAYcfUsmZNKHlB5Z/tJjgstUZ6nrMFsq7UKsMOAPyv1NlQ4vT782Fw==
+  version "0.7.30"
+  resolved "https://registry.yarnpkg.com/@looker/components/-/components-0.7.30.tgz#78fd612a6faf9c13e484fa649f52937f93d2df30"
+  integrity sha512-wdRNoE9oiouuPCExU9hHqdTpmx3lLwAE4Cv0NaFfqKnqyoJHhtaIDsZpKWKmpIuoKW6qiqDOqlUEChZ9ORWxlg==
   dependencies:
-    "@looker/components-providers" "^0.7.29"
-    "@looker/design-tokens" "^0.7.29"
-    "@looker/icons" "^0.7.29"
-    "@popperjs/core" "^2.3.3"
+    "@looker/components-providers" "^0.7.30"
+    "@looker/design-tokens" "^0.7.30"
+    "@looker/icons" "^0.7.30"
+    "@popperjs/core" "^2.4.0"
     "@types/styled-system" "^5.1.9"
     btoa "^1.2.1"
     d3-color "^1.4.1"
@@ -941,22 +941,23 @@
     focus-trap "^5.1.0"
     lodash "^4.17.15"
     moment "^2.24.0"
-    polished "^3.5.1"
-    react-day-picker "^7.3.0"
+    polished "^3.6.1"
+    react-day-picker "^7.4.8"
     react-hotkeys "^2.0.0"
     react-resize-detector "^4.2.3"
     react-transition-group "^4.3.0"
+    resize-observer-polyfill "^1.5.1"
     styled-system "^5.1.5"
-    uuid "^7.0.3"
+    uuid "^8.0.0"
 
-"@looker/design-tokens@^0.7.29":
-  version "0.7.29"
-  resolved "https://registry.yarnpkg.com/@looker/design-tokens/-/design-tokens-0.7.29.tgz#05aa1bc711219e1c0bb56bf9fb73759376444773"
-  integrity sha512-VM2fuLQ9NUEx+nAAhBWSWJ90HZYwTCCAeJcA8i3RAL93m1yJeR/dz/Pq0GDnElw3SborCHeI6Nz5LTh1mdos/w==
+"@looker/design-tokens@^0.7.30":
+  version "0.7.30"
+  resolved "https://registry.yarnpkg.com/@looker/design-tokens/-/design-tokens-0.7.30.tgz#f0f1172c552b524db20ceff8f590c1fc94c7dd6d"
+  integrity sha512-RuNwrYyFoJAewe3rwjh4PwNIdGU8e1Zt4v2wM146OATunsM7eOmsakaTsm7qpohNl2kaBv7OobOcC+TkdrwaxA==
   dependencies:
     "@types/styled-system" "^5.1.9"
     lodash "^4.17.15"
-    polished "^3.5.1"
+    polished "^3.6.1"
     styled-system "^5.1.5"
 
 "@looker/extension-sdk-react@^0.4.0":
@@ -975,10 +976,10 @@
     "@looker/sdk" "^0.2.0-beta.32"
     semver "^6.3.0"
 
-"@looker/icons@^0.7.29":
-  version "0.7.29"
-  resolved "https://registry.yarnpkg.com/@looker/icons/-/icons-0.7.29.tgz#7597518f818c2b741fe39ae7f190517292c8d424"
-  integrity sha512-V7KcSVla56w2wns0aYIwyjMd+J+9MUgilQTvjxUQoS43uD03oQtJgLNVHXvyMayAZKhBQbuzkhqyGk3IN30jkA==
+"@looker/icons@^0.7.30":
+  version "0.7.30"
+  resolved "https://registry.yarnpkg.com/@looker/icons/-/icons-0.7.30.tgz#8e7c37dea51f73365e899854c1cc64d3915bea24"
+  integrity sha512-qjOVjBvAMQm5zYIjpS146H02THZILeC3j84Sm6wv6sY5p2hMJ2y8p7y0AwdQzGmoxnX9B+FAazJqlNHhRpgnvQ==
 
 "@looker/sdk@>=0.2.0-beta", "@looker/sdk@^0.2.0-beta.32":
   version "0.2.0-beta.32"
@@ -996,7 +997,7 @@
     ts-node "^8.4.1"
     typescript "^3.6.0"
 
-"@popperjs/core@^2.3.3":
+"@popperjs/core@^2.4.0":
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.4.0.tgz#0e1bdf8d021e7ea58affade33d9d607e11365915"
   integrity sha512-NMrDy6EWh9TPdSRiHmHH2ye1v5U0gBD7pRYwSwJvomx7Bm4GG04vu63dYiVzebLOx2obPpJugew06xVP0Nk7hA==
@@ -2216,9 +2217,9 @@ dashdash@^1.12.0:
     assert-plus "^1.0.0"
 
 date-fns@^2.12.0:
-  version "2.12.0"
-  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.12.0.tgz#01754c8a2f3368fc1119cf4625c3dad8c1845ee6"
-  integrity sha512-qJgn99xxKnFgB1qL4jpxU7Q2t0LOn1p8KMIveef3UZD7kqjT3tpFNNdXJelEHhE+rUgffriXriw/sOSU+cS1Hw==
+  version "2.13.0"
+  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.13.0.tgz#d7b8a0a2d392e8d88a8024d0a46b980bbfdbd708"
+  integrity sha512-xm0c61mevGF7f0XpCGtDTGpzEFC/1fpLXHbmFpxZZQJuvByIK2ozm6cSYuU+nxFYOPh2EuCfzUwlTEFwKG+h5w==
 
 debug@2.6.9, debug@^2.2.0, debug@^2.3.3:
   version "2.6.9"
@@ -4006,9 +4007,9 @@ mkdirp@^0.5.1, mkdirp@^0.5.3:
     minimist "^1.2.5"
 
 moment@^2.24.0:
-  version "2.24.0"
-  resolved "https://registry.yarnpkg.com/moment/-/moment-2.24.0.tgz#0d055d53f5052aa653c9f6eb68bb5d12bf5c2b5b"
-  integrity sha512-bV7f+6l2QigeBBZSM/6yTNq4P2fNpSWj/0e7jQcy87A8e7o2nAfP/34/2ky5Vw4B9S446EtIhodAzkFCcR4dQg==
+  version "2.25.3"
+  resolved "https://registry.yarnpkg.com/moment/-/moment-2.25.3.tgz#252ff41319cf41e47761a1a88cab30edfe9808c0"
+  integrity sha512-PuYv0PHxZvzc15Sp8ybUCoQ+xpyPWvjOuK72a5ovzp2LI32rJXOiIfyoFoYvG3s6EwwrdkMyWuRiEHSZRLJNdg==
 
 move-concurrently@^1.0.1:
   version "1.0.1"
@@ -4473,12 +4474,12 @@ pkg-up@^2.0.0:
   dependencies:
     find-up "^2.1.0"
 
-polished@^3.5.1:
-  version "3.5.2"
-  resolved "https://registry.yarnpkg.com/polished/-/polished-3.5.2.tgz#ca132b8cd68f7ffa95ae9d423f03e7a14fda1062"
-  integrity sha512-vWoRDg3gY5RQBtUfcj9MRN10VCIf4EkdUikGxyXItg2Hnwk+eIVtdBiLajN0ldFeT3Vq4r/QNbjrQdhqBKrTug==
+polished@^3.6.1:
+  version "3.6.2"
+  resolved "https://registry.yarnpkg.com/polished/-/polished-3.6.2.tgz#bae682806da6400596a851ea443178ff6eec1dd2"
+  integrity sha512-V0dyaVJUM5e5wIhLHvZyyE9PhXoI0AlGT6RDww1V/v+STsocLsVGWmi+9OKTL49oaQj85XFDvsWi/uHQJ0rpWg==
   dependencies:
-    "@babel/runtime" "^7.8.7"
+    "@babel/runtime" "^7.9.2"
 
 portfinder@^1.0.25:
   version "1.0.26"
@@ -4714,7 +4715,7 @@ raw-body@2.4.0:
     iconv-lite "0.4.24"
     unpipe "1.0.0"
 
-react-day-picker@^7.3.0:
+react-day-picker@^7.4.8:
   version "7.4.8"
   resolved "https://registry.yarnpkg.com/react-day-picker/-/react-day-picker-7.4.8.tgz#675625240d3fae1b41c0a9d5177c968c8517c1d4"
   integrity sha512-pp0hnxFVoRuBQcRdR1Hofw4CQtOCGVmzCNrscyvS0Q8NEc+UiYLEDqE5dk37bf0leSnBW4lheIt0CKKhuKzDVw==
@@ -4803,9 +4804,9 @@ react-router@5.1.2:
     tiny-warning "^1.0.0"
 
 react-transition-group@^4.3.0:
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/react-transition-group/-/react-transition-group-4.3.0.tgz#fea832e386cf8796c58b61874a3319704f5ce683"
-  integrity sha512-1qRV1ZuVSdxPlPf4O8t7inxUGpdyO5zG9IoNfJxSO0ImU2A1YWkEQvFPuIPZmMLkg5hYs7vv5mMOyfgSkvAwvw==
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/react-transition-group/-/react-transition-group-4.4.1.tgz#63868f9325a38ea5ee9535d828327f85773345c9"
+  integrity sha512-Djqr7OQ2aPUiYurhPalTrVy9ddmFCCzwhqQmtN+J3+3DzLO209Fdr70QrN8Z3DsglWql6iY1lDWAfpFiBtuKGw==
   dependencies:
     "@babel/runtime" "^7.5.5"
     dom-helpers "^5.0.1"
@@ -5933,10 +5934,10 @@ uuid@^3.0.1, uuid@^3.3.2:
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.4.0.tgz#b23e4358afa8a202fe7a100af1f5f883f02007ee"
   integrity sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==
 
-uuid@^7.0.3:
-  version "7.0.3"
-  resolved "https://registry.yarnpkg.com/uuid/-/uuid-7.0.3.tgz#c5c9f2c8cf25dc0a372c4df1441c41f5bd0c680b"
-  integrity sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==
+uuid@^8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/uuid/-/uuid-8.0.0.tgz#bc6ccf91b5ff0ac07bbcdbf1c7c4e150db4dbb6c"
+  integrity sha512-jOXGuXZAWdsTH7eZLtyXMqUb9EcWMGZNbL9YcGBJl4MH4nrxHmZJhEHvyLFrkxo+28uLb/NYRcStH48fnD0Vzw==
 
 v8-compile-cache@2.0.3:
   version "2.0.3"
