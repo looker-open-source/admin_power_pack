@@ -133,9 +133,7 @@ export class UserTable extends React.Component {
             >
                 <ActionListItemColumn>{formatIfDisabled(sdkUser.id)}</ActionListItemColumn>
                 <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(sdkUser))}</ActionListItemColumn>
-                <ActionListItemColumn>
-                    {formatIfDisabled(<InlineEditEmail sdkUser={sdkUser} />)}
-                </ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(<InlineEditEmail sdkUser={sdkUser} />)}</ActionListItemColumn>
                 <ActionListItemColumn>{formatIfDisabled(this.renderOtherCreds(sdkUser))}</ActionListItemColumn>
                 <ActionListItemColumn>{formatIfDisabled(groups.map(g => g.name).join(", "))}</ActionListItemColumn>
                 <ActionListItemColumn>{formatIfDisabled(roles.map(r => r.name).join(", "))}</ActionListItemColumn>
@@ -146,17 +144,11 @@ export class UserTable extends React.Component {
     render() {
         return (
             <>
-            <Space pl="20px">
-                <Checkbox
-                    checked={this.props.selectAllIsChecked} 
-                    onChange={() => this.props.toggleSelectAllCheckbox()} 
-                />
-                <Text>{this.props.selectedUserIds.size} users selected</Text>
-            </Space>
             <ActionListManager isLoading={this.props.isLoading} noResults={false}>
                 <ActionList
                     canSelect
-                    onSelect={(user_id) => this.props.toggleUserCheckbox(user_id)}
+                    onSelect={(user_id) => this.props.onSelectRow(user_id)}
+                    onSelectAll={() => this.props.onSelectAll()}
                     itemsSelected={Array.from(this.props.selectedUserIds)}
                     onSort={this.props.onSort}
                     columns={this.props.tableColumns}
