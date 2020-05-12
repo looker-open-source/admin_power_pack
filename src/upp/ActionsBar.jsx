@@ -24,13 +24,11 @@
 
 import React, {useState} from 'react'
 import {
-    Space,
-    Flex, 
+    Icon,
     Text,
     List, ListItem,
     Button, ButtonOutline, ButtonTransparent,
-    InputSearch,
-    Dialog, ConfirmLayout, Confirm,
+    Dialog, ConfirmLayout,
     Menu, MenuDisclosure, MenuList, MenuItem
   } from '@looker/components'
 
@@ -44,13 +42,15 @@ export function ActionsBar(props) {
     const [currentAction, set_currentAction] = useState(false)
     const [isReview, set_isReview] = useState(props.isRunning)
     const [deleteType, set_deleteType] = useState(null)
+    
+    const isLoading = props.isLoading
     const isRunning = props.isRunning
 
     const isCurrentAction = (name) => (currentAction === name)
     const handleClose = () => {  console.log("close"); set_isReview(false); set_currentAction(false) }
 
     const openEmailFill = () => { console.log("emailFill"); set_currentAction("emailFill") }   
-    const runEmailFill = () => { set_isReview(true); props.doRunEmailFill() }
+    const runEmailFill = () => { set_isReview(true); props.runEmailFill() }
 
     const openDelete = (type) => { set_currentAction("delete"); set_deleteType(type) }
     const runDelete = () => { set_isReview(true); props.runDeleteCreds(deleteType.toLowerCase()) }
@@ -60,10 +60,10 @@ export function ActionsBar(props) {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small">Manage Email Creds</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Manage Email Creds</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem onClick={openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
+                    <MenuItem icon="Return" onClick={openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
                     <MenuItem icon="Beaker" detail="WIP" disabled>Bulk update from mapping</MenuItem>
                 </MenuList>
             </Menu>
@@ -103,7 +103,7 @@ export function ActionsBar(props) {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small">Delete Creds</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Delete Creds</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
@@ -149,12 +149,12 @@ export function ActionsBar(props) {
         return (
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small">Disable</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Disable</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem>Disable</MenuItem>
-                    <MenuItem>Enable</MenuItem>
-                    <MenuItem>Delete</MenuItem>
+                    <MenuItem icon="Block">Disable</MenuItem>
+                    <MenuItem icon="Undo">Enable</MenuItem>
+                    <MenuItem icon="Trash">Delete</MenuItem>
                 </MenuList>
             </Menu>
         )
@@ -171,32 +171,18 @@ export function ActionsBar(props) {
                   message={`
                       Gonna put more stuff here.
                   `}
-                  primaryButton={isRunning ? <Button disabled>In Progress</Button> : <Button onClick={handleClose}>Close</Button>}
+                  primaryButton={(isRunning || isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={handleClose}>Close</Button>}
                 />
             </Dialog>
         )
     }
 
-    return (
-        <Flex
-          px='large'
-          py='medium'
-          borderBottom='1px solid'
-          borderColor='palette.charcoal300'
-          justifyContent='space-between'
-        >
-            {renderReviewDialog()}
-            <Space>
-                {renderManageEmailCreds()}
-                {renderDeleteCreds()}
-                {renderDisable()}
-            </Space>
-            <InputSearch 
-                value={props.searchText} 
-                onChange={props.onChangeSearch} 
-                width="20rem" 
-                placeholder="Search by name, email, id"
-            />
-        </Flex>
+    return (  
+        <>
+        {renderReviewDialog()}
+        {renderManageEmailCreds()}
+        {renderDeleteCreds()}
+        {renderDisable()}
+        </>
     )
 }

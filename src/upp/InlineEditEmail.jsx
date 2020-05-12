@@ -51,13 +51,18 @@ export function InlineEditEmail(props) {
         setValue(new_value)
     }
 
+    const onBlur = (e) => {
+        if (status === "Error") {
+            setValue(lastSavedEmail)
+            setStatus(null)
+        }
+    }
+
     const onKeyDown = (e) => {
         const key = e.nativeEvent.key
         
         // if Enter is pressed, submit the changes
         if (key === "Enter") {
-            setStatus("Updating")
-
             // sdk won't update a cred_email object that doesn't exist in the first place...
             context.coreSDK.ok(
                 lastSavedEmail
@@ -66,17 +71,16 @@ export function InlineEditEmail(props) {
             ).then((result) => {
                 setLastSavedEmail(value)
                 setStatus("Saved")
-                console.log("updated email")
                 inputRef.current.blur()
             })
             .catch(error => {
+                console.log(error)
                 setStatus("Error")
             })
           }
 
         // if Escape is pressed, revert the changes
         if (key === "Escape") {
-            console.log("Escape")
             setValue(lastSavedEmail)
             setStatus(null)
             inputRef.current.blur()
@@ -102,6 +106,10 @@ export function InlineEditEmail(props) {
         return icon
     }
 
+
+    /*
+     ******************* Rendering *******************
+     */
     if (props.sdkUser.is_disabled) {
         return (
             value
@@ -114,6 +122,7 @@ export function InlineEditEmail(props) {
                 value={value}
                 onChange={onChange}
                 onKeyDown={onKeyDown}
+                onBlur={onBlur}
             />
             <Box>{renderIcon()}</Box>
         </Flex>

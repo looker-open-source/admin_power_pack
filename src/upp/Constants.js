@@ -23,14 +23,14 @@
  */
 
 export const CREDENTIALS_INFO = Object.freeze([
-    {name: 'credentials_api3', label: 'api3', id_prop: 'client_id'},  
-    {name: 'credentials_embed', label: 'embed', id_prop: ''},
-    {name: 'credentials_google', label: 'google', id_prop: ''},
-    {name: 'credentials_ldap', label: 'ldap', id_prop: ''},
-    {name: 'credentials_looker_openid', label: 'looker_openid', id_prop: 'email'},
-    {name: 'credentials_oidc', label: 'oidc', id_prop: ''},
-    {name: 'credentials_saml', label: 'saml', id_prop: 'saml_user_id'},
-    {name: 'credentials_totp', label: 'totp', id_prop: '<unused special case>'}
+    {name: 'credentials_google', label: 'google', is_sso: true,  id_prop: 'google_user_id'},
+    {name: 'credentials_ldap',   label: 'ldap',   is_sso: true,  id_prop: 'ldap_id'},
+    {name: 'credentials_oidc',   label: 'oidc',   is_sso: true,  id_prop: 'oidc_user_id'},
+    {name: 'credentials_saml',   label: 'saml',   is_sso: true,  id_prop: 'saml_user_id'},
+    {name: 'credentials_api3',   label: 'api3',   is_sso: false, id_prop: 'client_id'},  
+    {name: 'credentials_embed',  label: 'embed',  is_sso: false, id_prop: 'external_user_id'},
+    {name: 'credentials_totp',   label: 'totp',   is_sso: false, id_prop: '<unused special case>'},
+    {name: 'credentials_looker_openid', label: 'looker_openid', is_sso: false, id_prop: 'email'}
   ])
 
 export const USER_FIELDS = Object.freeze(
@@ -42,7 +42,8 @@ export const USER_FIELDS = Object.freeze(
         "display_name",
         "role_ids",
         "group_ids",
-        "is_disabled"
+        "is_disabled",
+        "verified_looker_employee"
     )
 )
 

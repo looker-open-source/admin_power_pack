@@ -24,22 +24,17 @@
 
 import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { CREDENTIALS_INFO, TABLE_COLUMNS } from './Constants.js'
+import { CREDENTIALS_INFO } from './Constants.js'
 import { InlineEditEmail } from './InlineEditEmail.jsx'
 import {
-    ActionListManager,
-    ActionList,
-    ActionListItem,
-    ActionListItemColumn,
-    ActionListItemAction,
+    ActionListManager, ActionList,
+    ActionListItem, ActionListItemColumn, ActionListItemAction,
     Flex,
     Box,
     Text,
     Tooltip,
     Link,
     Icon,
-    Checkbox,
-    Space
 } from '@looker/components'
 
 export class UserTable extends React.Component {
@@ -114,8 +109,9 @@ export class UserTable extends React.Component {
 
     renderUser(sdkUser) {
         const formatIfDisabled = this.getFormatter(sdkUser)
-        const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid))
-        const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid))
+        const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: gid})
+        const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: rid})
+        
         const actions = (
             <ActionListItemAction>
                 <Link

@@ -23,17 +23,16 @@
  */
 
 import React from 'react'
-import { UserTable } from './UserTable.jsx'
-import { ActionsBar } from './ActionsBar.jsx'
-import { USER_FIELDS, TABLE_COLUMNS } from './Constants.js'
-import { ExtensionContext } from '@looker/extension-sdk-react'
 import { hot } from "react-hot-loader/root"
+import { ExtensionContext } from '@looker/extension-sdk-react'
+import { UppLayout } from './UppLayout.jsx'
+import { ActionsBar } from './ActionsBar.jsx'
+import { UserTable } from './UserTable.jsx'
+import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO } from './Constants.js'
 import { 
-    Heading, 
-    Banner, 
-    Box, 
-    Flex, 
-    doDefaultActionListSort
+    Heading, Banner, Box, 
+    doDefaultActionListSort,
+    InputSearch, ButtonGroup, ButtonToggle, ButtonItem
 } from '@looker/components'
 
 class UppExtensionInternal extends React.Component {
@@ -53,6 +52,8 @@ class UppExtensionInternal extends React.Component {
             tableColumns: TABLE_COLUMNS.slice(),
             sortColumn: 'id',
             sortDirection: 'asc',
+            activeShowWhoButton: "regular",
+            activeFilterButtons: [],
             searchText: '',
             usersList: [],
             usersMap: new Map(),
@@ -111,7 +112,8 @@ class UppExtensionInternal extends React.Component {
             //await new Promise(r => setTimeout(r, 5000))
 
             const [userResult, groupsResult, rolesResult] = await Promise.all([
-                this.call_looker('search_users', {fields: USER_FIELDS, verified_looker_employee: false, sorts: "first_name asc, last_name asc"}),
+                //this.call_looker('search_users', {fields: USER_FIELDS}),
+                this.call_looker('all_users', {fields: USER_FIELDS}),
                 this.call_looker('all_groups', {}),
                 this.call_looker('all_roles', {})
             ])
@@ -194,7 +196,7 @@ class UppExtensionInternal extends React.Component {
     }
 
     /*
-     ******************* Callbacks for selecting rows *******************
+     ******************* SELECTION stuff *******************
      */
     onSelectAll(forceToggleTo = undefined) {
         let fillAll = forceToggleTo
@@ -223,7 +225,7 @@ class UppExtensionInternal extends React.Component {
     }
 
     /*
-     ******************* Callbacks & helpers for search and sort *******************
+     ******************* SEARCH & FILTER stuff *******************
      */
     onChangeSearch(e) {
         clearTimeout(this.searchTimeout.current)
@@ -232,10 +234,8 @@ class UppExtensionInternal extends React.Component {
         // InputSearch to clear the field. The event fired is a button click, and
         // NOT a React Synthetic event, so we have to treat it differently.        
         if (!e.persist) {
-            console.log("click x")
-
             this.setState({searchText: ''})
-            this.handleSearchText('')
+            this.runSearch('')
         } else {
             e.persist()
             
@@ -243,19 +243,121 @@ class UppExtensionInternal extends React.Component {
         
             if (this.searchTimeout) {
                 this.searchTimeout.current = window.setTimeout(() => {
-                    this.handleSearchText(e.target.value)
+                    this.runSearch(e.target.value)
                 }, 500)
             }
         }
     }
 
-    onSort(columnId, sortDirection, arrayToSort = undefined) {
-        if (!arrayToSort) arrayToSort = this.state.usersList
+    runSearch(searchText) {
+        // Re-filter and re-sort. searchText is passed in to avoid race condition on state
+        const filteredUsers = this.makeFilteredUsersList(undefined, searchText, undefined)        
+        const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
+
+        // Persist
+        this.setState({usersList: new_usersList})
+    }
+
+    onChangeActiveFilterButtons(new_activeFilterButtons) {
+        // Update the button state right away
+        this.setState({activeFilterButtons: new_activeFilterButtons})
         
+        // Re-filter and re-sort. new_activeFilterButtons passed in to avoid race condition on state
+        const filteredUsers = this.makeFilteredUsersList(undefined, undefined, new_activeFilterButtons)
+        const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
+        
+        // Persist
+        this.setState({usersList: new_usersList})
+    }
+
+    onChangeActiveShowWhoButton(new_activeShowWhoButton) {
+        // Update the button state right away
+        this.setState({activeShowWhoButton: new_activeShowWhoButton})
+        
+        // Re-filter and re-sort. new_activeShowWhoButton passed in to avoid race condition on state
+        const filteredUsers = this.makeFilteredUsersList(undefined, undefined, undefined, new_activeShowWhoButton)
+        const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
+        
+        // Persist
+        this.setState({usersList: new_usersList})
+    }
+
+    makeFilteredUsersList(usersMap = undefined, 
+                        searchText = undefined, 
+                        activeFilterButtons = undefined, 
+                        activeShowWhoButton = undefined) {
+        // This function can take the various state values as props so that we don't have
+        // to `await` for state changes to persist before calling - avoids race conditions.
+        // But those props can also be omitted for convenience, eg when calling from the load procedure.
+
+        // We check for `undefined` because falsey values can be explicitly passed.
+        if (usersMap === undefined) usersMap = this.state.usersMap
+        if (searchText === undefined) searchText = this.state.searchText
+        if (activeFilterButtons === undefined) activeFilterButtons = this.state.activeFilterButtons
+        if (activeShowWhoButton === undefined) activeShowWhoButton = this.state.activeShowWhoButton
+        
+        // Step 0: get a fresh array of all users
+        let filteredUsers = Array.from(usersMap.values())
+
+        // Step 1: filter according to which type of users to show
+        switch (activeShowWhoButton) {
+            case "regular":
+                filteredUsers = filteredUsers.filter(u => !u.verified_looker_employee && !u.credentials_embed.length)
+                break
+            case "embed":
+                filteredUsers = filteredUsers.filter(u => !u.verified_looker_employee && u.credentials_embed.length)
+                break
+            case "lookerSupport":
+                filteredUsers = filteredUsers.filter(u => u.verified_looker_employee)
+                break
+        }
+
+        // Step 2: filter according to the button toggles
+        if (activeFilterButtons.includes("blankName")) {
+            filteredUsers = filteredUsers.filter(u => !u.display_name)
+        }
+        if (activeFilterButtons.includes("noEmail")) {
+            filteredUsers = filteredUsers.filter(u => !u.credentials_email)
+        }
+        if (activeFilterButtons.includes("noSSO")) {
+            const sso_cred_names = CREDENTIALS_INFO.filter(c => c.is_sso).map(c => c.name)
+            filteredUsers = filteredUsers.filter(user => 
+                !sso_cred_names.map(cred_name => !!user[cred_name]).includes(true)
+            )
+        }
+        if (activeFilterButtons.includes("duplicateEmails")) {
+            console.log("filter duplicateEmails")
+        }
+
+        // Step 3: filter according to the search box
+        if (searchText) {
+            searchText = searchText.toLowerCase()
+            // Check if the user id, name, or email matches the search string
+            filteredUsers = filteredUsers.filter(u => {
+                return (
+                    u.id.toString().includes(searchText)
+                    || u.display_name?.toLowerCase().includes(searchText)
+                    || u.email?.toLowerCase().includes(searchText)
+                )
+            })
+        }    
+
+        // Step 4: get outta here
+        return filteredUsers
+    }
+
+    /*
+     ******************* SORT stuff *******************
+     */
+    onSort(columnId, sortDirection) {
+        // This function should only be called as the actual click handler.
+        // It's the only one that cares about receiving new values
+        // for the sort critera or actually persisting the new tableColumns.
+
         const {
           columns: new_tableColumns,
           data: new_usersList,
-        } = this.makeSortedUsersList(arrayToSort, columnId, sortDirection)
+        } = this.makeSortedUsersList(this.state.usersList, columnId, sortDirection)
         
         this.setState({
             tableColumns: new_tableColumns,
@@ -265,88 +367,22 @@ class UppExtensionInternal extends React.Component {
         })
     }
 
-    handleSearchText(searchText) {
-        // Helper function does the real work - elsewhere it is called directly
-        const filteredUsers = this.makeFilteredUsersList(this.state.usersMap, searchText)        
-        
-        // Force unselect all because we don't want stuff selected that can't be seen
-        //this.onSelectAll(false)
-
-        // Pass off the new user list to the sort function, which will persist it in state
-        // This avoids state race condition and extra calls to render, since we need to sort anyway
-        this.onSort(this.state.sortColumn, this.state.sortDirection, filteredUsers)
-    }
-
-    makeFilteredUsersList(usersMap, searchText = undefined) {
-        let filteredUsers
-
-        if (searchText === undefined) { 
-            searchText = this.state.searchText
-        }
-
-        // Case: the search string is not empty
-        if (searchText) {
-            console.log(`filter string: ${searchText}`)
-            searchText = searchText.toLowerCase()
-            // Check if the user id, name, or email matches the search string
-            filteredUsers = Array.from(usersMap.values()).filter(u => {
-                return (
-                    u.id.toString().includes(searchText)
-                    || u.display_name.toLowerCase().includes(searchText)
-                    || u.email?.toLowerCase().includes(searchText)
-                )
-            })
-            
-        // Case: the search string is empty. Reset the list to include all users. No need to clear selections
-        } else {
-            console.log("unfilter")
-            filteredUsers = Array.from(usersMap.values())
-        }
-        
-        return filteredUsers
-    }
-
     makeSortedUsersList(arrayToSort, columnId = undefined, sortDirection = undefined) {
-        if (!columnId) columnId = this.state.sortColumn
-        if (!sortDirection) sortDirection = this.state.sortDirection
+        // This function is used any time we re-filter the data,
+        // which doesn't care about changing the sort criteria
 
-        // This thing looks like {columns: newColumnsObj, data: sortedDataArray}
+        if (columnId === undefined) columnId = this.state.sortColumn
+        if (sortDirection === undefined) sortDirection = this.state.sortDirection
+
+        // This thing looks like: `{columns: newColumnsObj, data: sortedDataArray}`
         const resultObj = doDefaultActionListSort(arrayToSort, this.state.tableColumns, columnId, sortDirection)
         
         return resultObj
     }
 
     /*
-     ******************* Rendering *******************
+     ******************* RENDERING *******************
      */    
-    renderTitle() {
-        return (
-            <Box
-                pl='small'
-                py='xsmall' 
-                bg='palette.charcoal100' 
-                borderBottom='1px solid' 
-                borderBottomColor='palette.charcoal300'
-            >
-                <Heading as='h1' fontWeight='light'>Users Page Plus</Heading>
-            </Box>
-        )
-    }
-
-    renderNavbar() {
-        return (
-            <Box 
-                width='10rem' 
-                pl='xlarge'
-                pt='large'
-                borderRight='1px solid' 
-                borderRightColor='palette.charcoal300'
-            >
-                Space reserved here
-            </Box>
-        )
-    }
-
     renderErrorBanner() {
         if (!this.state.errorMessage) {
             return
@@ -360,37 +396,74 @@ class UppExtensionInternal extends React.Component {
         if (this.context.initializeError) {
             return <Banner intent='error'>{this.context.initializeError}</Banner>
         }
+        
+        const heading = 
+            <Heading as='h1' fontWeight='light'>Users Page Plus</Heading>
+        
+        const navbar =
+            <Box 
+                width='10rem' pl='xlarge' pt='large'
+                borderRight='1px solid' borderRightColor='palette.charcoal300'
+            >
+                Space reserved here
+            </Box>
+
+        const actionsBar = 
+            <ActionsBar 
+                isLoading={this.state.isLoading}
+                isRunning={this.state.isRunning}
+                numSelectedUsers={this.state.selectedUserIds.size}
+                runEmailFill={this.runEmailFill.bind(this)}
+                runDeleteCreds={this.runDeleteCreds.bind(this)}
+            />
+                               
+        const showWhoToggle = 
+            <ButtonToggle value={this.state.activeShowWhoButton} onChange={this.onChangeActiveShowWhoButton.bind(this)}>
+                <ButtonItem value="regular">Regular Users</ButtonItem>
+                <ButtonItem value="embed">Embed Users</ButtonItem>
+                <ButtonItem value="lookerSupport">Looker Support</ButtonItem>
+            </ButtonToggle>
+             
+        const quickFilterGroup = 
+            <ButtonGroup value={this.state.activeFilterButtons} onChange={this.onChangeActiveFilterButtons.bind(this)}>
+                <ButtonItem value="blankName">Blank name</ButtonItem>
+                <ButtonItem value="noEmail">No email</ButtonItem>
+                <ButtonItem value="noSSO">No SSO</ButtonItem>
+                <ButtonItem value="duplicateEmails">Duplicate Emails</ButtonItem>
+            </ButtonGroup>
+                  
+        const searchInput = 
+            <InputSearch 
+                value={this.state.searchText} 
+                onChange={this.onChangeSearch.bind(this)} 
+                width="20rem" 
+                placeholder="Search by name, email, id"
+            />
+               
+        const userTable = 
+            <UserTable
+                isLoading={this.state.isLoading}
+                usersList={this.state.usersList}
+                groupsMap={this.state.groupsMap}
+                rolesMap={this.state.rolesMap}
+                selectedUserIds={this.state.selectedUserIds}
+                onSelectRow={this.onSelectRow.bind(this)}
+                onSelectAll={this.onSelectAll.bind(this)}
+                tableColumns={this.state.tableColumns}
+                onSort={this.onSort.bind(this)}
+            />
+
         return (
-            <>
-                {this.renderTitle()}
-                <Flex height='100vh'>
-                    {this.renderNavbar()}
-                    <Box flexGrow={1} overflow="scroll" height="100%">
-                        {this.renderErrorBanner()}
-                        <ActionsBar 
-                            isRunning={this.state.isRunning}
-                            numSelectedUsers={this.state.selectedUserIds.size}
-                            searchText={this.state.searchText}
-                            onChangeSearch={this.onChangeSearch.bind(this)}
-                            runEmailFill={this.runEmailFill.bind(this)}
-                            runDeleteCreds={this.runDeleteCreds.bind(this)}
-                        />
-                        <Box p='large'>
-                            <UserTable
-                                isLoading={this.state.isLoading}
-                                usersList={this.state.usersList}
-                                groupsMap={this.state.groupsMap}
-                                rolesMap={this.state.rolesMap}
-                                selectedUserIds={this.state.selectedUserIds}
-                                onSelectRow={(user_id) => this.onSelectRow(user_id)}
-                                onSelectAll={this.onSelectAll.bind(this)}
-                                tableColumns={this.state.tableColumns}
-                                onSort={this.onSort.bind(this)}
-                            />
-                        </Box>
-                    </Box>
-                </Flex>
-            </>
+            <UppLayout 
+                heading={heading}
+                navbar={navbar}
+                errorBanner={this.renderErrorBanner()}
+                actionsBar={actionsBar}
+                showWhoToggle={showWhoToggle}
+                quickFilterGroup={quickFilterGroup}
+                searchInput={searchInput}
+                userTable={userTable}
+            />
         )
     }
 }
