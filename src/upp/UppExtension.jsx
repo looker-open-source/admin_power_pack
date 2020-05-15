@@ -28,7 +28,7 @@ import { ExtensionContext } from '@looker/extension-sdk-react'
 import { UppLayout } from './UppLayout.jsx'
 import { ActionsBar } from './ActionsBar.jsx'
 import { UserTable } from './UserTable.jsx'
-import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO } from './Constants.js'
+import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO, makeLookerCaller } from './Constants.js'
 import { 
     Heading, Banner, Box, 
     doDefaultActionListSort,
@@ -37,14 +37,12 @@ import {
 
 class UppExtensionInternal extends React.Component {
     static contextType = ExtensionContext // provides the coreSDK object
-
+    
     /*
      ******************* React fifecycle methods *******************
      */
     constructor(props) {
         super(props)
-        
-        this.loadingComponent = props.loadingComponent
 
         this.searchTimeout = React.createRef()
         
@@ -61,30 +59,24 @@ class UppExtensionInternal extends React.Component {
             rolesMap: new Map(),
             selectedUserIds: new Set(),
             isLoading: false,
-            isRunning: false,
             errorMessage: undefined
         }
     }
 
     componentDidMount() {
         if (this.initializeError) { return }
+
+        this.lookerRequest = makeLookerCaller(this.context.coreSDK)
+
         this.loadUsersAndStuff()
     }
 
     /*
      ******************* General helper functions *******************
      */
-    call_looker(func, ...args) {
-        console.log(`calling endpoint: ${func}   args: ${args}`)
-        return this.context.coreSDK.ok(this.context.coreSDK[func](...args))
-    }
 
-    async setRunning(value) {
-        this.setState({isRunning: value})
-    }
-
-    async reloadUserId(user_id) {
-        const sdkUser = await this.call_looker('user', user_id, USER_FIELDS)
+    reloadUserId = async (user_id) => {
+        const sdkUser = await lookerRequest('user', user_id, USER_FIELDS)
         const new_usersMap = new Map(this.state.usersMap)
         new_usersMap.set(sdkUser.id, sdkUser)
         console.log(`reload user ${user_id}`)
@@ -93,29 +85,20 @@ class UppExtensionInternal extends React.Component {
         })
     }
 
-    async runFuncOnSelectedUsers(func, name = "unnammed") {
-        const selectedUsers = Array.from(this.state.selectedUserIds).map(u_id => this.state.usersMap.get(u_id))
-        const promises = selectedUsers.map(func.bind(this))
-        await Promise.all(promises)
-        // await new Promise(r => setTimeout(r, 10000));
-        console.log(`did the ${name} operation`)
-        this.loadUsersAndStuff()
-    }
-
     /*
      ******************* Main data fetch *******************
      */
-    async loadUsersAndStuff() {
+    loadUsersAndStuff = async () => {
         this.setState({ isLoading: true, errorMessage: undefined })
         try {
             //throw "test"
             //await new Promise(r => setTimeout(r, 5000))
 
             const [userResult, groupsResult, rolesResult] = await Promise.all([
-                //this.call_looker('search_users', {fields: USER_FIELDS}),
-                this.call_looker('all_users', {fields: USER_FIELDS}),
-                this.call_looker('all_groups', {}),
-                this.call_looker('all_roles', {})
+                //lookerRequest('search_users', {fields: USER_FIELDS}),
+                this.lookerRequest('all_users', {fields: USER_FIELDS}),
+                this.lookerRequest('all_groups', {}),
+                this.lookerRequest('all_roles', {})
             ])
 
             console.log("~~~~~ All Users (count) ~~~~")
@@ -155,50 +138,9 @@ class UppExtensionInternal extends React.Component {
     }
 
     /*
-     ******************* Callbacks to run the actions *******************
-     */
-    async runDeleteCreds(credType) {
-        const propName = `credentials_${credType}`
-        const methName = `delete_user_credentials_${credType}`
-        
-        const func = (sdkUser) => {
-            if (!sdkUser[propName]) {
-                console.log(`user ${sdkUser.id} has no ${credType} creds to delete`)
-                return
-            }
-            this.call_looker(methName, sdkUser.id)
-            //await this.reloadUserId(sdkUser.id)
-        }
-        
-        await this.setRunning(true)
-        await this.runFuncOnSelectedUsers(func, `delete ${credType} creds`)
-        this.setRunning(false)
-    }
-
-    async runEmailFill() {
-        await this.setRunning(true)
-        await this.runFuncOnSelectedUsers(this.createUserEmailCreds, "create email creds")
-        this.setRunning(false)
-    } 
-
-    async createUserEmailCreds(sdkUser) {
-        if (sdkUser.credentials_email) { 
-            console.log("user already has email creds")
-            return 
-        }
-
-        if (!sdkUser.email) { 
-            console.log("user has no email address")
-            return 
-        } 
-        this.call_looker('create_user_credentials_email', sdkUser.id, {email: sdkUser.email})
-        //await this.reloadUserId(sdkUser.id)
-    }
-
-    /*
      ******************* SELECTION stuff *******************
      */
-    onSelectAll(forceToggleTo = undefined) {
+    onSelectAll = (forceToggleTo = undefined) => {
         let fillAll = forceToggleTo
 
         // If forceToggleTo is passed then we will do what it says.
@@ -213,7 +155,7 @@ class UppExtensionInternal extends React.Component {
         this.setState({selectedUserIds: new_selectedUserIds})
     }
 
-    onSelectRow(user_id) {
+    onSelectRow = (user_id) => {
         const new_selectedUserIds = new Set(this.state.selectedUserIds)
         
         // If delete returns true then that means the user was previously selected 
@@ -227,7 +169,7 @@ class UppExtensionInternal extends React.Component {
     /*
      ******************* SEARCH & FILTER stuff *******************
      */
-    onChangeSearch(e) {
+    onChangeSearch = (e) => {
         clearTimeout(this.searchTimeout.current)
         
         // If `e.persist` doesn't exist, a user has clicked the `x` button in the
@@ -258,7 +200,7 @@ class UppExtensionInternal extends React.Component {
         this.setState({usersList: new_usersList})
     }
 
-    onChangeActiveFilterButtons(new_activeFilterButtons) {
+    onChangeActiveFilterButtons = (new_activeFilterButtons) => {
         // Update the button state right away
         this.setState({activeFilterButtons: new_activeFilterButtons})
         
@@ -270,7 +212,7 @@ class UppExtensionInternal extends React.Component {
         this.setState({usersList: new_usersList})
     }
 
-    onChangeActiveShowWhoButton(new_activeShowWhoButton) {
+    onChangeActiveShowWhoButton = (new_activeShowWhoButton) => {
         // Update the button state right away
         this.setState({activeShowWhoButton: new_activeShowWhoButton})
         
@@ -349,7 +291,7 @@ class UppExtensionInternal extends React.Component {
     /*
      ******************* SORT stuff *******************
      */
-    onSort(columnId, sortDirection) {
+    onSort = (columnId, sortDirection) => {
         // This function should only be called as the actual click handler.
         // It's the only one that cares about receiving new values
         // for the sort critera or actually persisting the new tableColumns.
@@ -411,21 +353,20 @@ class UppExtensionInternal extends React.Component {
         const actionsBar = 
             <ActionsBar 
                 isLoading={this.state.isLoading}
-                isRunning={this.state.isRunning}
-                numSelectedUsers={this.state.selectedUserIds.size}
-                runEmailFill={this.runEmailFill.bind(this)}
-                runDeleteCreds={this.runDeleteCreds.bind(this)}
+                selectedUserIds={this.state.selectedUserIds}
+                usersMap={this.state.usersMap}
+                loadUsersAndStuff={this.loadUsersAndStuff}
             />
                                
         const showWhoToggle = 
-            <ButtonToggle value={this.state.activeShowWhoButton} onChange={this.onChangeActiveShowWhoButton.bind(this)}>
+            <ButtonToggle value={this.state.activeShowWhoButton} onChange={this.onChangeActiveShowWhoButton}>
                 <ButtonItem value="regular">Regular Users</ButtonItem>
                 <ButtonItem value="embed">Embed Users</ButtonItem>
                 <ButtonItem value="lookerSupport">Looker Support</ButtonItem>
             </ButtonToggle>
              
         const quickFilterGroup = 
-            <ButtonGroup value={this.state.activeFilterButtons} onChange={this.onChangeActiveFilterButtons.bind(this)}>
+            <ButtonGroup value={this.state.activeFilterButtons} onChange={this.onChangeActiveFilterButtons}>
                 <ButtonItem value="blankName">Blank name</ButtonItem>
                 <ButtonItem value="noEmail">No email</ButtonItem>
                 <ButtonItem value="noSSO">No SSO</ButtonItem>
@@ -435,7 +376,7 @@ class UppExtensionInternal extends React.Component {
         const searchInput = 
             <InputSearch 
                 value={this.state.searchText} 
-                onChange={this.onChangeSearch.bind(this)} 
+                onChange={this.onChangeSearch} 
                 width="20rem" 
                 placeholder="Search by name, email, id"
             />
@@ -447,10 +388,10 @@ class UppExtensionInternal extends React.Component {
                 groupsMap={this.state.groupsMap}
                 rolesMap={this.state.rolesMap}
                 selectedUserIds={this.state.selectedUserIds}
-                onSelectRow={this.onSelectRow.bind(this)}
-                onSelectAll={this.onSelectAll.bind(this)}
+                onSelectRow={this.onSelectRow}
+                onSelectAll={this.onSelectAll}
                 tableColumns={this.state.tableColumns}
-                onSort={this.onSort.bind(this)}
+                onSort={this.onSort}
             />
 
         return (

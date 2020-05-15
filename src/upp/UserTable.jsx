@@ -109,9 +109,9 @@ export class UserTable extends React.Component {
 
     renderUser(sdkUser) {
         const formatIfDisabled = this.getFormatter(sdkUser)
-        const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: gid})
-        const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: rid})
-        
+        const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
+        const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: `Embed-role-id-${rid}`})
+
         const actions = (
             <ActionListItemAction>
                 <Link

@@ -22,6 +22,13 @@
  * THE SOFTWARE.
  */
 
+export function makeLookerCaller(sdk) {
+  return function(apiMethod, ...args) {
+    console.log(`calling endpoint: ${apiMethod}   args:`, args)
+    return sdk.ok(sdk[apiMethod](...args))
+  }
+}
+
 export const CREDENTIALS_INFO = Object.freeze([
     {name: 'credentials_google', label: 'google', is_sso: true,  id_prop: 'google_user_id'},
     {name: 'credentials_ldap',   label: 'ldap',   is_sso: true,  id_prop: 'ldap_id'},

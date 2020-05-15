@@ -24,16 +24,18 @@
 
 import React, { useState, useRef, useContext } from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { call_looker } from './Constants.js'
+import { makeLookerCaller } from './Constants.js'
 import {
     Box,
     Flex,
     Icon,
-    Paragraph,
     InlineInputText
 } from '@looker/components'
 
 export function InlineEditEmail(props) {
+    const context = useContext(ExtensionContext)
+    const lookerRequest = makeLookerCaller(context.coreSDK)
+
     const originalValue = props.sdkUser?.credentials_email?.email || ""
     
     const [lastSavedEmail, setLastSavedEmail] = useState(originalValue)
@@ -41,7 +43,6 @@ export function InlineEditEmail(props) {
     const [status, setStatus] = useState(null)
     
     const inputRef = useRef(null)
-    const context = useContext(ExtensionContext)
 
     const onChange = (e) => {
         const new_value = e.currentTarget.value.trim()
@@ -64,19 +65,17 @@ export function InlineEditEmail(props) {
         // if Enter is pressed, submit the changes
         if (key === "Enter") {
             // sdk won't update a cred_email object that doesn't exist in the first place...
-            context.coreSDK.ok(
-                lastSavedEmail
-                    ? context.coreSDK.update_user_credentials_email(props.sdkUser.id, {email: value})
-                    : context.coreSDK.create_user_credentials_email(props.sdkUser.id, {email: value})
-            ).then((result) => {
-                setLastSavedEmail(value)
-                setStatus("Saved")
-                inputRef.current.blur()
-            })
-            .catch(error => {
-                console.log(error)
-                setStatus("Error")
-            })
+            const op = lastSavedEmail ? "update" : "create"
+            lookerRequest(`${op}_user_credentials_email`, props.sdkUser.id, {email: value})
+                .then((result) => {
+                    setLastSavedEmail(value)
+                    setStatus("Saved")
+                    inputRef.current.blur()
+                })
+                .catch(error => {
+                    console.log(error)
+                    setStatus("Error")
+                })
           }
 
         // if Escape is pressed, revert the changes

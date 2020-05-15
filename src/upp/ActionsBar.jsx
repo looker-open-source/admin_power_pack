@@ -22,9 +22,10 @@
  * THE SOFTWARE.
  */
 
-import React, {useState} from 'react'
+import React from 'react'
+import { ExtensionContext } from '@looker/extension-sdk-react'
+import { makeLookerCaller } from './Constants.js'
 import {
-    Icon,
     Text,
     List, ListItem,
     Button, ButtonOutline, ButtonTransparent,
@@ -33,29 +34,130 @@ import {
   } from '@looker/components'
 
 const actionInfo = {
-    emailFill: {cred: "email", menuTitle: "Auto-fill from other creds", dialogTitle: "Auto-fill Email Credentials"},
-    delete: {dialogTitle: "Delete Credentials"}
+    emailFill: {
+        cred: "email", 
+        menuTitle: "Auto-fill from other creds", 
+        dialogTitle: "Auto-fill Email Credentials"
+    },
+    delete: {
+        dialogTitle: "Delete Credentials"
+    }
 }
 
-export function ActionsBar(props) {
+export class ActionsBar extends React.Component {
+    static contextType = ExtensionContext // provides the coreSDK object
 
-    const [currentAction, set_currentAction] = useState(false)
-    const [isReview, set_isReview] = useState(props.isRunning)
-    const [deleteType, set_deleteType] = useState(null)
+    constructor (props) {
+        super(props)
+
+        this.state = {
+            currentAction: false,
+            isRunning: false,
+            isReview: false,
+            deleteType: null
+        }
+    }
+
+    componentDidMount() {
+        this.lookerRequest = makeLookerCaller(this.context.coreSDK)
+    }
+
+    /*
+     ******************* Helpers *******************
+     */
+    isCurrentAction = (name) => (this.state.currentAction === name)
+
+    // allows us to wait for the state change to resolve
+    async setRunning(value) {
+        return new Promise(resolve => this.setState({isRunning: value}, resolve))
+    }
+
+    /*
+     ******************* Callbacks for the dialogs *******************
+     */
+    handleClose = () => {  
+        if (this.props.isRunning) { return } // Can't close the review dialog while an action is running
+        this.setState({
+            isReview: false,
+            currentAction: null
+        })
+    }
+
+    openEmailFill = () => { 
+        this.setState({currentAction: "emailFill"})
+    } 
     
-    const isLoading = props.isLoading
-    const isRunning = props.isRunning
+    openDelete = (type) => { 
+        this.setState({
+            currentAction: "delete",
+            deleteType: type
+        })
+    }
 
-    const isCurrentAction = (name) => (currentAction === name)
-    const handleClose = () => {  console.log("close"); set_isReview(false); set_currentAction(false) }
+    handleRunEmailFill = () => {
+        this.setState({isReview: true})
+        this.runEmailFill()
+    }
 
-    const openEmailFill = () => { console.log("emailFill"); set_currentAction("emailFill") }   
-    const runEmailFill = () => { set_isReview(true); props.runEmailFill() }
+    handleRunDeleteCreds = () => { 
+        this.setState({isReview: true}) 
+        this.runDeleteCreds(this.state.deleteType.toLowerCase())
+    }
 
-    const openDelete = (type) => { set_currentAction("delete"); set_deleteType(type) }
-    const runDelete = () => { set_isReview(true); props.runDeleteCreds(deleteType.toLowerCase()) }
+    /*
+    ******************* Functions to do the work *******************
+    */
+    async runActionOnSelectedUsers(func, name = "unnammed") {
+        const selectedUsers = Array.from(this.props.selectedUserIds).map(u_id => this.props.usersMap.get(u_id))
+        const promises = selectedUsers.map(func.bind(this))
+        await Promise.all(promises)
+        //await new Promise(r => setTimeout(r, 10000));
+        //console.log(`did the ${name} operation`)
+        this.props.loadUsersAndStuff()
+    }
     
-    function renderManageEmailCreds() {
+    async runDeleteCreds(credType) {
+        const propName = `credentials_${credType}`
+        const methName = `delete_user_credentials_${credType}`
+        
+        const deleteFunc = (sdkUser) => {
+            if (!sdkUser[propName]) {
+                console.log(`user ${sdkUser.id} has no ${credType} creds to delete`)
+                return
+            }
+            this.lookerRequest(methName, sdkUser.id)
+            //await this.reloadUserId(sdkUser.id)
+        }
+        
+        await this.setRunning(true)
+        await this.runActionOnSelectedUsers(deleteFunc, `delete ${credType} creds`)
+        this.setRunning(false)
+    }
+    
+    async runEmailFill() {
+        await this.setRunning(true)
+        await this.runActionOnSelectedUsers(this.createUserEmailCreds, "create email creds")
+        this.setRunning(false)
+    } 
+    
+    async createUserEmailCreds(sdkUser) {
+        if (sdkUser.credentials_email) { 
+            console.log("user already has email creds")
+            return 
+        }
+    
+        if (!sdkUser.email) { 
+            console.log("user has no email address")
+            return 
+        } 
+        this.lookerRequest('create_user_credentials_email', sdkUser.id, {email: sdkUser.email})
+        //await this.reloadUserId(sdkUser.id)
+    }
+    
+    /*
+    ******************* Rendering *******************
+    */
+    renderManageEmailCreds() {
         return (
             <>
             <Menu>
@@ -63,20 +165,20 @@ export function ActionsBar(props) {
                     <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Manage Email Creds</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Return" onClick={openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
+                    <MenuItem icon="Return" onClick={this.openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
                     <MenuItem icon="Beaker" detail="WIP" disabled>Bulk update from mapping</MenuItem>
                 </MenuList>
             </Menu>
             
             <Dialog
-              isOpen={isCurrentAction("emailFill") && !isReview}
-              onClose={handleClose}
+              isOpen={this.isCurrentAction("emailFill") && !this.state.isReview}
+              onClose={this.handleClose}
             >
               <ConfirmLayout
                 title={actionInfo.emailFill.dialogTitle}
                 message={
                     <>
-                    This will create <Text fontWeight="bold">email</Text> creds for <Text fontWeight="bold">{props.numSelectedUsers}</Text> selected users. 
+                    This will create <Text fontWeight="bold">email</Text> creds for <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users. 
                     <List type="bullet">
                         <ListItem>
                             It will use the email address already assigned to the user by the other cred types.
@@ -90,15 +192,15 @@ export function ActionsBar(props) {
                     </List>
                     </>
                 }
-                primaryButton={<Button onClick={runEmailFill}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={this.handleRunEmailFill}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             </>
         )
     }
 
-    function renderDeleteCreds() {
+    renderDeleteCreds() {
         return (
             <>
             <Menu>
@@ -107,20 +209,20 @@ export function ActionsBar(props) {
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
-                        return <MenuItem key={credType} onClick={() => openDelete(credType)}>{credType}</MenuItem>
+                        return <MenuItem key={credType} onClick={() => this.openDelete(credType)}>{credType}</MenuItem>
                     })}
                 </MenuList>
             </Menu>
             
             <Dialog
-              isOpen={isCurrentAction("delete") && !isReview}
-              onClose={handleClose}
+              isOpen={this.isCurrentAction("delete") && !this.state.isReview}
+              onClose={this.handleClose}
             >
               <ConfirmLayout
-                title={`Delete ${deleteType} Credentials`}
+                title={`Delete ${this.state.deleteType} Credentials`}
                 message={
                     <>
-                    This will delete <Text fontWeight="bold">{deleteType}</Text> creds for <Text fontWeight="bold">{props.numSelectedUsers}</Text> selected users.
+                    This will delete <Text fontWeight="bold">{this.state.deleteType}</Text> creds for <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users.
                     <List type="bullet">
                         <ListItem>
                             If you delete the email creds and don't have SSO enabled, users won't be able to login.
@@ -137,15 +239,15 @@ export function ActionsBar(props) {
                     </List>
                     </>
                 }
-                primaryButton={<Button onClick={runDelete}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={this.handleRunDeleteCreds}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             </>
         )
     }
 
-    function renderDisable() {
+    renderDisable() {
         return (
             <Menu>
                 <MenuDisclosure>
@@ -160,29 +262,31 @@ export function ActionsBar(props) {
         )
     }
 
-    function renderReviewDialog() {
+    renderReviewDialog() {
         return (
             <Dialog
-              isOpen={isReview}
-              onClose={handleClose}
+              isOpen={this.state.isReview}
+              onClose={this.handleClose}
             >
                 <ConfirmLayout
-                  title={`${actionInfo[currentAction]?.dialogTitle} - ${isRunning ? "In Progress" : "Complete"}`}
+                  title={`${actionInfo[this.state.currentAction]?.dialogTitle} - ${this.props.isRunning ? "In Progress" : "Complete"}`}
                   message={`
                       Gonna put more stuff here.
                   `}
-                  primaryButton={(isRunning || isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={handleClose}>Close</Button>}
+                  primaryButton={(this.props.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
                 />
             </Dialog>
         )
     }
 
-    return (  
-        <>
-        {renderReviewDialog()}
-        {renderManageEmailCreds()}
-        {renderDeleteCreds()}
-        {renderDisable()}
-        </>
-    )
+    render() {
+        return (  
+            <>
+            {this.renderReviewDialog()}
+            {this.renderManageEmailCreds()}
+            {this.renderDeleteCreds()}
+            {this.renderDisable()}
+            </>
+        )
+    }
 }
