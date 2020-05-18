@@ -268,7 +268,26 @@ class UppExtensionInternal extends React.Component {
             )
         }
         if (activeFilterButtons.includes("duplicateEmails")) {
-            console.log("filter duplicateEmails")
+            // make a map of how many times each email occurs
+            const emailCounts = {}
+            Array.from(usersMap.values())
+                .map(u => u.email)
+                .filter(eml => eml) // remove null, undefined, ""
+                .reduce((cts, eml) => (cts[eml] = ++cts[eml] || 1, cts), emailCounts)
+            // now only take users where count > 1
+            filteredUsers = filteredUsers.filter(user => emailCounts[user.email] > 1)
+            console.log(emailCounts)
+        }
+        if (activeFilterButtons.includes("duplicateNames")) {
+            // make a map of how many times each email occurs
+            const nameCounts = {}
+            Array.from(usersMap.values())
+                .map(u => u.display_name)
+                .filter(name => name) // remove null, undefined, ""
+                .reduce((cts, name) => (cts[name] = ++cts[name] || 1, cts), nameCounts)
+            // now only take users where count > 1
+            filteredUsers = filteredUsers.filter(user => nameCounts[user.display_name] > 1)
+            console.log(nameCounts)
         }
 
         // Step 3: filter according to the search box
@@ -371,6 +390,7 @@ class UppExtensionInternal extends React.Component {
                 <ButtonItem value="noEmail">No email</ButtonItem>
                 <ButtonItem value="noSSO">No SSO</ButtonItem>
                 <ButtonItem value="duplicateEmails">Duplicate Emails</ButtonItem>
+                <ButtonItem value="duplicateNames">Duplicate Names</ButtonItem>
             </ButtonGroup>
                   
         const searchInput = 
