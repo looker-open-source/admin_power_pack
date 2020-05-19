@@ -43,39 +43,28 @@ function JustifiedSection(props) {
 export function UppLayout(props) {
 
     return (
-        <Box>
-            <Box 
-                pl='small' py='xsmall' bg='palette.charcoal100' 
-                borderBottom='1px solid' borderBottomColor='palette.charcoal300'
-            >
-                {props.heading}
-            </Box>
-            <Flex height='100vh'>
-                {props.navbar}
-                <Box flexGrow={1} overflow="scroll" height="100%">
-                    {props.errorBanner}
-                    <JustifiedSection>
-                        <Box>
-                            <Text variant="secondary" mr="small">Actions</Text>
-                            {props.actionsBar}
-                        </Box>
-                        <Box>
-                            <Text variant="secondary" mr="small">Show</Text>
-                            {props.showWhoToggle}
-                        </Box>
-                    </JustifiedSection>
-                    <JustifiedSection>
-                        <Box>
-                            <Text variant="secondary" mr="small">Filters</Text>
-                            {props.quickFilterGroup}
-                        </Box>
-                        {props.searchInput}
-                    </JustifiedSection>
-                    <Box p='large'>
-                        {props.userTable}
-                    </Box>
+        <>
+            {props.errorBanner}
+            <JustifiedSection>
+                <Box>
+                    <Text variant="secondary" mr="small">Actions</Text>
+                    {props.actionsBar}
                 </Box>
-            </Flex>
-        </Box>
+                <Box>
+                    <Text variant="secondary" mr="small">Show</Text>
+                    {props.showWhoToggle}
+                </Box>
+            </JustifiedSection>
+            <JustifiedSection>
+                <Box>
+                    <Text variant="secondary" mr="small">Filters</Text>
+                    {props.quickFilterGroup}
+                </Box>
+                {props.searchInput}
+            </JustifiedSection>
+            <Box p='large'>
+                {props.userTable}
+            </Box>
+        </>
     )
 }

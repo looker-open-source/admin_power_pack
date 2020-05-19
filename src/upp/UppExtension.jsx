@@ -25,6 +25,7 @@
 import React from 'react'
 import { hot } from "react-hot-loader/root"
 import { ExtensionContext } from '@looker/extension-sdk-react'
+import { NavBar } from '../NavBar.jsx'
 import { UppLayout } from './UppLayout.jsx'
 import { ActionsBar } from './ActionsBar.jsx'
 import { UserTable } from './UserTable.jsx'
@@ -357,17 +358,6 @@ class UppExtensionInternal extends React.Component {
         if (this.context.initializeError) {
             return <Banner intent='error'>{this.context.initializeError}</Banner>
         }
-        
-        const heading = 
-            <Heading as='h1' fontWeight='light'>Users Page Plus</Heading>
-        
-        const navbar =
-            <Box 
-                width='10rem' pl='xlarge' pt='large'
-                borderRight='1px solid' borderRightColor='palette.charcoal300'
-            >
-                Space reserved here
-            </Box>
 
         const actionsBar = 
             <ActionsBar 
@@ -415,9 +405,7 @@ class UppExtensionInternal extends React.Component {
             />
 
         return (
-            <UppLayout 
-                heading={heading}
-                navbar={navbar}
+            <UppLayout
                 errorBanner={this.renderErrorBanner()}
                 actionsBar={actionsBar}
                 showWhoToggle={showWhoToggle}

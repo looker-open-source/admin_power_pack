@@ -24,31 +24,10 @@
 
 import React from "react"
 import * as ReactDOM from 'react-dom'
-import { UppExtension } from './upp/UppExtension.jsx'
-import { ExtensionProvider } from "@looker/extension-sdk-react"
-import { GlobalStyle, theme, Flex, Spinner } from '@looker/components'
-import { ThemeProvider } from 'styled-components'
+import { App } from "./App"
 
 window.addEventListener('DOMContentLoaded', async (event) => {
     const root = document.createElement('div')
     document.body.appendChild(root)
-
-    const loading = (
-        <Flex width='100%' height='90%' alignItems='center' justifyContent='center'>
-            <Spinner color='black' />
-        </Flex>
-    )
-
-    const extension = (
-        <ExtensionProvider loadingComponent={loading} requiredLookerVersion='>=6.24.0'>
-            <ThemeProvider theme={theme}>
-                <>
-                    <GlobalStyle />
-                    <UppExtension loadingComponent={loading} />
-                </>
-            </ThemeProvider>
-        </ExtensionProvider>
-    )
-
-    ReactDOM.render(extension, root)
+    ReactDOM.render(<App />, root)
 })
