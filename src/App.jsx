@@ -27,7 +27,8 @@ import { ExtensionProvider } from "@looker/extension-sdk-react"
 import { ThemeProvider } from 'styled-components'
 import { Switch, Route } from "react-router-dom"
 import { NavBar } from './NavBar.jsx'
-import { UppExtension } from './upp/UppExtension.jsx'
+import { UppExtension } from './upp/UppExtension'
+import { SchedulesExtension } from './schedules/SchedulesExtension'
 import { GlobalStyle, theme, Box, Flex, Spinner, Heading } from '@looker/components'
 
 
@@ -38,12 +39,12 @@ const PAGES = [
         component: React.Fragment
     },{
         path: "/users", 
-        title: "Users", 
+        title: "Users++", 
         component: UppExtension
     },{
         path: "/schedules", 
-        title: "Schedules", 
-        component: React.Fragment
+        title: "Schedules++", 
+        component: SchedulesExtension
     },{
         path: "/embed", 
         title: "Embed Playground", 

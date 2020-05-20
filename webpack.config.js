@@ -41,7 +41,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/i,
+        test: /\.(js|jsx|ts|tsx)$/,
         loader: 'babel-loader',
         exclude: /node_modules/,
         include: /src/
@@ -58,7 +58,7 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: ['.jsx', '.js'],
+    extensions: ['.jsx', '.js', '.tsx', '.ts'],
   },
   devServer: {
     index: 'index.html',

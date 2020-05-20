@@ -40,14 +40,14 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(js|jsx|ts|tsx)$/,
         loader: 'babel-loader',
         exclude: /node_modules/,
         include: /src/
-      },
+      }
     ],
   },
   resolve: {
-    extensions: ['.jsx', '.js'],
+    extensions: [".tsx", ".ts", ".jsx", ".js"]
   },
 }
