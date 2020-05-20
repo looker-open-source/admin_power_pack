@@ -22,13 +22,14 @@
  * THE SOFTWARE.
  */
 
-import { Box, MenuGroup, MenuItem } from "@looker/components"
+import { MenuGroup, MenuItem } from "@looker/components"
 import * as React from "react"
+import omit from "lodash/omit"
 import { Link as RouterLink } from "react-router-dom"
 import styled from "styled-components"
 
 const StyledRouterLinkInner = (props) => (
-    <RouterLink {...props} />
+    <RouterLink {...omit(props, "customizationProps")} />
   )
 
 const StyledRouterLink = styled(StyledRouterLinkInner)`
