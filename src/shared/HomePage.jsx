@@ -25,11 +25,32 @@
 import React from 'react'
 
 import { 
-    Heading
+    Flex,
+    Heading,
+    Paragraph,
+    SpaceVertical
 } from '@looker/components'
 
 export function HomePage(props) {
     return (
-        <Heading as="h2">Welcome</Heading>
+        <Flex flexDirection="column" px='large' py='medium' width="30rem">
+            <SpaceVertical>
+                <Heading as="h2">Welcome!</Heading>
+                <Paragraph>
+                    This application offers a suite of utilities to help Looker Administrators accomplish certain tasks
+                    more efficiently. It also offers some capabalities that are otherwise not available in the main Looker UI.
+                </Paragraph>
+                <Paragraph>
+                    All of these tools require Admin permissions to use. If you are seeing this page, you already have Admin
+                    permissions! Please take care when making changes.
+                </Paragraph>
+                <Paragraph>
+                    Check out the navbar on the left for the available utilities.
+                </Paragraph>
+                <Paragraph>
+                    TODO: lots of caveats and warnings and other info
+                </Paragraph>
+            </SpaceVertical>
+        </Flex>   
     )
 }
