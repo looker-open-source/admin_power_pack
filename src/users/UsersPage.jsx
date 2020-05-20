@@ -24,10 +24,11 @@
 
 import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { UppLayout } from './UsersPageLayout.jsx'
-import { ActionsBar } from './ActionsBar.jsx'
-import { UsersTable } from './UsersTable.jsx'
-import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO, makeLookerCaller } from './Constants.js'
+import { UsersPageLayout } from './UsersPageLayout'
+import { ActionsBar } from './ActionsBar'
+import { UsersTable } from './UsersTable'
+import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO } from './Constants'
+import { makeLookerCaller } from '../shared/utils'
 import { 
     Banner, 
     doDefaultActionListSort,
@@ -403,7 +404,7 @@ export class UsersPage extends React.Component {
             />
 
         return (
-            <UppLayout
+            <UsersPageLayout
                 errorBanner={this.renderErrorBanner()}
                 actionsBar={actionsBar}
                 showWhoToggle={showWhoToggle}

@@ -24,7 +24,7 @@
 
 import React, { useState, useRef, useContext } from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { makeLookerCaller } from './Constants.js'
+import { makeLookerCaller } from '../shared/utils'
 import {
     Box,
     Flex,

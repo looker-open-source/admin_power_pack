@@ -30,11 +30,12 @@ import { ExtensionProvider } from "@looker/extension-sdk-react"
 import { ThemeProvider } from 'styled-components'
 import { GlobalStyle, theme, Box, Flex, Spinner, Heading } from '@looker/components'
 
-import { NavBar } from './shared/NavBar.jsx'
-import { HomePage } from './shared/HomePage.jsx'
+import { PermissionsChecker } from './shared/PermissionsChecker'
+import { NavBar } from './shared/NavBar'
+import { HomePage } from './shared/HomePage'
 import { UsersPage } from './users/UsersPage'
 import { SchedulesPage } from './schedules/SchedulesPage'
-import { EmbedPage } from './shared/EmbedPage.jsx'
+import { EmbedPage } from './shared/EmbedPage'
 
 const PAGES = [
     {
@@ -88,41 +89,42 @@ function AppInternal(props) {
             <ThemeProvider theme={theme}>
                 <>
                     <GlobalStyle />
-                    <Box>
-                        <Box 
-                            pl='small' py='xsmall' bg='palette.charcoal100' 
-                            borderBottom='1px solid' borderBottomColor='palette.charcoal300'
-                        >
-                            <Switch>
-                                {PAGES.map((page, index) =>
-                                    <Route exact path={page.path} key={index}>
-                                        <Heading as='h1' fontWeight='light'>{page.pageTitle}</Heading>
-                                    </Route>
-                                )}
-                            </Switch>
-                        </Box>
-                        <Flex height='100vh'>
+                    <PermissionsChecker loadingComponent={loadingComponent}>
+                        <Box>
                             <Box 
-                                display="flex" flexDirection="column" width='8rem'
-                                borderRight='1px solid' borderRightColor='palette.charcoal300'
+                                pl='small' py='xsmall' bg='palette.charcoal100' 
+                                borderBottom='1px solid' borderBottomColor='palette.charcoal300'
                             >
-                                <NavBar pages={PAGES} activeRoute={activeRoute} />
-                            </Box>
-                            <Box flexGrow={1} overflow="scroll" height="100%">
                                 <Switch>
-                                    {PAGES.map((page, index) => {
-                                        const PageComponent = page.component
-                                        return (
-                                            <Route exact path={page.path} key={index}>
-                                                <PageComponent />
-                                            </Route>
-                                        )
-                                    })}
+                                    {PAGES.map((page, index) =>
+                                        <Route exact path={page.path} key={index}>
+                                            <Heading as='h1' fontWeight='light'>{page.pageTitle}</Heading>
+                                        </Route>
+                                    )}
                                 </Switch>
                             </Box>
-                        </Flex>
-                    </Box>
-                    
+                            <Flex height='100vh'>
+                                <Box 
+                                    display="flex" flexDirection="column" width='8rem'
+                                    borderRight='1px solid' borderRightColor='palette.charcoal300'
+                                >
+                                    <NavBar pages={PAGES} activeRoute={activeRoute} />
+                                </Box>
+                                <Box flexGrow={1} overflow="scroll" height="100%">
+                                    <Switch>
+                                        {PAGES.map((page, index) => {
+                                            const PageComponent = page.component
+                                            return (
+                                                <Route exact path={page.path} key={index}>
+                                                    <PageComponent />
+                                                </Route>
+                                            )
+                                        })}
+                                    </Switch>
+                                </Box>
+                            </Flex>
+                        </Box>
+                    </PermissionsChecker>
                 </>
             </ThemeProvider>
         </ExtensionProvider>

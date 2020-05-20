@@ -40,7 +40,7 @@ function JustifiedSection(props) {
     )
 }
 
-export function UppLayout(props) {
+export function UsersPageLayout(props) {
 
     return (
         <>
