@@ -129,7 +129,7 @@ export interface IScheduledPlanTable extends IScheduledPlan {
   user: IUserPublic; // overriding to make this required
 }
 
-class SchedulesExtensionInternal extends React.Component<
+export class SchedulesPage extends React.Component<
   RouteComponentProps,
   ExtensionState
 > {
@@ -1197,9 +1197,6 @@ class SchedulesExtensionInternal extends React.Component<
         <Box m={"large"}>
           <Box m={"small"}>
             <Box style={{ float: "left" }}>
-              <Heading color="palette.charcoal700">
-                Looker Report Schedule Manager
-              </Heading>
               <Label pt="xxsmall" color="palette.charcoal700" fontSize="medium">
                 Enter A Dashboard ID:{" "}
                 <InputText
@@ -1340,5 +1337,3 @@ class SchedulesExtensionInternal extends React.Component<
     );
   }
 }
-
-export const SchedulesExtension = hot(withRouter(SchedulesExtensionInternal));

@@ -23,36 +23,48 @@
  */
 
 import React, { useState } from "react"
+import { hot } from "react-hot-loader/root"
+import { Switch, Route } from "react-router-dom"
+
 import { ExtensionProvider } from "@looker/extension-sdk-react"
 import { ThemeProvider } from 'styled-components'
-import { Switch, Route } from "react-router-dom"
-import { NavBar } from './NavBar.jsx'
-import { UppExtension } from './upp/UppExtension'
-import { SchedulesExtension } from './schedules/SchedulesExtension'
 import { GlobalStyle, theme, Box, Flex, Spinner, Heading } from '@looker/components'
 
+import { NavBar } from './shared/NavBar.jsx'
+import { HomePage } from './shared/HomePage.jsx'
+import { UsersPage } from './users/UsersPage'
+import { SchedulesPage } from './schedules/SchedulesPage'
+import { EmbedPage } from './shared/EmbedPage.jsx'
 
 const PAGES = [
     {
         path: "/", 
-        title: "Home", 
-        component: React.Fragment
+        navTitle: "Home",
+        pageTitle: "⚡ Admin Power Pack ⚡", 
+        icon: "Home",
+        component: HomePage
     },{
         path: "/users", 
-        title: "Users++", 
-        component: UppExtension
+        navTitle: "Users",
+        pageTitle: "⚡ Users++", 
+        icon: "Group",
+        component: UsersPage
     },{
         path: "/schedules", 
-        title: "Schedules++", 
-        component: SchedulesExtension
+        navTitle: "Schedules",
+        pageTitle: "⚡ Schedules++", 
+        icon: "SendEmail",
+        component: SchedulesPage
     },{
         path: "/embed", 
-        title: "Embed Playground", 
-        component: React.Fragment
+        navTitle: "Embed",
+        pageTitle: "⚡ Embed Playground", 
+        icon: "DashboardFile",
+        component: EmbedPage
     }
 ]
 
-export function App(props) {
+function AppInternal(props) {
     const [activeRoute, set_activeRoute] = useState("")
     const [routeState, set_routeState] = useState(")")
 
@@ -84,13 +96,18 @@ export function App(props) {
                             <Switch>
                                 {PAGES.map((page, index) =>
                                     <Route exact path={page.path} key={index}>
-                                        <Heading as='h1' fontWeight='light'>{page.title}</Heading>
+                                        <Heading as='h1' fontWeight='light'>{page.pageTitle}</Heading>
                                     </Route>
                                 )}
                             </Switch>
                         </Box>
                         <Flex height='100vh'>
-                            <NavBar pages={PAGES} activeRoute={activeRoute} />
+                            <Box 
+                                display="flex" flexDirection="column" width='8rem'
+                                borderRight='1px solid' borderRightColor='palette.charcoal300'
+                            >
+                                <NavBar pages={PAGES} activeRoute={activeRoute} />
+                            </Box>
                             <Box flexGrow={1} overflow="scroll" height="100%">
                                 <Switch>
                                     {PAGES.map((page, index) => {
@@ -113,3 +130,5 @@ export function App(props) {
 
     return extension
 }
+
+export const App = hot(AppInternal)

@@ -37,7 +37,7 @@ import {
     Icon,
 } from '@looker/components'
 
-export class UserTable extends React.Component {
+export class UsersTable extends React.Component {
     static contextType = ExtensionContext
 
     constructor(props) {

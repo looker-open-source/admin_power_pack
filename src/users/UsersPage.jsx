@@ -23,20 +23,18 @@
  */
 
 import React from 'react'
-import { hot } from "react-hot-loader/root"
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { NavBar } from '../NavBar.jsx'
-import { UppLayout } from './UppLayout.jsx'
+import { UppLayout } from './UsersPageLayout.jsx'
 import { ActionsBar } from './ActionsBar.jsx'
-import { UserTable } from './UserTable.jsx'
+import { UsersTable } from './UsersTable.jsx'
 import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO, makeLookerCaller } from './Constants.js'
 import { 
-    Heading, Banner, Box, 
+    Banner, 
     doDefaultActionListSort,
     InputSearch, ButtonGroup, ButtonToggle, ButtonItem
 } from '@looker/components'
 
-class UppExtensionInternal extends React.Component {
+export class UsersPage extends React.Component {
     static contextType = ExtensionContext // provides the coreSDK object
     
     /*
@@ -391,8 +389,8 @@ class UppExtensionInternal extends React.Component {
                 placeholder="Search by name, email, id"
             />
                
-        const userTable = 
-            <UserTable
+        const usersTable = 
+            <UsersTable
                 isLoading={this.state.isLoading}
                 usersList={this.state.usersList}
                 groupsMap={this.state.groupsMap}
@@ -411,10 +409,8 @@ class UppExtensionInternal extends React.Component {
                 showWhoToggle={showWhoToggle}
                 quickFilterGroup={quickFilterGroup}
                 searchInput={searchInput}
-                userTable={userTable}
+                usersTable={usersTable}
             />
         )
     }
 }
-
-export const UppExtension = hot(UppExtensionInternal)

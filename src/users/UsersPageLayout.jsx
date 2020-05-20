@@ -63,7 +63,7 @@ export function UppLayout(props) {
                 {props.searchInput}
             </JustifiedSection>
             <Box p='large'>
-                {props.userTable}
+                {props.usersTable}
             </Box>
         </>
     )

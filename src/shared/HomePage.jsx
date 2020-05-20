@@ -22,45 +22,14 @@
  * THE SOFTWARE.
  */
 
-import { Box, MenuGroup, MenuItem } from "@looker/components"
-import * as React from "react"
-import { Link as RouterLink } from "react-router-dom"
-import styled from "styled-components"
+import React from 'react'
 
-const StyledRouterLinkInner = (props) => (
-    <RouterLink {...props} />
-  )
+import { 
+    Heading
+} from '@looker/components'
 
-const StyledRouterLink = styled(StyledRouterLinkInner)`
-  text-decoration: none;
-  &:focus,
-  &:hover,
-  &:visited,
-  &:link,
-  &:active {
-    text-decoration: none;
-  }
-  `
-
-export function NavBar(props) {
-
+export function HomePage(props) {
     return (
-        <Box 
-            display="flex" flexDirection="column"
-            width='10rem' pl='xlarge' pt='large'
-            borderRight='1px solid' borderRightColor='palette.charcoal300'
-        >
-            <MenuGroup type="none" mt="xsmall">
-                {props.pages.map((page, index) => {
-                    return (
-                        <StyledRouterLink to={page.path} key={index}>
-                            <MenuItem current={props.activeRoute === page.path}>
-                                {page.title}
-                            </MenuItem>
-                        </StyledRouterLink>
-                    )
-                })}
-            </MenuGroup>
-        </Box>
+        <Heading as="h2">Welcome</Heading>
     )
 }
