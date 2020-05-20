@@ -24,7 +24,7 @@
 
 import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { CREDENTIALS_INFO } from './Constants.js'
+import { CREDENTIALS_INFO } from './constants.js'
 import { InlineEditEmail } from './InlineEditEmail.jsx'
 import {
     ActionListManager, ActionList,

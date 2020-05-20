@@ -27,7 +27,7 @@ import { ExtensionContext } from '@looker/extension-sdk-react'
 import { UsersPageLayout } from './UsersPageLayout'
 import { ActionsBar } from './ActionsBar'
 import { UsersTable } from './UsersTable'
-import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO } from './Constants'
+import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO } from './constants'
 import { makeLookerCaller } from '../shared/utils'
 import { 
     Banner, 
