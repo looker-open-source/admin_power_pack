@@ -41,21 +41,24 @@ export function PermissionsChecker(props) {
             // This is the recommended way to fetch data in an effect:
             async function fetchStuff() {
                 let me
+                let myAdminRoles = []
                 try {
                     const lookerRequest = makeLookerCaller(context.coreSDK)
                     
                     me = await lookerRequest('me', ["id", "display_name", "role_ids"])
-                    set_currentUser(me)
+                    
 
                     // this logic is kinda moot because non-admins can't call the role endpoints anyway...
                     const allRoles = await lookerRequest('all_roles', {})
                     const myRoles = allRoles.filter(r => me.role_ids.includes(r.id))
-                    const myAdminRoles = myRoles.filter(r => r.name === "Admin" && r.permission_set.built_in && r.permission_set.all_access)
-                    set_isAdmin(myAdminRoles.length > 0)
+                    myAdminRoles = myRoles.filter(r => r.name === "Admin" && r.permission_set.built_in && r.permission_set.all_access)
+                    
                 } catch (error) {
                     console.log(error)
-                    if (!me) { set_currentUser({actually: "there was an error before loading the user"}) }
-                    set_isAdmin(false)
+                    if (!me) me = {actually: "there was an error before loading the user"}
+                } finally {
+                    set_isAdmin(myAdminRoles.length > 0)
+                    set_currentUser(me)
                 }
             }
             fetchStuff()
