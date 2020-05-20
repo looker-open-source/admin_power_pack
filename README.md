@@ -1,4 +1,4 @@
-# ⚡ Looker Admin Power Pack ⚡
+# ⚡ Admin Power Pack ⚡
 
 This project is a Looker extension that offers extended functionality for Looker admins. Key features include:
 
@@ -13,7 +13,11 @@ This project is a Looker extension that offers extended functionality for Looker
 ## Developing
 
 Clone this repository
-Check that you have the node version listed in the `.node-version` file
-Run `yarn install` to install dependencies
-Run `yarn start` to start the dev server
+
+Check that you have the node version listed in the `.node-version` file.
+
+Run `yarn install` to install dependencies.
+
+Run `yarn start` to start the dev server.
+
 Follow the installation instructions, pointing the LookML project manifest to your dev server url instead.
