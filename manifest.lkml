@@ -1,4 +1,4 @@
-application: users_page_plus {
-  label: "Users Page Plus"
+application: admin_power_pack {
+  label: "Admin Power Pack"
   url: "http://localhost:8080/bundle.js"
 }
