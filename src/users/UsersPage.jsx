@@ -140,17 +140,14 @@ export class UsersPage extends React.Component {
     /*
      ******************* SELECTION stuff *******************
      */
-    onSelectAll = (forceToggleTo = undefined) => {
-        let fillAll = forceToggleTo
-
-        // If forceToggleTo is passed then we will do what it says.
-        // Otherwise: If there are currently any selected items then clear the set.
-        //            If the set is empty then select all.
-        if (forceToggleTo === undefined) {
-            fillAll = (this.state.selectedUserIds.size === 0)
-        }
+    onSelectAll = () => {
         
-        const new_selectedUserIds = fillAll ? new Set(this.state.usersMap.keys()) : new Set()
+        // If anything is currently selected, then we toggle all off
+        // If nothing is selected then we toggle all on
+        const doAll = (this.state.selectedUserIds.size === 0)
+        
+        // Populate from usersList because only the visible rows should be selected
+        const new_selectedUserIds = doAll ? new Set(this.state.usersList.map(u => u.id)) : new Set()
 
         this.setState({selectedUserIds: new_selectedUserIds})
     }
