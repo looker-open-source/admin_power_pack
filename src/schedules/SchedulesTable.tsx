@@ -28,10 +28,14 @@ import {
   ButtonTransparent,
   Checkbox,
   ComboboxOptionObject,
+  FieldCheckbox,
+  Flex,
+  FlexItem,
   InputText,
   InputChips,
   Label,
   Select,
+  Space,
   Text,
   Table,
   TableBody,
@@ -60,8 +64,6 @@ import { TIMEZONES, FORMAT, PDF_PAPER_SIZE } from "./selectOptions";
 export interface QueryProps {
   results: IScheduledPlanTable;
   datagroups: ComboboxOptionObject[];
-  runningQuery: boolean;
-  runningUpdate: boolean;
   hiddenColumns: string[];
   checkboxStatus: any;
   handleVisible(hiddenColumns: string[], checkboxStatus: any): void;
@@ -214,13 +216,13 @@ const EditableCell = (ec: EditableCellInterface) => {
           onClick={() => {
             openExploreWindow(value);
           }}
-          cursor={"pointer"}
-          title={"Scheduler History in System Activity"}
-          display={"inline-block"}
-          position={"relative"}
+          cursor="pointer"
+          title="Scheduler History in System Activity"
+          display="inline-block"
+          position="relative"
         >
           <DefaultInputText {...true} />
-          <Box position={"absolute"} left={0} right={0} top={0} bottom={0} />
+          <Box position="absolute" left={0} right={0} top={0} bottom={0} />
         </Box>
       </>
     );
@@ -303,8 +305,6 @@ const ReactTable = ({
   columns,
   data,
   datagroups,
-  runningQuery,
-  runningUpdate,
   hiddenColumnsState,
   handleVisible,
   checkboxStatus,
@@ -376,170 +376,190 @@ const ReactTable = ({
 
   return (
     <>
-      <ButtonTransparent
-        size="xsmall"
-        m="xsmall"
-        color="primary"
-        iconBefore="Plus"
-        onClick={() => {
-          addRow();
-        }}
-      >
-        Add
-      </ButtonTransparent>
-      <ButtonTransparent
-        disabled={!(Object.keys(selectedRowIds).length > 0)}
-        size="xsmall"
-        m="xsmall"
-        color="danger"
-        iconBefore="Trash"
-        onClick={() => {
-          const rows = zipRows(selectedFlatRows, selectedRowIds);
-          deleteRow(rows);
-        }}
-      >
-        Delete
-      </ButtonTransparent>
-      <ButtonTransparent
-        disabled={!(Object.keys(selectedRowIds).length > 0)}
-        size="xsmall"
-        m="xsmall"
-        iconBefore="Update"
-        onClick={() => {
-          const rowIndex = Object.keys(selectedRowIds).map(Number);
-          const rows = selectedFlatRows.map((d) => d.original);
-          updateRow(rowIndex, rows);
-        }}
-      >
-        Create/Update
-      </ButtonTransparent>
-      <ButtonTransparent
-        disabled={!(Object.keys(selectedRowIds).length > 0)}
-        size="xsmall"
-        m="xsmall"
-        iconBefore="SendEmail"
-        onClick={() => {
-          const rowIndex = Object.keys(selectedRowIds).map(Number);
-          const rows = selectedFlatRows.map((d) => d.original);
-          testRow(rowIndex, rows);
-        }}
-      >
-        Run Once
-      </ButtonTransparent>
-
-      <ButtonTransparent
-        disabled={!(Object.keys(selectedRowIds).length > 0)}
-        size="xsmall"
-        m="xsmall"
-        iconBefore="Close"
-        onClick={() => {
-          const rowIndex = Object.keys(selectedRowIds).map(Number);
-          const rows = selectedFlatRows.map((d) => d.original);
-          disableRow(rowIndex, rows);
-        }}
-      >
-        Disable
-      </ButtonTransparent>
-
-      <ButtonTransparent
-        disabled={!(Object.keys(selectedRowIds).length > 0)}
-        size="xsmall"
-        m="xsmall"
-        iconBefore="FolderOpen"
-        onClick={() => {
-          const rowIndex = Object.keys(selectedRowIds).map(Number);
-          const rows = selectedFlatRows.map((d) => d.original);
-          enableRow(rowIndex, rows);
-        }}
-      >
-        Enable
-      </ButtonTransparent>
-
-      <Label>
-        <Checkbox
-          checked={checkboxStatus["Show All"]}
-          onChange={(e: any) => {
-            let newCheckboxStatus = checkboxStatus;
-            if (checkboxStatus["Show All"] !== true) {
-              newCheckboxStatus = mapValues(checkboxStatus, () => true);
-            } else {
-              newCheckboxStatus = mapValues(checkboxStatus, () => false);
-            }
-
-            let newHiddenColumns: string[] = [];
-            if (newCheckboxStatus["Show All"]) {
-              newHiddenColumns = [];
-            } else {
-              newHiddenColumns = Object.keys(data[0]);
-            }
-            handleVisible(newHiddenColumns, newCheckboxStatus);
-          }}
-          // {...getToggleHideAllColumnsProps()}
-        />{" "}
-        Show All
-      </Label>
-
-      {headers.map((header: any) => {
-        if (header.originalId === "selection_placeholder") {
-          return;
-        }
-        return (
-          <Label key={header.id}>
-            <Checkbox
-              checked={checkboxStatus[header.Header]}
-              onChange={(e: any) => {
-                const newCheckboxStatus = checkboxStatus;
-                newCheckboxStatus[header.Header] = !newCheckboxStatus[
-                  header.Header
-                ];
-                const headerColumns = header.columns.map((c: any) => c.id);
-                let newHiddenColumns = [];
-
-                if (!e.target.checked) {
-                  newHiddenColumns = [...hiddenColumnsState, ...headerColumns];
-                } else {
-                  newHiddenColumns = [...hiddenColumnsState].filter(
-                    (c) => !headerColumns.includes(c)
-                  );
-                }
-
-                if (newHiddenColumns.length == 0) {
-                  newCheckboxStatus["Show All"] = true;
-                } else if (
-                  newHiddenColumns.length > 0 &&
-                  newHiddenColumns.length < Object.keys(data[0]).length
-                ) {
-                  newCheckboxStatus["Show All"] = "mixed";
-                } else {
-                  newCheckboxStatus["Show All"] = false;
-                }
-
-                handleVisible(newHiddenColumns, newCheckboxStatus);
+      <Flex height="25px" justifyContent="space-between">
+        <Flex>
+          <FlexItem alignSelf="center">
+            <ButtonTransparent
+              size="xsmall"
+              m="xsmall"
+              color="primary"
+              iconBefore="Plus"
+              onClick={() => {
+                addRow();
               }}
-              // {...header.getToggleHiddenProps()}
-            />{" "}
-            {header.Header}
-          </Label>
-        );
-      })}
+            >
+              Add
+            </ButtonTransparent>
+          </FlexItem>
 
-      {runningQuery && (
-        <Text color="palette.charcoal700" fontWeight="semiBold" mr="large">
-          {" "}
-          Getting Schedules Data ...
-        </Text>
-      )}
-      {runningUpdate && (
-        <Text color="palette.charcoal700" fontWeight="semiBold" mr="large">
-          {" "}
-          Processing ...
-        </Text>
-      )}
-      {Object.keys(selectedRowIds).length > 0 && (
-        <p style={{ float: "right" }}>
-          {Object.keys(selectedRowIds).length} row(s) selected
-        </p>
-      )}
+          <FlexItem alignSelf="center">
+            <ButtonTransparent
+              disabled={!(Object.keys(selectedRowIds).length > 0)}
+              size="xsmall"
+              m="xsmall"
+              color="danger"
+              iconBefore="Trash"
+              onClick={() => {
+                const rows = zipRows(selectedFlatRows, selectedRowIds);
+                deleteRow(rows);
+              }}
+            >
+              Delete
+            </ButtonTransparent>
+          </FlexItem>
+
+          <FlexItem alignSelf="center">
+            <ButtonTransparent
+              disabled={!(Object.keys(selectedRowIds).length > 0)}
+              size="xsmall"
+              m="xsmall"
+              iconBefore="Update"
+              onClick={() => {
+                const rowIndex = Object.keys(selectedRowIds).map(Number);
+                const rows = selectedFlatRows.map((d) => d.original);
+                updateRow(rowIndex, rows);
+              }}
+            >
+              Create/Update
+            </ButtonTransparent>
+          </FlexItem>
+
+          <FlexItem alignSelf="center">
+            <ButtonTransparent
+              disabled={!(Object.keys(selectedRowIds).length > 0)}
+              size="xsmall"
+              m="xsmall"
+              iconBefore="SendEmail"
+              onClick={() => {
+                const rowIndex = Object.keys(selectedRowIds).map(Number);
+                const rows = selectedFlatRows.map((d) => d.original);
+                testRow(rowIndex, rows);
+              }}
+            >
+              Run Once
+            </ButtonTransparent>
+          </FlexItem>
+
+          <FlexItem alignSelf="center">
+            <ButtonTransparent
+              disabled={!(Object.keys(selectedRowIds).length > 0)}
+              size="xsmall"
+              m="xsmall"
+              iconBefore="Close"
+              onClick={() => {
+                const rowIndex = Object.keys(selectedRowIds).map(Number);
+                const rows = selectedFlatRows.map((d) => d.original);
+                disableRow(rowIndex, rows);
+              }}
+            >
+              Disable
+            </ButtonTransparent>
+          </FlexItem>
+
+          <FlexItem alignSelf="center">
+            <ButtonTransparent
+              disabled={!(Object.keys(selectedRowIds).length > 0)}
+              size="xsmall"
+              m="xsmall"
+              iconBefore="FolderOpen"
+              onClick={() => {
+                const rowIndex = Object.keys(selectedRowIds).map(Number);
+                const rows = selectedFlatRows.map((d) => d.original);
+                enableRow(rowIndex, rows);
+              }}
+            >
+              Enable
+            </ButtonTransparent>
+          </FlexItem>
+
+          <FlexItem p="small"></FlexItem>
+
+          <FlexItem alignSelf="center">
+            <Space>
+              <FieldCheckbox
+                label="Show All"
+                checked={checkboxStatus["Show All"]}
+                onChange={(e: any) => {
+                  let newCheckboxStatus = checkboxStatus;
+                  if (checkboxStatus["Show All"] !== true) {
+                    newCheckboxStatus = mapValues(checkboxStatus, () => true);
+                  } else {
+                    newCheckboxStatus = mapValues(checkboxStatus, () => false);
+                  }
+
+                  let newHiddenColumns: string[] = [];
+                  if (newCheckboxStatus["Show All"]) {
+                    newHiddenColumns = [];
+                  } else {
+                    newHiddenColumns = Object.keys(data[0]);
+                  }
+                  handleVisible(newHiddenColumns, newCheckboxStatus);
+                }}
+                // {...getToggleHideAllColumnsProps()}
+              />
+
+              {headers.map((header: any) => {
+                if (header.originalId === "selection_placeholder") {
+                  return;
+                }
+                return (
+                  <FieldCheckbox
+                    key={header.id}
+                    label={header.Header}
+                    checked={checkboxStatus[header.Header]}
+                    onChange={(e: any) => {
+                      const newCheckboxStatus = checkboxStatus;
+                      newCheckboxStatus[header.Header] = !newCheckboxStatus[
+                        header.Header
+                      ];
+                      const headerColumns = header.columns.map(
+                        (c: any) => c.id
+                      );
+                      let newHiddenColumns = [];
+
+                      if (!e.target.checked) {
+                        newHiddenColumns = [
+                          ...hiddenColumnsState,
+                          ...headerColumns,
+                        ];
+                      } else {
+                        newHiddenColumns = [...hiddenColumnsState].filter(
+                          (c) => !headerColumns.includes(c)
+                        );
+                      }
+
+                      if (newHiddenColumns.length == 0) {
+                        newCheckboxStatus["Show All"] = true;
+                      } else if (
+                        newHiddenColumns.length > 0 &&
+                        newHiddenColumns.length < Object.keys(data[0]).length
+                      ) {
+                        newCheckboxStatus["Show All"] = "mixed";
+                      } else {
+                        newCheckboxStatus["Show All"] = false;
+                      }
+
+                      handleVisible(newHiddenColumns, newCheckboxStatus);
+                    }}
+                    // {...header.getToggleHiddenProps()}
+                  />
+                );
+              })}
+            </Space>
+          </FlexItem>
+        </Flex>
+
+        <Flex>
+          <FlexItem alignSelf="center">
+            {Object.keys(selectedRowIds).length > 0 && (
+              <p style={{ float: "right" }}>
+                {Object.keys(selectedRowIds).length} row(s) selected
+              </p>
+            )}
+          </FlexItem>
+        </Flex>
+      </Flex>
+
       <Styles>
         <Box>
           <Table {...getTableProps()}>
@@ -714,8 +734,6 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
   const {
     results,
     datagroups,
-    runningQuery,
-    runningUpdate,
     hiddenColumns,
     handleVisible,
     checkboxStatus,
@@ -730,14 +748,12 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
   } = qp;
 
   return (
-    <Box m={"small"} width={"100%"}>
+    <Box>
       {results.length > 0 && (
         <ReactTable
           columns={headings(results)}
           data={results}
           datagroups={datagroups}
-          runningQuery={runningQuery}
-          runningUpdate={runningUpdate}
           hiddenColumnsState={hiddenColumns}
           handleVisible={handleVisible}
           checkboxStatus={checkboxStatus}

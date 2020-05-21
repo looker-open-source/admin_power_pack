@@ -31,9 +31,11 @@ import {
   ComboboxOptionObject,
   Confirm,
   Flex,
+  FlexItem,
   Heading,
   InputText,
   Label,
+  Text,
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
 import { isEqual } from "lodash";
@@ -424,7 +426,9 @@ export class SchedulesPage extends React.Component<
     );
 
     //mirroring default settings
+    // todo consolidate with addrow()
     scheduleHeader.format = "wysiwyg_pdf";
+    scheduleHeader.datagroup = " ";
     scheduleHeader.timezone = "UTC";
     scheduleHeader.run_as_recipient = false;
     scheduleHeader.apply_vis = false; // exception for better UI
@@ -689,7 +693,6 @@ export class SchedulesPage extends React.Component<
   getDash = async (dash_id: number) => {
     this.setState({
       selectedDashId: dash_id,
-      currentDash: undefined,
       runningQuery: true,
       errorMessage: undefined,
       notificationMessage: undefined,
@@ -701,7 +704,7 @@ export class SchedulesPage extends React.Component<
       );
       // console.table(dash)
 
-      if (dash === undefined || dash.deleted == true) {
+      if (dash.deleted == true) {
         this.setState({
           selectedDashId: undefined,
           currentDash: undefined,
@@ -1194,10 +1197,10 @@ export class SchedulesPage extends React.Component<
           </Banner>
         )}
 
-        <Box m={"large"}>
-          <Box m={"small"}>
-            <Box style={{ float: "left" }}>
-              <Label pt="xxsmall" color="palette.charcoal700" fontSize="medium">
+        <Box m="large">
+          <Flex justifyContent="space-between">
+            <FlexItem mb="medium">
+              <Label pt="xxsmall" color="palette.charcoal700" fontSize="large">
                 Enter A Dashboard ID:{" "}
                 <InputText
                   width="80"
@@ -1208,14 +1211,50 @@ export class SchedulesPage extends React.Component<
                   onChange={this.handleDashChange}
                 />
               </Label>{" "}
-              <Button size="xsmall" mr="xsmall" onClick={this.handleDashSubmit}>
+              <Button size="small" mr="small" onClick={this.handleDashSubmit}>
                 Go
               </Button>
-            </Box>
+            </FlexItem>
 
-            {this.state.schedulesArray.length > 0 && (
-              <>
-                <Box style={{ float: "right" }}>
+            <FlexItem width="40%">
+              {this.state.runningQuery && (
+                <Text
+                  color="palette.charcoal700"
+                  fontWeight="semiBold"
+                  mr="large"
+                >
+                  Getting Schedules Data ...
+                </Text>
+              )}
+
+              {this.state.runningUpdate && (
+                <Text
+                  color="palette.charcoal700"
+                  fontWeight="semiBold"
+                  mr="large"
+                >
+                  Processing ...
+                </Text>
+              )}
+
+              {this.state.notificationMessage && (
+                <Banner
+                  intent="confirmation"
+                  canDismiss
+                  onDismiss={() => {
+                    this.setState({
+                      notificationMessage: undefined,
+                    });
+                  }}
+                >
+                  {this.state.notificationMessage}
+                </Banner>
+              )}
+            </FlexItem>
+
+            <FlexItem>
+              {this.state.schedulesArray.length > 0 && (
+                <>
                   <PopulateRows
                     popParams={this.state.populateParams}
                     resetPopParams={this.resetPopParams}
@@ -1260,37 +1299,15 @@ export class SchedulesPage extends React.Component<
                   >
                     {(open) => <Button onClick={open}>Update All</Button>}
                   </Confirm>
-                </Box>
-              </>
-            )}
-
-            <Box width="50%" margin="0 auto">
-              {this.state.notificationMessage && (
-                <Banner
-                  intent="confirmation"
-                  canDismiss
-                  onDismiss={() => {
-                    this.setState({
-                      notificationMessage: undefined,
-                    });
-                  }}
-                >
-                  {this.state.notificationMessage}
-                </Banner>
+                </>
               )}
-            </Box>
-          </Box>
+            </FlexItem>
+          </Flex>
 
-          <Box
-            style={{ float: "left" }}
-            pl={"small"}
-            pt={"small"}
-            width={"100%"}
-          >
+          <Box style={{ float: "left" }}>
             <Heading
-              as={"h2"}
+              as="h2"
               fontWeight="semiBold"
-              mb={"small"}
               style={{ cursor: "pointer", display: "inline" }}
               title={
                 this.state.currentDash && this.state.currentDash.folder
@@ -1317,8 +1334,6 @@ export class SchedulesPage extends React.Component<
             <SchedulesTable
               results={this.state.schedulesArray}
               datagroups={this.state.datagroups}
-              runningQuery={this.state.runningQuery}
-              runningUpdate={this.state.runningUpdate}
               hiddenColumns={this.state.hiddenColumns}
               handleVisible={this.handleVisible}
               checkboxStatus={this.state.checkboxStatus}
