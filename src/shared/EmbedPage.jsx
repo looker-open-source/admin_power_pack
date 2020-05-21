@@ -22,14 +22,54 @@
  * THE SOFTWARE.
  */
 
-import React from 'react'
-
-import { 
-    Heading
+import React, { useContext } from 'react'
+import { ExtensionContext } from '@looker/extension-sdk-react'
+import {
+    Flex, Box, SpaceVertical,
+    Heading, Paragraph,
+    Link, Button
 } from '@looker/components'
 
 export function EmbedPage(props) {
+    const context = useContext(ExtensionContext)
+
+    const onClickSSODocsLink = () => context.extensionSDK.openBrowserWindow("https://docs.looker.com/reference/embedding/sso-embed", '_blank')
+
+    const onClickLaunchButton = () => context.extensionSDK.openBrowserWindow("https://fabio-looker.github.io/looker_sso_tool/", '_blank')
+
     return (
-        <Heading as="h2">Placeholder</Heading>
+        <>
+        <Box py="large" textAlign="center">
+            <Heading as="h1">Howdy!</Heading>
+        </Box>
+        <Flex justifyContent="center" alignContent="center">
+            <Flex flexDirection="column" justifyContent="center" alignContent="center" width="30rem">
+                <SpaceVertical>
+                    <Paragraph>
+                        This utility shows how to construct <Link onClick={onClickSSODocsLink}>Single Sign-on (SSO) Embed</Link> urls with a point-and-click interface. 
+                        You can easily tweak the parameters of the url and see the resulting iframe in real time.
+                    </Paragraph>
+                    <Paragraph>
+                        In order to properly test embedding, the iframe needs to be loaded in a webpage with a different domain 
+                        than the Looker instance. Otherwise there will be conflicts with the user sessions.
+                    </Paragraph>
+                    <Paragraph>
+                        Therefore we have hosted this demo on Github Pages:
+                    </Paragraph>
+                    <Button iconAfter="External" onClick={onClickLaunchButton}>Launch Embed Demo</Button>
+                    <Paragraph>
+                        Note: this application runs fully in the browser with no server communication.
+                        Your settings - including the Embed Secret - will be saved in the browser's local storage
+                        so that they aren't lost after a page reload. You can also download the settings as json in order
+                        to reload them later. Please don't use your "production" embed secret, and rotate the keys 
+                    </Paragraph>
+                    <Paragraph>
+                        We recommend running the app in a different web browser or browser profile. That way you can stay signed
+                        in to your main Looker account while simultaneously testing the embed user creation.
+                    </Paragraph>
+                </SpaceVertical>
+            </Flex>
+        </Flex>
+        </>
     )
 }

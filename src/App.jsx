@@ -59,7 +59,7 @@ const PAGES = [
     },{
         path: "/embed", 
         navTitle: "Embed",
-        pageTitle: "⚡ Embed Playground", 
+        pageTitle: "⚡ SSO Embed Demo", 
         icon: "DashboardFile",
         component: EmbedPage
     }
