@@ -163,6 +163,10 @@ export class UsersPage extends React.Component {
         this.setState({selectedUserIds: new_selectedUserIds})
     }
 
+    setNewSelectedUserIds = (new_selectedUserIds) => {
+        this.setState({selectedUserIds: new_selectedUserIds})
+    }
+
     /*
      ******************* SEARCH & FILTER stuff *******************
      */
@@ -361,6 +365,7 @@ export class UsersPage extends React.Component {
                 selectedUserIds={this.state.selectedUserIds}
                 usersMap={this.state.usersMap}
                 loadUsersAndStuff={this.loadUsersAndStuff}
+                setNewSelectedUserIds={this.setNewSelectedUserIds}
             />
                                
         const showWhoToggle = 

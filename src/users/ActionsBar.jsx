@@ -26,14 +26,19 @@ import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { makeLookerCaller } from '../shared/utils'
 import {
-    Text,
-    List, ListItem,
     Button, ButtonOutline, ButtonTransparent,
+    Menu, MenuDisclosure, MenuList, MenuItem,
     Dialog, ConfirmLayout,
-    Menu, MenuDisclosure, MenuList, MenuItem
+    List, ListItem,
+    Text, Paragraph,
+    TextArea
   } from '@looker/components'
 
 const actionInfo = {
+    selectBy: {
+        menuTitle: "User ID or email address",
+        dialogTitle: "Select Users"
+    },
     emailFill: {
         cred: "email", 
         menuTitle: "Auto-fill from other creds", 
@@ -54,7 +59,9 @@ export class ActionsBar extends React.Component {
             currentAction: false,
             isRunning: false,
             isReview: false,
-            deleteType: null
+            deleteType: null,
+            selectByText: "",
+            logMessages: []
         }
     }
 
@@ -72,6 +79,20 @@ export class ActionsBar extends React.Component {
         return new Promise(resolve => this.setState({isRunning: value}, resolve))
     }
 
+    async setIsReview(value) {
+        return new Promise(resolve => this.setState({isReview: value}, resolve))
+    }
+
+    async clearLog() {
+        return new Promise(resolve => this.setState({logMessages: []}, resolve))
+    }
+
+    log(entry) {
+        // Array.prototype.concat() returns a copy and handles both scalars and arrays :)
+        const new_logMessages = this.state.logMessages.concat(entry)
+        this.setState({logMessages: new_logMessages})
+    }
+
     /*
      ******************* Callbacks for the dialogs *******************
      */
@@ -81,6 +102,14 @@ export class ActionsBar extends React.Component {
             isReview: false,
             currentAction: null
         })
+    }
+
+    openSelectBy = () => {
+        this.setState({currentAction: "selectBy"})
+    }
+
+    onChangeSelectByText = (e) => {
+        this.setState({selectByText: e.currentTarget.value})
     }
 
     openEmailFill = () => { 
@@ -94,13 +123,23 @@ export class ActionsBar extends React.Component {
         })
     }
 
-    handleRunEmailFill = () => {
-        this.setState({isReview: true})
+    handleRunSelectBy = async () => {
+        await this.clearLog()
+        this.setIsReview(true)
+        await new Promise(resolve => {this.runSelectBy(); resolve()})
+        //this.runSelectBy()
+        console.log(this.state.logMessages)
+    }
+
+    handleRunEmailFill = async () => {
+        await this.clearLog()
+        this.setIsReview(true)
         this.runEmailFill()
     }
 
-    handleRunDeleteCreds = () => { 
-        this.setState({isReview: true}) 
+    handleRunDeleteCreds = async () => { 
+        await this.clearLog()
+        this.setIsReview(true)
         this.runDeleteCreds(this.state.deleteType.toLowerCase())
     }
 
@@ -122,7 +161,7 @@ export class ActionsBar extends React.Component {
         
         const deleteFunc = (sdkUser) => {
             if (!sdkUser[propName]) {
-                console.log(`user ${sdkUser.id} has no ${credType} creds to delete`)
+                this.log(`user ${sdkUser.id} has no ${credType} creds to delete`)
                 return
             }
             this.lookerRequest(methName, sdkUser.id)
@@ -133,6 +172,44 @@ export class ActionsBar extends React.Component {
         await this.runActionOnSelectedUsers(deleteFunc, `delete ${credType} creds`)
         this.setRunning(false)
     }
+
+    runSelectBy() {
+        // we're going to record which tokens match along with which ones didn't
+        let foundCounts = {}
+        let new_selectedUserIds = new Set()
+        
+        // this regex should cover us well but i still might be missing corner cases
+        const tokens = this.state.selectByText.trim().split(/[\s,;\t\n]+/).filter(Boolean)
+        
+        this.log(`${tokens.length} search tokens provided`)
+        
+        tokens.forEach(t => foundCounts[t] = 0)
+
+        this.props.usersMap.forEach((user, id) => {
+            const idStr = id.toString()
+            if (tokens.includes(idStr)) {
+                new_selectedUserIds.add(id)
+                foundCounts[idStr] = ++foundCounts[idStr]
+            }
+            // check both individually so we can cross both tokens off 
+            // even if an id and email point to same account
+            if (tokens.includes(user.email)) {
+                new_selectedUserIds.add(id)
+                foundCounts[user.email] = ++foundCounts[user.email]
+            }
+        })
+
+        this.props.setNewSelectedUserIds(new_selectedUserIds)
+        this.log(`${new_selectedUserIds.size} users selected`)
+
+        const unmatched = Object.keys(foundCounts).filter(token => foundCounts[token] === 0)
+        this.log(`${unmatched.length} unmatched tokens`)
+        
+        if (unmatched.length > 0) {
+            this.log("The unmatched tokens are:")
+            this.log(unmatched)
+        }
+    }
     
     async runEmailFill() {
         await this.setRunning(true)
@@ -140,23 +217,59 @@ export class ActionsBar extends React.Component {
         this.setRunning(false)
     } 
     
-    async createUserEmailCreds(sdkUser) {
-        if (sdkUser.credentials_email) { 
-            console.log("user already has email creds")
+    async createUserEmailCreds(user) {
+        if (user.credentials_email) { 
+            this.log(`user ${user.id} already has email creds: ${user.credentials_email.email}`)
             return 
         }
     
-        if (!sdkUser.email) { 
-            console.log("user has no email address")
+        if (!user.email) { 
+            console.log(`user ${user.id} has no email address from other creds`)
             return 
         } 
-        this.lookerRequest('create_user_credentials_email', sdkUser.id, {email: sdkUser.email})
-        //await this.reloadUserId(sdkUser.id)
+        this.lookerRequest('create_user_credentials_email', user.id, {email: user.email})
+        //await this.reloadUserId(user.id)
     }
     
     /*
     ******************* Rendering *******************
     */
+    renderSelectBy() {
+        return (
+            <>
+            <Menu>
+                <MenuDisclosure>
+                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Select By</ButtonOutline>
+                </MenuDisclosure>
+                <MenuList placement="right-start">
+                    <MenuItem icon="FindSelected" onClick={this.openSelectBy}>{actionInfo.selectBy.menuTitle}</MenuItem>
+                </MenuList>
+            </Menu>
+            
+            <Dialog
+              isOpen={this.isCurrentAction("selectBy") && !this.state.isReview}
+              onClose={this.handleClose}
+            >
+              <ConfirmLayout
+                title={actionInfo.selectBy.dialogTitle}
+                message={
+                    <>
+                    <Paragraph mb="small">
+                        Paste a list of user ids or email addresses. 
+                        They can be separated by comma, semicolon, or any whitespace (space, tab, newline).
+                    </Paragraph>
+                    <TextArea resize value={this.state.selectByText} onChange={this.onChangeSelectByText}/>
+                    </>
+                }
+                primaryButton={<Button onClick={this.handleRunSelectBy}>Select</Button>}
+                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            </>
+        )
+    }
+
+
     renderManageEmailCreds() {
         return (
             <>
@@ -265,15 +378,20 @@ export class ActionsBar extends React.Component {
     renderReviewDialog() {
         return (
             <Dialog
-              isOpen={this.state.isReview}
-              onClose={this.handleClose}
+                isOpen={this.state.isReview}
+                onClose={this.handleClose}
             >
                 <ConfirmLayout
-                  title={`${actionInfo[this.state.currentAction]?.dialogTitle} - ${this.props.isRunning ? "In Progress" : "Complete"}`}
-                  message={`
-                      Gonna put more stuff here.
-                  `}
-                  primaryButton={(this.props.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
+                    title={`${actionInfo[this.state.currentAction]?.dialogTitle} - ${this.props.isRunning ? "In Progress" : "Complete"}`}
+                    message={
+                      <>
+                        <Paragraph mb="small" width="50rem">
+                            Execution log:
+                        </Paragraph>
+                        <TextArea readonly resize value={this.state.logMessages.join("\n")} />
+                      </>
+                    }
+                    primaryButton={(this.props.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
                 />
             </Dialog>
         )
@@ -283,6 +401,7 @@ export class ActionsBar extends React.Component {
         return (  
             <>
             {this.renderReviewDialog()}
+            {this.renderSelectBy()}
             {this.renderManageEmailCreds()}
             {this.renderDeleteCreds()}
             {this.renderDisable()}
