@@ -25,13 +25,16 @@
 import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { makeLookerCaller } from '../shared/utils'
+import styled from "styled-components"
 import {
     Button, ButtonOutline, ButtonTransparent,
     Menu, MenuDisclosure, MenuList, MenuItem,
     Dialog, ConfirmLayout,
     List, ListItem,
     Text, Paragraph,
-    TextArea
+    TextArea,
+    Icon,
+    Tooltip
   } from '@looker/components'
 
 const actionInfo = {
@@ -48,6 +51,12 @@ const actionInfo = {
         dialogTitle: "Delete Credentials"
     }
 }
+
+const MonospaceTextArea = styled(TextArea)`
+    textarea {
+        font-family:monospace;
+    }
+`
 
 export class ActionsBar extends React.Component {
     static contextType = ExtensionContext // provides the coreSDK object
@@ -93,6 +102,13 @@ export class ActionsBar extends React.Component {
         this.setState({logMessages: new_logMessages})
     }
 
+    reviewDialogTitle() {
+        if (this.state.currentAction) {
+            return `${actionInfo[this.state.currentAction].dialogTitle} - ${this.state.isRunning ? "In Progress" : "Complete"}`
+        }
+        return ""
+    }
+
     /*
      ******************* Callbacks for the dialogs *******************
      */
@@ -121,6 +137,10 @@ export class ActionsBar extends React.Component {
             currentAction: "delete",
             deleteType: type
         })
+    }
+
+    openViewLog = () => {
+        this.setIsReview(true)
     }
 
     handleRunSelectBy = async () => {
@@ -375,6 +395,14 @@ export class ActionsBar extends React.Component {
         )
     }
 
+    renderViewLog() {
+        return (
+            <Tooltip content="View last run log">
+                <ButtonOutline size="small" onClick={this.openViewLog}><Icon name="IdeFileDocument" /></ButtonOutline>
+            </Tooltip>
+        )
+    }
+
     renderReviewDialog() {
         return (
             <Dialog
@@ -382,13 +410,13 @@ export class ActionsBar extends React.Component {
                 onClose={this.handleClose}
             >
                 <ConfirmLayout
-                    title={`${actionInfo[this.state.currentAction]?.dialogTitle} - ${this.props.isRunning ? "In Progress" : "Complete"}`}
+                    title={this.reviewDialogTitle()}
                     message={
                       <>
                         <Paragraph mb="small" width="50rem">
                             Execution log:
                         </Paragraph>
-                        <TextArea readonly resize value={this.state.logMessages.join("\n")} />
+                        <MonospaceTextArea readOnly resize value={this.state.logMessages.join("\n")} />
                       </>
                     }
                     primaryButton={(this.props.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
@@ -405,6 +433,7 @@ export class ActionsBar extends React.Component {
             {this.renderManageEmailCreds()}
             {this.renderDeleteCreds()}
             {this.renderDisable()}
+            {this.renderViewLog()}
             </>
         )
     }
