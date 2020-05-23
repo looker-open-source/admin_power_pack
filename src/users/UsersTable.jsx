@@ -93,14 +93,10 @@ export class UsersTable extends React.Component {
         if (sdkUser.is_disabled) {
             return (
                 <Tooltip content="User is disabled">
-                    {(eventHandlers, ref) => {
-                        return (
-                            <Flex alignItems="center" ref={ref} {...eventHandlers}>
-                                {sdkUser.display_name} &nbsp;
-                                <Icon name="Block" size={12}/>
-                            </Flex>
-                        )
-                    }}
+                    <Flex alignItems="center">
+                        {sdkUser.display_name} &nbsp;
+                        <Icon name="Block" size={12}/>
+                    </Flex>
                 </Tooltip>
             )
         }
