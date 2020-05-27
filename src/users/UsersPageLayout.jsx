@@ -50,10 +50,10 @@ export function UsersPageLayout(props) {
                     <Text variant="secondary" mr="small">Actions</Text>
                     {props.actionsBar}
                 </Box>
-                <Box>
+                <Flex alignItems="center">
                     <Text variant="secondary" mr="small">Show</Text>
                     {props.showWhoToggle}
-                </Box>
+                </Flex>
             </JustifiedSection>
             <JustifiedSection>
                 <Box>

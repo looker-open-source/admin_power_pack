@@ -32,7 +32,7 @@ import { makeLookerCaller } from '../shared/utils'
 import { 
     Banner, 
     doDefaultActionListSort,
-    InputSearch, ButtonGroup, ButtonToggle, ButtonItem
+    InputSearch, ButtonGroup, ButtonItem, Select
 } from '@looker/components'
 
 export class UsersPage extends React.Component {
@@ -369,11 +369,14 @@ export class UsersPage extends React.Component {
             />
                                
         const showWhoToggle = 
-            <ButtonToggle value={this.state.activeShowWhoButton} onChange={this.onChangeActiveShowWhoButton}>
-                <ButtonItem value="regular">Regular Users</ButtonItem>
-                <ButtonItem value="embed">Embed Users</ButtonItem>
-                <ButtonItem value="lookerSupport">Looker Support</ButtonItem>
-            </ButtonToggle>
+            <Select
+                onChange={this.onChangeActiveShowWhoButton}
+                options={[
+                  { value: 'regular', label: 'Regular Users' },
+                  { value: 'embed', label: 'Embed Users' },
+                  { value: 'lookerSupport', label: 'Looker Support' },
+                ]}
+            />
              
         const quickFilterGroup = 
             <ButtonGroup value={this.state.activeFilterButtons} onChange={this.onChangeActiveFilterButtons}>
