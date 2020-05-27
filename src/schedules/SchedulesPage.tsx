@@ -38,7 +38,7 @@ import {
   Text,
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
-import { isEqual } from "lodash";
+import { isEqual, cloneDeep } from "lodash";
 import {
   IDashboard,
   IScheduledPlan,
@@ -203,14 +203,9 @@ export class SchedulesPage extends React.Component<
     return;
   };
 
-  // ensure all key fields are filled out
+  // ensure all queryId is filled out
   validPopParams = (): boolean => {
-    for (let [key, value] of Object.entries(this.state.populateParams)) {
-      if (!value) {
-        return false;
-      }
-    }
-    return true;
+    return this.state.populateParams.queryId !== undefined;
   };
 
   // populate rows from Looker Query ID
@@ -219,12 +214,16 @@ export class SchedulesPage extends React.Component<
       runningUpdate: true,
     });
 
-    if (this.state.currentDash === undefined) {
+    const params = this.state.populateParams;
+
+    if (this.state.currentDash === undefined || params.queryId === undefined) {
+      this.setState({
+        runningUpdate: false,
+      });
       return;
     }
 
     try {
-      const params = JSON.parse(JSON.stringify(this.state.populateParams));
       console.log(params);
 
       const results: any = await this.context.core40SDK.ok(
@@ -244,10 +243,10 @@ export class SchedulesPage extends React.Component<
       });
       console.table(fieldMapper);
 
-      const newArray = JSON.parse(JSON.stringify(this.state.schedulesArray));
+      const newArray = cloneDeep(this.state.schedulesArray);
 
       for (let i = 0; i < results.data.length; i++) {
-        const newRow = JSON.parse(JSON.stringify(newArray[0]));
+        const newRow = cloneDeep(newArray[0]);
         Object.keys(newRow).forEach((k) => (newRow[k] = "")); // clear row values first
 
         Object.keys(newRow).forEach((k: any) => {
@@ -409,12 +408,13 @@ export class SchedulesPage extends React.Component<
     return true;
   };
 
-  //
+  // loads empty first row in table. Gets called if Dashboard has no schedules, or,
+  // if all rows have been deleted from table
   prepareEmptyTable = async (dash_id: number) => {
     const dash = await this.context.core40SDK.ok(
       this.context.core40SDK.dashboard(dash_id.toString())
     );
-    const jsonDash: any = JSON.parse(JSON.stringify(dash));
+    const jsonDash: any = cloneDeep(dash);
 
     const filtersArray = jsonDash.dashboard_filters.map((f: any) => f.name);
     const headerArray = [...KEY_FIELDS, ...filtersArray];
@@ -425,18 +425,7 @@ export class SchedulesPage extends React.Component<
       scheduleHeader
     );
 
-    //mirroring default settings
-    // todo consolidate with addrow()
-    scheduleHeader.format = "wysiwyg_pdf";
-    scheduleHeader.datagroup = " ";
-    scheduleHeader.timezone = "UTC";
-    scheduleHeader.run_as_recipient = false;
-    scheduleHeader.apply_vis = false; // exception for better UI
-    scheduleHeader.apply_formatting = false; // exception for better UI
-    scheduleHeader.long_tables = false;
-    scheduleHeader.pdf_landscape = false;
-
-    return [scheduleHeader];
+    return [this.setDefaultRowParams(scheduleHeader)];
   };
 
   assignRowValues = (s: IScheduledPlanTable) => {
@@ -800,24 +789,29 @@ export class SchedulesPage extends React.Component<
     });
   };
 
-  // add row to bottom of table
-  addRow = () => {
-    console.log("adding row");
-
-    const newArray = JSON.parse(JSON.stringify(this.state.schedulesArray));
-    const emptyRow = JSON.parse(JSON.stringify(newArray[0]));
-    newArray.push(emptyRow);
-    Object.keys(emptyRow).forEach((v) => (emptyRow[v] = ""));
-
-    //mirroring default settings
+  // sets default values for rows
+  setDefaultRowParams = (emptyRow: any) => {
     emptyRow.datagroup = " ";
     emptyRow.format = "wysiwyg_pdf";
     emptyRow.timezone = "UTC";
     emptyRow.run_as_recipient = false;
-    emptyRow.apply_vis = false; // exception for better UI
-    emptyRow.apply_formatting = false; // exception for better UI
+    emptyRow.apply_vis = false;
+    emptyRow.apply_formatting = false;
     emptyRow.long_tables = false;
     emptyRow.pdf_landscape = false;
+
+    return emptyRow;
+  };
+
+  // add row to bottom of table
+  addRow = () => {
+    console.log("adding row");
+
+    const newArray = cloneDeep(this.state.schedulesArray);
+    const emptyRow = cloneDeep(newArray[0]);
+    Object.keys(emptyRow).forEach((v) => (emptyRow[v] = ""));
+
+    newArray.push(this.setDefaultRowParams(emptyRow));
 
     let rowCount = 1;
     if (this.state.notificationMessage?.includes("Added")) {
@@ -847,7 +841,7 @@ export class SchedulesPage extends React.Component<
       runningUpdate: true,
     });
 
-    const newArray = JSON.parse(JSON.stringify(this.state.schedulesArray));
+    const newArray = cloneDeep(this.state.schedulesArray);
 
     for (let i = 0; i < rows.length; i++) {
       const rowIndex = rows[i].rowIndex;
@@ -893,9 +887,10 @@ export class SchedulesPage extends React.Component<
 
     this.setState({
       runningUpdate: true,
+      notificationMessage: undefined,
     });
 
-    const updateTable = JSON.parse(JSON.stringify(this.state.schedulesArray)); // used to add new scheduled_plan IDs
+    const updateTable = cloneDeep(this.state.schedulesArray);
     const currentPlanIds = schedulesToAdd.map((s: IScheduledPlan) => s.id);
     console.log(currentPlanIds);
 
@@ -946,8 +941,8 @@ export class SchedulesPage extends React.Component<
           schedulesToCheck,
           schedulesToAdd[i].id
         );
-        console.table(schedulesToAdd[i]);
-        console.table(storedSchedule);
+        // console.table(schedulesToAdd[i]);
+        // console.table(storedSchedule);
 
         const response = await this.updateSchedule(
           schedulesToAdd[i],
@@ -1069,7 +1064,7 @@ export class SchedulesPage extends React.Component<
         return;
       }
 
-      const updateTable = JSON.parse(JSON.stringify(this.state.schedulesArray)); // used to add update table
+      const updateTable = cloneDeep(this.state.schedulesArray);
 
       for (let i = 0; i < schedulesToDisable.length; i++) {
         const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
@@ -1135,7 +1130,7 @@ export class SchedulesPage extends React.Component<
         return;
       }
 
-      const updateTable = JSON.parse(JSON.stringify(this.state.schedulesArray)); // used to add update table
+      const updateTable = cloneDeep(this.state.schedulesArray);
 
       for (let i = 0; i < schedulesToEnable.length; i++) {
         const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
