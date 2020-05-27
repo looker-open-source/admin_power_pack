@@ -36,7 +36,7 @@ export function InlineEditEmail(props) {
     const context = useContext(ExtensionContext)
     const lookerRequest = makeLookerCaller(context.coreSDK)
 
-    const originalValue = props.sdkUser?.credentials_email?.email || ""
+    const originalValue = props.user?.credentials_email?.email || ""
     
     const [lastSavedEmail, setLastSavedEmail] = useState(originalValue)
     const [value, setValue] = useState(originalValue)
@@ -66,7 +66,7 @@ export function InlineEditEmail(props) {
         if (key === "Enter") {
             // sdk won't update a cred_email object that doesn't exist in the first place...
             const op = lastSavedEmail ? "update" : "create"
-            lookerRequest(`${op}_user_credentials_email`, props.sdkUser.id, {email: value})
+            lookerRequest(`${op}_user_credentials_email`, props.user.id, {email: value})
                 .then((result) => {
                     setLastSavedEmail(value)
                     setStatus("Saved")
@@ -109,7 +109,7 @@ export function InlineEditEmail(props) {
     /*
      ******************* Rendering *******************
      */
-    if (props.sdkUser.is_disabled) {
+    if (props.user.is_disabled) {
         return (
             value
         )
