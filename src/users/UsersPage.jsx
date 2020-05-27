@@ -76,9 +76,9 @@ export class UsersPage extends React.Component {
      */
 
     reloadUserId = async (user_id) => {
-        const sdkUser = await lookerRequest('user', user_id, USER_FIELDS)
+        const user = await lookerRequest('user', user_id, USER_FIELDS)
         const new_usersMap = new Map(this.state.usersMap)
-        new_usersMap.set(sdkUser.id, sdkUser)
+        new_usersMap.set(user.id, user)
         console.log(`reload user ${user_id}`)
         this.setState({
             usersMap: new_usersMap

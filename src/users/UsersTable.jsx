@@ -44,10 +44,10 @@ export class UsersTable extends React.Component {
         super(props)
     }
 
-    renderOtherCreds(sdkUser) {
+    renderOtherCreds(user) {
         // Take the list of all credential types and add this user's value for that cred type to each
         const used_creds = CREDENTIALS_INFO.map(cred =>
-            Object.assign(cred, { value: sdkUser[cred.name] })
+            Object.assign(cred, { value: user[cred.name] })
             // Omit the values that turn out to be null or undefined
         ).filter(cred => Boolean(cred.value)
             // Some cred types return an array (eg API3) so map those into multiple top-level outputs
@@ -67,7 +67,7 @@ export class UsersTable extends React.Component {
         return (
             used_creds.map((cred, index) => {
                 return (
-                    <Box key={`user-${sdkUser.id}-creds-${index}`}>
+                    <Box key={`user-${user.id}-creds-${index}`}>
                         <Text fontSize="xsmall" fontWeight="bold">{cred.label}: </Text>
                         <Text fontSize="xsmall">
                             {cred.label == "totp"
@@ -81,37 +81,37 @@ export class UsersTable extends React.Component {
         )
     }
 
-    getFormatter(sdkUser) {
+    getFormatter(user) {
         const args = {}
-        if (sdkUser.is_disabled) {
+        if (user.is_disabled) {
            args["color"] = "palette.charcoal400"
         }
         return (text) => { return <Box {...args} >{text}</Box> }
     }
 
-    renderDisplayName(sdkUser) {
-        if (sdkUser.is_disabled) {
+    renderDisplayName(user) {
+        if (user.is_disabled) {
             return (
                 <Tooltip content="User is disabled">
                     <Flex alignItems="center">
-                        {sdkUser.display_name} &nbsp;
+                        {user.display_name} &nbsp;
                         <Icon name="Block" size={12}/>
                     </Flex>
                 </Tooltip>
             )
         }
-        return <span>{sdkUser.display_name}</span>
+        return <span>{user.display_name}</span>
     }
 
-    renderUser(sdkUser) {
-        const formatIfDisabled = this.getFormatter(sdkUser)
-        const groups = sdkUser.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
-        const roles = sdkUser.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: `Embed-role-id-${rid}`})
+    renderUser(user) {
+        const formatIfDisabled = this.getFormatter(user)
+        const groups = user.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
+        const roles = user.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: `Embed-role-id-${rid}`})
 
         const actions = (
             <ActionListItemAction>
                 <Link
-                    onClick={() => this.context.extensionSDK.openBrowserWindow(`/admin/users/${sdkUser.id}/edit`, '_blank')}
+                    onClick={() => this.context.extensionSDK.openBrowserWindow(`/admin/users/${user.id}/edit`, '_blank')}
                 >
                     Edit <Icon name="External" />
                 </Link>
@@ -119,14 +119,14 @@ export class UsersTable extends React.Component {
         )
         return (
             <ActionListItem
-                key={sdkUser.id}
-                id={sdkUser.id}
+                key={user.id}
+                id={user.id}
                 actions={actions}
             >
-                <ActionListItemColumn>{formatIfDisabled(sdkUser.id)}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(sdkUser))}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(<InlineEditEmail sdkUser={sdkUser} />)}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(this.renderOtherCreds(sdkUser))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(user.id)}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(user))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(<InlineEditEmail user={user} />)}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderOtherCreds(user))}</ActionListItemColumn>
                 <ActionListItemColumn>{formatIfDisabled(groups.map(g => g.name).join(", "))}</ActionListItemColumn>
                 <ActionListItemColumn>{formatIfDisabled(roles.map(r => r.name).join(", "))}</ActionListItemColumn>
             </ActionListItem>
