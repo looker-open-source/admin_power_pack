@@ -75,6 +75,10 @@ export class UsersPage extends React.Component {
      ******************* General helper functions *******************
      */
 
+    async asyncSetState(newState) {
+        return new Promise(resolve => this.setState(newState, resolve))
+    }
+
     reloadUserId = async (user_id) => {
         const user = await lookerRequest('user', user_id, USER_FIELDS)
         const new_usersMap = new Map(this.state.usersMap)
@@ -141,7 +145,6 @@ export class UsersPage extends React.Component {
      ******************* SELECTION stuff *******************
      */
     onSelectAll = () => {
-        
         // If anything is currently selected, then we toggle all off
         // If nothing is selected then we toggle all on
         const doAll = (this.state.selectedUserIds.size === 0)
@@ -164,7 +167,7 @@ export class UsersPage extends React.Component {
     }
 
     setNewSelectedUserIds = (new_selectedUserIds) => {
-        this.setState({selectedUserIds: new_selectedUserIds})
+        return this.asyncSetState({selectedUserIds: new_selectedUserIds})
     }
 
     /*

@@ -86,19 +86,24 @@ export class ActionsBar extends React.Component {
     /*
      ******************* HELPERS *******************
      */
+
     isCurrentAction = (name) => (this.state.currentAction === name)
 
     // allows us to wait for the state change to resolve
+    async asyncSetState(newState) {
+        return new Promise(resolve => this.setState(newState, resolve))
+    }
+
     async setRunning(value) {
-        return new Promise(resolve => this.setState({isRunning: value}, resolve))
+        return this.asyncSetState({isRunning: value})
     }
 
     async setIsReview(value) {
-        return new Promise(resolve => this.setState({isReview: value}, resolve))
+        return this.asyncSetState({isReview: value})
     }
 
     async clearLog() {
-        return new Promise(resolve => this.setState({logMessages: []}, resolve))
+        return this.asyncSetState({logMessages: []})
     }
 
     log(entry) {
@@ -152,63 +157,51 @@ export class ActionsBar extends React.Component {
         this.setIsReview(true)
     }
 
-    handleRunSelectBy = async () => {
-        await this.clearLog()
-        this.setIsReview(true)
-        await new Promise(resolve => {this.runSelectBy(); resolve()})
-        //this.runSelectBy()
-        console.log(this.state.logMessages)
+    handleRunSelectBy = () => {
+        this.runInWorkflow(this.runSelectBy)
     }
 
-    handleRunEmailFill = async () => {
-        await this.clearLog()
-        this.setIsReview(true)
-        this.runEmailFill()
+    handleRunEmailFill = () => {
+        this.runInWorkflow( () => this.runOnSelectedUsers(this.fillUserEmailCred, "fill email creds") )
     }
 
-    handleRunEmailMap = async () => {
-        await this.clearLog()
-        this.setIsReview(true)
-        this.runEmailMap()
+    handleRunEmailMap = () => {
+        this.runInWorkflow( () => this.runOnSelectedUsers(this.mapUserEmail, "map email creds") )
     }
 
-    handleRunDeleteCreds = async () => { 
-        await this.clearLog()
-        this.setIsReview(true)
-        this.runDeleteCreds(this.state.deleteType.toLowerCase())
+    handleRunDeleteCreds = () => { 
+        this.runInWorkflow(() => {
+            const credType = this.state.deleteType.toLowerCase()
+            const deleteFunc = this.generateDeleteCredFunc(credType)
+            this.runOnSelectedUsers(deleteFunc, `delete ${credType} creds`)
+        })
     }
 
     /*
     ******************* ACTION FUNCTIONS *******************
     */
-    async runActionOnSelectedUsers(func, name = "unnammed") {
-        const selectedUsers = Array.from(this.props.selectedUserIds).map(u_id => this.props.usersMap.get(u_id))
-        const promises = selectedUsers.map(func.bind(this))
-        await Promise.all(promises)
-        //await new Promise(r => setTimeout(r, 10000));
-        //console.log(`did the ${name} operation`)
-        this.props.loadUsersAndStuff()
-    }
-    
-    async runDeleteCreds(credType) {
-        const propName = `credentials_${credType}`
-        const methName = `delete_user_credentials_${credType}`
-        
-        const deleteFunc = (user) => {
-            if (!user[propName]) {
-                this.log(`user ${user.id} has no ${credType} creds to delete`)
-                return
-            }
-            this.lookerRequest(methName, user.id)
-            this.log(`deleted ${credType} credentials for user id ${user.id}`)
-        }
-        
+    runInWorkflow = async (func) => {
+        await this.clearLog()
         await this.setRunning(true)
-        await this.runActionOnSelectedUsers(deleteFunc, `delete ${credType} creds`)
+        await this.setIsReview(true)
+
+        await func()
+
         this.setRunning(false)
     }
 
-    runSelectBy() {
+    runOnSelectedUsers = async (func, name = "unnammed") => {
+        const selectedUsers = Array.from(this.props.selectedUserIds).map(u_id => this.props.usersMap.get(u_id))
+        const promises = selectedUsers.map(func.bind(this))
+        await Promise.all(promises)
+        
+        //await new Promise(r => setTimeout(r, 10000));
+        //console.log(`did the ${name} operation`)
+        
+        await this.props.loadUsersAndStuff()
+    }
+
+    runSelectBy = async () => {
         // we're going to record which tokens match along with which ones didn't
         let foundCounts = {}
         let new_selectedUserIds = new Set()
@@ -234,7 +227,7 @@ export class ActionsBar extends React.Component {
             }
         })
 
-        this.props.setNewSelectedUserIds(new_selectedUserIds)
+        await this.props.setNewSelectedUserIds(new_selectedUserIds)
         this.log(`${new_selectedUserIds.size} users selected`)
 
         const unmatched = Object.keys(foundCounts).filter(token => foundCounts[token] === 0)
@@ -246,31 +239,37 @@ export class ActionsBar extends React.Component {
         }
     }
     
-    async runEmailFill() {
-        await this.setRunning(true)
-        await this.runActionOnSelectedUsers(this.createUserEmailCreds, "create email creds")
-        this.setRunning(false)
-    } 
-
-    async runEmailMap() {
-        await this.setRunning(true)
-        this.log("run email map")
-        this.setRunning(false)
-    }
-    
-    async createUserEmailCreds(user) {
+    fillUserEmailCred = (user) => {
         if (user.credentials_email) { 
             this.log(`user ${user.id} already has email creds: ${user.credentials_email.email}`)
             return 
         }
-    
         if (!user.email) { 
             console.log(`user ${user.id} has no email address from other creds`)
             return 
         } 
         this.lookerRequest('create_user_credentials_email', user.id, {email: user.email})
         this.log(`created email credentials for user id ${user.id}; email = ${user.email}`)
-        //await this.reloadUserId(user.id)
+    }
+
+    mapUserEmail = () => {
+        
+    }
+
+    generateDeleteCredFunc = (credType) => {
+        const propName = `credentials_${credType}`
+        const methName = `delete_user_credentials_${credType}`
+        
+        const deleteFunc = (user) => {
+            if (!user[propName]) {
+                this.log(`user ${user.id} has no ${credType} creds to delete`)
+                return
+            }
+            this.lookerRequest(methName, user.id)
+            this.log(`deleted ${credType} credentials for user id ${user.id}`)
+        }
+        
+        return deleteFunc
     }
     
     /*
@@ -411,7 +410,9 @@ export class ActionsBar extends React.Component {
                     })}
                 </MenuList>
             </Menu>
-            
+            {/*
+            ******************* DELETE CRED Dialog *******************
+            */}
             <Dialog
               isOpen={this.isCurrentAction("delete") && !this.state.isReview}
               onClose={this.handleClose}
