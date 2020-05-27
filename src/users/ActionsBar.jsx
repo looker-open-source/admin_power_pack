@@ -47,6 +47,10 @@ const actionInfo = {
         menuTitle: "Auto-fill from other creds", 
         dialogTitle: "Auto-fill Email Credentials"
     },
+    emailMap: {
+        menuTitle: "Bulk update from mapping",
+        dialogTitle: "Update Emails from Mapping"
+    },
     delete: {
         dialogTitle: "Delete Credentials"
     }
@@ -70,6 +74,7 @@ export class ActionsBar extends React.Component {
             isReview: false,
             deleteType: null,
             selectByText: "",
+            emailMapText: "",
             logMessages: []
         }
     }
@@ -79,7 +84,7 @@ export class ActionsBar extends React.Component {
     }
 
     /*
-     ******************* Helpers *******************
+     ******************* HELPERS *******************
      */
     isCurrentAction = (name) => (this.state.currentAction === name)
 
@@ -110,7 +115,7 @@ export class ActionsBar extends React.Component {
     }
 
     /*
-     ******************* Callbacks for the dialogs *******************
+     ******************* DIALOG CALLBACKS *******************
      */
     handleClose = () => {  
         if (this.props.isRunning) { return } // Can't close the review dialog while an action is running
@@ -131,6 +136,10 @@ export class ActionsBar extends React.Component {
     openEmailFill = () => { 
         this.setState({currentAction: "emailFill"})
     } 
+
+    openEmailMap = () => {
+        this.setState({currentAction: "emailMap"})
+    }
     
     openDelete = (type) => { 
         this.setState({
@@ -157,6 +166,12 @@ export class ActionsBar extends React.Component {
         this.runEmailFill()
     }
 
+    handleRunEmailMap = async () => {
+        await this.clearLog()
+        this.setIsReview(true)
+        this.runEmailMap()
+    }
+
     handleRunDeleteCreds = async () => { 
         await this.clearLog()
         this.setIsReview(true)
@@ -164,7 +179,7 @@ export class ActionsBar extends React.Component {
     }
 
     /*
-    ******************* Functions to do the work *******************
+    ******************* ACTION FUNCTIONS *******************
     */
     async runActionOnSelectedUsers(func, name = "unnammed") {
         const selectedUsers = Array.from(this.props.selectedUserIds).map(u_id => this.props.usersMap.get(u_id))
@@ -179,13 +194,13 @@ export class ActionsBar extends React.Component {
         const propName = `credentials_${credType}`
         const methName = `delete_user_credentials_${credType}`
         
-        const deleteFunc = (sdkUser) => {
-            if (!sdkUser[propName]) {
-                this.log(`user ${sdkUser.id} has no ${credType} creds to delete`)
+        const deleteFunc = (user) => {
+            if (!user[propName]) {
+                this.log(`user ${user.id} has no ${credType} creds to delete`)
                 return
             }
-            this.lookerRequest(methName, sdkUser.id)
-            //await this.reloadUserId(sdkUser.id)
+            this.lookerRequest(methName, user.id)
+            this.log(`deleted ${credType} credentials for user id ${user.id}`)
         }
         
         await this.setRunning(true)
@@ -236,6 +251,12 @@ export class ActionsBar extends React.Component {
         await this.runActionOnSelectedUsers(this.createUserEmailCreds, "create email creds")
         this.setRunning(false)
     } 
+
+    async runEmailMap() {
+        await this.setRunning(true)
+        this.log("run email map")
+        this.setRunning(false)
+    }
     
     async createUserEmailCreds(user) {
         if (user.credentials_email) { 
@@ -248,11 +269,12 @@ export class ActionsBar extends React.Component {
             return 
         } 
         this.lookerRequest('create_user_credentials_email', user.id, {email: user.email})
+        this.log(`created email credentials for user id ${user.id}; email = ${user.email}`)
         //await this.reloadUserId(user.id)
     }
     
     /*
-    ******************* Rendering *******************
+    ******************* RENDERING *******************
     */
     renderSelectBy() {
         return (
@@ -266,6 +288,9 @@ export class ActionsBar extends React.Component {
                 </MenuList>
             </Menu>
             
+            {/*
+            ******************* SELECT BY Dialog *******************
+            */}
             <Dialog
               isOpen={this.isCurrentAction("selectBy") && !this.state.isReview}
               onClose={this.handleClose}
@@ -299,10 +324,13 @@ export class ActionsBar extends React.Component {
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     <MenuItem icon="Return" onClick={this.openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
-                    <MenuItem icon="Beaker" detail="WIP" disabled>Bulk update from mapping</MenuItem>
+                    <MenuItem icon="Beaker" onClick={this.openEmailMap}>{actionInfo.emailMap.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
+            {/*
+            ******************* EMAIL FILL Dialog *******************
+            */}
             <Dialog
               isOpen={this.isCurrentAction("emailFill") && !this.state.isReview}
               onClose={this.handleClose}
@@ -326,6 +354,43 @@ export class ActionsBar extends React.Component {
                     </>
                 }
                 primaryButton={<Button onClick={this.handleRunEmailFill}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* EMAIL MAP Dialog *******************
+            */}
+            <Dialog
+              isOpen={this.isCurrentAction("emailMap") && !this.state.isReview}
+              onClose={this.handleClose}
+            >
+              <ConfirmLayout
+                title={actionInfo.emailMap.dialogTitle}
+                message={
+                    <>
+                    <Paragraph mb="small">
+                        Paste a CSV of email address mappings. 
+                        There should be two addresses per line, separated by a comma.
+                    </Paragraph>
+                    <Paragraph mb="small">
+                        If a user currently has the email address in the first column, 
+                        the address for their credentials_email record will be created/updated 
+                        to the value in the second column. We cannot update the address that is
+                        associated to an SSO credential - that must be changed via the SSO provider.
+                    </Paragraph>
+                    <Paragraph>
+                        Note that duplicate email addresses are not allowed in Looker. If the target address 
+                        is already in use then the user will be skipped. Disabled users will also be skipped.
+                    </Paragraph>
+                    <TextArea 
+                        resize 
+                        value={this.state.emailMapText} 
+                        onChange={this.onChangeEmailMapText} 
+                        placeholder={"jon.snow@old.example.com, jsnow@new.example.com,        arya.stark@old.example.com, astark@new.example.com,"}
+                    />
+                    </>
+                }
+                primaryButton={<Button onClick={this.handleRunEmailMap}>Run</Button>}
                 secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
