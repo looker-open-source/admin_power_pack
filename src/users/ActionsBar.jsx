@@ -425,9 +425,9 @@ export class ActionsBar extends React.Component {
                         to the value in the second column. We cannot update the address that is
                         associated to an SSO credential - that must be changed via the SSO provider.
                     </Paragraph>
-                    <Paragraph>
+                    <Paragraph mb="small">
                         Note that duplicate email addresses are not allowed in Looker. If the target address 
-                        is already in use then the user will be skipped. Disabled users will also be skipped.
+                        is already in use then the user will be skipped.
                     </Paragraph>
                     <MonospaceTextArea 
                         resize 
