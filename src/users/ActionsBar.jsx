@@ -23,6 +23,7 @@
  */
 
 import React from 'react'
+import Papa from 'papaparse' // csv parsing library
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
@@ -39,7 +40,7 @@ import {
 
 const actionInfo = {
     selectBy: {
-        menuTitle: "User ID or email address",
+        menuTitle: "ID or email address",
         dialogTitle: "Select Users"
     },
     emailFill: {
@@ -80,7 +81,7 @@ export class ActionsBar extends React.Component {
     }
 
     componentDidMount() {
-        this.lookerRequest = makeLookerCaller(this.context.coreSDK)
+        this.asyncLookerCall = makeLookerCaller(this.context.coreSDK)
     }
 
     /*
@@ -112,6 +113,11 @@ export class ActionsBar extends React.Component {
         this.setState({logMessages: new_logMessages})
     }
 
+    logWidth() {
+        const lineLengths = this.state.logMessages.map(line => line.length)
+        return Math.max(...lineLengths)
+    }
+
     reviewDialogTitle() {
         if (this.state.currentAction) {
             return `${actionInfo[this.state.currentAction].dialogTitle} - ${this.state.isRunning ? "In Progress" : "Complete"}`
@@ -138,6 +144,10 @@ export class ActionsBar extends React.Component {
         this.setState({selectByText: e.currentTarget.value})
     }
 
+    onChangeEmailMapText = (e) => {
+        this.setState({emailMapText: e.currentTarget.value})
+    }
+
     openEmailFill = () => { 
         this.setState({currentAction: "emailFill"})
     } 
@@ -162,19 +172,21 @@ export class ActionsBar extends React.Component {
     }
 
     handleRunEmailFill = () => {
-        this.runInWorkflow( () => this.runOnSelectedUsers(this.fillUserEmailCred, "fill email creds") )
+        this.runInWorkflow(
+            () => this.runOnSelectedUsers(this.fillUserEmailCred, "fill email creds")
+        )
     }
 
     handleRunEmailMap = () => {
-        this.runInWorkflow( () => this.runOnSelectedUsers(this.mapUserEmail, "map email creds") )
+        this.runInWorkflow(
+            () => this.runOnSelectedUsers(this.makeMapEmailFunc(), "map email creds") 
+        )
     }
 
     handleRunDeleteCreds = () => { 
-        this.runInWorkflow(() => {
-            const credType = this.state.deleteType.toLowerCase()
-            const deleteFunc = this.generateDeleteCredFunc(credType)
-            this.runOnSelectedUsers(deleteFunc, `delete ${credType} creds`)
-        })
+        this.runInWorkflow(
+            () => this.runOnSelectedUsers(this.makeDeleteCredFunc(), `delete ${this.state.deleteType} creds`)
+        )
     }
 
     /*
@@ -185,7 +197,12 @@ export class ActionsBar extends React.Component {
         await this.setRunning(true)
         await this.setIsReview(true)
 
-        await func()
+        try {
+            await func()
+        } catch (error) {
+            console.log(error)
+            this.log(`ERROR: unhandled exception '${error.name}' in function '${func.name}'. Message: '${error.message}'. See console for more info.`)
+        }
 
         this.setRunning(false)
     }
@@ -206,7 +223,7 @@ export class ActionsBar extends React.Component {
         let foundCounts = {}
         let new_selectedUserIds = new Set()
         
-        // this regex should cover us well but i still might be missing corner cases
+        // this regex should cover us well but I still might be missing corner cases
         const tokens = this.state.selectByText.trim().split(/[\s,;\t\n]+/).filter(Boolean)
         
         this.log(`${tokens.length} search tokens provided`)
@@ -239,7 +256,7 @@ export class ActionsBar extends React.Component {
         }
     }
     
-    fillUserEmailCred = (user) => {
+    fillUserEmailCred = async (user) => {
         if (user.credentials_email) { 
             this.log(`user ${user.id} already has email creds: ${user.credentials_email.email}`)
             return 
@@ -247,28 +264,59 @@ export class ActionsBar extends React.Component {
         if (!user.email) { 
             console.log(`user ${user.id} has no email address from other creds`)
             return 
-        } 
-        this.lookerRequest('create_user_credentials_email', user.id, {email: user.email})
-        this.log(`created email credentials for user id ${user.id}; email = ${user.email}`)
+        }
+        try { 
+            await this.asyncLookerCall('create_user_credentials_email', user.id, {email: user.email})
+            this.log(`created credentials_email for user id ${user.id}; email = ${user.email}`)
+        } catch (error) {
+            this.log(`ERROR: unable to create credentials_email for user id ${user.id}. Message: '${error.message}'`)
+        }
     }
 
-    mapUserEmail = () => {
-        
-    }
+    makeMapEmailFunc = () => {
+        const rawData = Papa.parse(this.state.emailMapText).data
+        const cleanData = rawData.map( arr => arr.map( el => el.trim() ).filter(Boolean) )
+        const mappings = new Map(cleanData)
 
-    generateDeleteCredFunc = (credType) => {
-        const propName = `credentials_${credType}`
-        const methName = `delete_user_credentials_${credType}`
-        
-        const deleteFunc = (user) => {
-            if (!user[propName]) {
-                this.log(`user ${user.id} has no ${credType} creds to delete`)
+        const mapFunc = async (user) => {
+            const oldEmail = user.email
+            const newEmail = mappings.get(oldEmail)
+
+            if (!newEmail) {
+                this.log(`no mapping for user id ${user.id} email ${oldEmail}`)
                 return
             }
-            this.lookerRequest(methName, user.id)
-            this.log(`deleted ${credType} credentials for user id ${user.id}`)
+
+            const op = user.credentials_email ? "update" : "create"
+            
+            try {
+                await this.asyncLookerCall(`${op}_user_credentials_email`, user.id, {email: newEmail})
+                this.log(`${op}d credentials_email for user ${user.id} :: old= ${oldEmail} :: new = ${newEmail}`)
+            } catch (error) {
+                this.log(`ERROR: unable to ${op} credentials_email for user ${user.id}. Message: '${error.message}'. Most likely the email is already in use.`)
+            }
         }
+        return mapFunc
+    }
+
+    makeDeleteCredFunc = () => {
+        const credType = this.state.deleteType.toLowerCase()
+        const propName = `credentials_${credType}`
+        const methName = `delete_user_${propName}`
         
+        const deleteFunc = async (user) => {
+            if (!user[propName]) {
+                this.log(`user ${user.id} has no ${propName} to delete`)
+                return
+            }
+            
+            try {
+                await this.asyncLookerCall(methName, user.id)
+                this.log(`deleted ${propName} for user ${user.id}`)
+            } catch (error) {
+                this.log(`ERROR: unable to delete ${propName} for user ${user.id}. Message: '${error.message}'`)
+            }
+        }
         return deleteFunc
     }
     
@@ -323,7 +371,7 @@ export class ActionsBar extends React.Component {
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     <MenuItem icon="Return" onClick={this.openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
-                    <MenuItem icon="Beaker" onClick={this.openEmailMap}>{actionInfo.emailMap.menuTitle}</MenuItem>
+                    <MenuItem icon="VisTable" onClick={this.openEmailMap}>{actionInfo.emailMap.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -381,11 +429,11 @@ export class ActionsBar extends React.Component {
                         Note that duplicate email addresses are not allowed in Looker. If the target address 
                         is already in use then the user will be skipped. Disabled users will also be skipped.
                     </Paragraph>
-                    <TextArea 
+                    <MonospaceTextArea 
                         resize 
                         value={this.state.emailMapText} 
                         onChange={this.onChangeEmailMapText} 
-                        placeholder={"jon.snow@old.example.com, jsnow@new.example.com,        arya.stark@old.example.com, astark@new.example.com,"}
+                        placeholder={"jon.snow@old.com,jsnow@new.com         arya.stark@old.com,astark@new.com"}
                     />
                     </>
                 }
@@ -474,6 +522,7 @@ export class ActionsBar extends React.Component {
             <Dialog
                 isOpen={this.state.isReview}
                 onClose={this.handleClose}
+                maxWidth={`${this.logWidth()+5}rem`}
             >
                 <ConfirmLayout
                     title={this.reviewDialogTitle()}
