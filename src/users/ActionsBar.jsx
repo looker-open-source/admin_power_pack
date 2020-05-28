@@ -227,6 +227,15 @@ export class ActionsBar extends React.Component {
 
     runOnSelectedUsers = async (func, name = "unnammed") => {
         const selectedUsers = Array.from(this.props.selectedUserIds).map(u_id => this.props.usersMap.get(u_id))
+
+        if (!selectedUsers.length) {
+            this.log(
+                "Whoops! No users were selected. Please select some users before running the action. "
+                + "Your inputs will be saved until you refresh the page."
+            )
+            return
+        }
+
         const promises = selectedUsers.map(func.bind(this))
         await Promise.all(promises)
         
