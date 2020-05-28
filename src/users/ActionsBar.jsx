@@ -35,7 +35,8 @@ import {
     Text, Paragraph,
     TextArea,
     Icon,
-    Tooltip
+    Tooltip,
+    Link
   } from '@looker/components'
 
 const actionInfo = {
@@ -52,8 +53,11 @@ const actionInfo = {
         menuTitle: "Bulk update from mapping",
         dialogTitle: "Update Emails from Mapping"
     },
-    delete: {
+    deleteCreds: {
         dialogTitle: "Delete Credentials"
+    },
+    enableDisable: {
+        dialogTitle: "Enable/Disable Users"
     }
 }
 
@@ -73,7 +77,8 @@ export class ActionsBar extends React.Component {
             currentAction: false,
             isRunning: false,
             isReview: false,
-            deleteType: null,
+            deleteCredsType: "",
+            enableDisableType: "",
             selectByText: "",
             emailMapText: "",
             logMessages: []
@@ -158,8 +163,15 @@ export class ActionsBar extends React.Component {
     
     openDelete = (type) => { 
         this.setState({
-            currentAction: "delete",
-            deleteType: type
+            currentAction: "deleteCreds",
+            deleteCredsType: type
+        })
+    }
+
+    openEnableDisable = (type) => {
+        this.setState({
+            currentAction: "enableDisable",
+            enableDisableType: type
         })
     }
 
@@ -185,7 +197,13 @@ export class ActionsBar extends React.Component {
 
     handleRunDeleteCreds = () => { 
         this.runInWorkflow(
-            () => this.runOnSelectedUsers(this.makeDeleteCredFunc(), `delete ${this.state.deleteType} creds`)
+            () => this.runOnSelectedUsers(this.makeDeleteCredFunc(), `delete ${this.state.deleteCredsType} creds`)
+        )
+    }
+
+    handleRunEnableDisable = () => {
+        this.runInWorkflow(
+            () => this.runOnSelectedUsers(this.makeEnableDisableFunc(), `${this.state.enableDisableType} users`)
         )
     }
 
@@ -258,16 +276,16 @@ export class ActionsBar extends React.Component {
     
     fillUserEmailCred = async (user) => {
         if (user.credentials_email) { 
-            this.log(`user ${user.id} already has email creds: ${user.credentials_email.email}`)
+            this.log(`Skip: user ${user.id} already has email creds: ${user.credentials_email.email}`)
             return 
         }
         if (!user.email) { 
-            console.log(`user ${user.id} has no email address from other creds`)
+            console.log(`Skip: user ${user.id} has no email address from other creds`)
             return 
         }
         try { 
             await this.asyncLookerCall('create_user_credentials_email', user.id, {email: user.email})
-            this.log(`created credentials_email for user id ${user.id}; email = ${user.email}`)
+            this.log(`Created credentials_email for user id ${user.id}: ${user.email}`)
         } catch (error) {
             this.log(`ERROR: unable to create credentials_email for user id ${user.id}. Message: '${error.message}'`)
         }
@@ -283,7 +301,7 @@ export class ActionsBar extends React.Component {
             const newEmail = mappings.get(oldEmail)
 
             if (!newEmail) {
-                this.log(`no mapping for user id ${user.id} email ${oldEmail}`)
+                this.log(`Skip: user ${user.id} - no mapping for email ${oldEmail}`)
                 return
             }
 
@@ -291,7 +309,7 @@ export class ActionsBar extends React.Component {
             
             try {
                 await this.asyncLookerCall(`${op}_user_credentials_email`, user.id, {email: newEmail})
-                this.log(`${op}d credentials_email for user ${user.id} :: old= ${oldEmail} :: new = ${newEmail}`)
+                this.log(`${op}d credentials_email for user ${user.id}: old= ${oldEmail} :: new= ${newEmail}`)
             } catch (error) {
                 this.log(`ERROR: unable to ${op} credentials_email for user ${user.id}. Message: '${error.message}'. Most likely the email is already in use.`)
             }
@@ -300,13 +318,13 @@ export class ActionsBar extends React.Component {
     }
 
     makeDeleteCredFunc = () => {
-        const credType = this.state.deleteType.toLowerCase()
+        const credType = this.state.deleteCredsType.toLowerCase()
         const propName = `credentials_${credType}`
         const methName = `delete_user_${propName}`
         
         const deleteFunc = async (user) => {
             if (!user[propName]) {
-                this.log(`user ${user.id} has no ${propName} to delete`)
+                this.log(`Skip: user ${user.id} has no ${propName} to delete`)
                 return
             }
             
@@ -318,6 +336,26 @@ export class ActionsBar extends React.Component {
             }
         }
         return deleteFunc
+    }
+
+    makeEnableDisableFunc = () => {
+        const changeType = this.state.enableDisableType.toLowerCase()
+        const new_is_disabled = (changeType === "disable")
+
+        const enableDisableFunc = async (user) => {
+            if (user.is_disabled === new_is_disabled) {
+                this.log(`Skip: user ${user.id} is already ${changeType}d`)
+                return
+            }
+
+            try {
+                await this.asyncLookerCall("update_user", user.id, {is_disabled: new_is_disabled})
+                this.log(`${changeType}d user ${user.id}`)
+            } catch (error) {
+                this.log(`ERROR: unable to ${changeType} user ${user.id}. Message: '${error.message}'`)
+            }
+        }
+        return enableDisableFunc
     }
     
     /*
@@ -462,20 +500,20 @@ export class ActionsBar extends React.Component {
             ******************* DELETE CRED Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("delete") && !this.state.isReview}
+              isOpen={this.isCurrentAction("deleteCreds") && !this.state.isReview}
               onClose={this.handleClose}
             >
               <ConfirmLayout
-                title={`Delete ${this.state.deleteType} Credentials`}
+                title={`Delete ${this.state.deleteCredsType} Credentials`}
                 message={
                     <>
-                    This will delete <Text fontWeight="bold">{this.state.deleteType}</Text> creds for <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users.
+                    This will delete <Text fontWeight="bold">{this.state.deleteCredsType}</Text> creds for <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users.
                     <List type="bullet">
                         <ListItem>
                             If you delete the email creds and don't have SSO enabled, users won't be able to login.
                         </ListItem>
                         <ListItem>
-                            If you completely delete all creds from a user, subsequent SSO logins won't find anything no which to merge and will create a new account.
+                            If you completely delete all creds from a user, subsequent SSO logins won't find anything on which to merge and will create a new account.
                         </ListItem>
                         <ListItem>
                             Once all creds are gone, the only way to fix an account is to manually supply an email address.
@@ -496,16 +534,44 @@ export class ActionsBar extends React.Component {
 
     renderDisable() {
         return (
+            <>
             <Menu>
                 <MenuDisclosure>
                     <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Disable</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Block">Disable</MenuItem>
-                    <MenuItem icon="Undo">Enable</MenuItem>
+                    <MenuItem icon="Block" onClick={() => this.openEnableDisable("Disable")}>Disable</MenuItem>
+                    <MenuItem icon="Undo" onClick={() => this.openEnableDisable("Enable")}>Enable</MenuItem>
                     <MenuItem icon="Trash">Delete</MenuItem>
                 </MenuList>
             </Menu>
+            {/*
+            ******************* ENABLE/DISABLE Dialog *******************
+            */}
+            <Dialog
+              isOpen={this.isCurrentAction("enableDisable") && !this.state.isReview}
+              onClose={this.handleClose}
+            >
+              <ConfirmLayout
+                title={`${this.state.enableDisableType} Users`}
+                message={
+                    <>
+                    <Paragraph>
+                        This will <Text fontWeight="bold">{this.state.enableDisableType.toLowerCase()}</Text> <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users.
+                    </Paragraph>
+                    <Paragraph>
+                        For details about what happens when you disable a user, see the documention for&nbsp;
+                        <Link onClick={() => this.context.extensionSDK.openBrowserWindow("https://docs.looker.com/admin-options/settings/users#removing_user_access", '_blank')}>
+                            Removing User Access
+                        </Link>.
+                    </Paragraph>
+                    </>
+                }
+                primaryButton={<Button onClick={this.handleRunEnableDisable}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            </>
         )
     }
 
@@ -519,10 +585,13 @@ export class ActionsBar extends React.Component {
 
     renderReviewDialog() {
         return (
+            /*
+            ******************* REVIEW Dialog *******************
+            */
             <Dialog
                 isOpen={this.state.isReview}
                 onClose={this.handleClose}
-                maxWidth={`${this.logWidth()+5}rem`}
+                
             >
                 <ConfirmLayout
                     title={this.reviewDialogTitle()}
