@@ -24,7 +24,6 @@
 
 export function makeLookerCaller(sdk) {
     return function(apiMethod, ...args) {
-      console.log(`calling endpoint: ${apiMethod}   args:`, args)
       return sdk.ok(sdk[apiMethod](...args))
     }
 }

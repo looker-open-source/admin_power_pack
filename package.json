@@ -21,6 +21,7 @@
     "@looker/sdk": ">=0.2.0-beta",
     "cronstrue": "^1.94.0",
     "lodash": "^4.17.15",
+    "papaparse": "^5.2.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-hot-loader": "^4.12.20",

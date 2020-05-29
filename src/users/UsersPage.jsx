@@ -105,12 +105,12 @@ export class UsersPage extends React.Component {
                 this.lookerRequest('all_roles', {})
             ])
 
-            console.log("~~~~~ All Users (count) ~~~~")
-            console.log(userResult)
-            console.log("~~~~~ All Groups ~~~~")
-            console.log(groupsResult)
-            console.log("~~~~~ All Roles ~~~~")
-            console.log(rolesResult)
+            //console.log("~~~~~ All Users (count) ~~~~")
+            //console.log(userResult)
+            //console.log("~~~~~ All Groups ~~~~")
+            //console.log(groupsResult)
+            //console.log("~~~~~ All Roles ~~~~")
+            //console.log(rolesResult)
             
             const new_usersMap = new Map(userResult.map(u => [u.id, u]))
             const new_groupsMap = new Map(groupsResult.map(g => [g.id, g]))
