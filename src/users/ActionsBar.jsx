@@ -551,7 +551,7 @@ export class ActionsBar extends React.Component {
                 <MenuList placement="right-start">
                     <MenuItem icon="Block" onClick={() => this.openEnableDisable("Disable")}>Disable</MenuItem>
                     <MenuItem icon="Undo" onClick={() => this.openEnableDisable("Enable")}>Enable</MenuItem>
-                    <MenuItem icon="Trash">Delete</MenuItem>
+                    {/* <MenuItem icon="Trash">Delete</MenuItem> */}
                 </MenuList>
             </Menu>
             {/*
@@ -586,17 +586,13 @@ export class ActionsBar extends React.Component {
 
     renderViewLog() {
         return (
+            <>
             <Tooltip content="View last run log">
                 <ButtonOutline size="small" onClick={this.openViewLog}><Icon name="IdeFileDocument" /></ButtonOutline>
             </Tooltip>
-        )
-    }
-
-    renderReviewDialog() {
-        return (
-            /*
+            {/*
             ******************* REVIEW Dialog *******************
-            */
+            */}
             <Dialog
                 isOpen={this.state.isReview}
                 onClose={this.handleClose}
@@ -615,13 +611,13 @@ export class ActionsBar extends React.Component {
                     primaryButton={(this.state.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
                 />
             </Dialog>
+            </>
         )
     }
 
     render() {
         return (  
             <>
-            {this.renderReviewDialog()}
             {this.renderSelectBy()}
             {this.renderManageEmailCreds()}
             {this.renderDeleteCreds()}
