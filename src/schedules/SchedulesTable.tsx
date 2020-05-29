@@ -32,11 +32,8 @@ import {
   Flex,
   FlexItem,
   InputText,
-  InputChips,
-  Label,
   Select,
   Space,
-  Text,
   Table,
   TableBody,
   TableDataCell,
@@ -110,7 +107,12 @@ const IndeterminateCheckbox = React.forwardRef(
 
     return (
       <>
-        <Checkbox ref={resolvedRef} {...rest} />
+        <Checkbox
+          marginLeft="auto"
+          marginRight="auto"
+          ref={resolvedRef}
+          {...rest}
+        />
       </>
     );
   }
@@ -158,6 +160,8 @@ const EditableCell = (ec: EditableCellInterface) => {
     return (
       <Checkbox
         mr="xsmall"
+        marginLeft="auto"
+        marginRight="auto"
         checked={value}
         disabled={disabled}
         onChange={(e: any) => {
@@ -182,19 +186,20 @@ const EditableCell = (ec: EditableCellInterface) => {
 
   const DefaultTextArea = (): JSX.Element => {
     // override initial height
-    const StyledTextArea = styled(TextArea)`
-      textarea {
-        min-height: 36px;
-        height: 36px;
-      }
-    `;
+    // const StyledTextArea = styled(TextArea)`
+    //   textarea {
+    //     min-height: 36px;
+    //     height: 36px;
+    //     width: 200px;
+    //   }
+    // `;
 
     return (
       // <StyledTextArea // this doesnt work, onChange looses focus with each key stroke
       <TextArea // this works but min-height is 6.25rem
-        width={1}
         value={value}
         key={id + index}
+        // width={1}
         // onChange={(e: any) => {
         //   console.log(id + index);
         //   console.log(e.target);
@@ -203,7 +208,7 @@ const EditableCell = (ec: EditableCellInterface) => {
         // }}
         onChange={onChange}
         onBlur={onBlur}
-        resize="both"
+        resize
       />
     );
   };
@@ -748,7 +753,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
   } = qp;
 
   return (
-    <Box>
+    <Box width={1}>
       {results.length > 0 && (
         <ReactTable
           columns={headings(results)}

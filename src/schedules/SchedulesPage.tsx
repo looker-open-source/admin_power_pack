@@ -1195,7 +1195,7 @@ export class SchedulesPage extends React.Component<
         <Box m="large">
           <Flex justifyContent="space-between">
             <FlexItem mb="medium">
-              <Label pt="xxsmall" color="palette.charcoal700" fontSize="large">
+              <Label pt="xxsmall" color="palette.charcoal500" fontSize="large">
                 Enter A Dashboard ID:{" "}
                 <InputText
                   width="80"
@@ -1214,7 +1214,7 @@ export class SchedulesPage extends React.Component<
             <FlexItem width="40%">
               {this.state.runningQuery && (
                 <Text
-                  color="palette.charcoal700"
+                  color="palette.charcoal500"
                   fontWeight="semiBold"
                   mr="large"
                 >
@@ -1224,7 +1224,7 @@ export class SchedulesPage extends React.Component<
 
               {this.state.runningUpdate && (
                 <Text
-                  color="palette.charcoal700"
+                  color="palette.charcoal500"
                   fontWeight="semiBold"
                   mr="large"
                 >
