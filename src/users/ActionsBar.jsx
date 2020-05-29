@@ -612,7 +612,7 @@ export class ActionsBar extends React.Component {
                         <MonospaceTextArea readOnly resize value={this.state.logMessages.join("\n")} />
                       </>
                     }
-                    primaryButton={(this.props.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
+                    primaryButton={(this.state.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
                 />
             </Dialog>
         )
