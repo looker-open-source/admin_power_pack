@@ -94,8 +94,7 @@ makeRowFormatter(user) {
             return (
                 <Tooltip content="User is disabled">
                     <Flex alignItems="center">
-                        {user.display_name} &nbsp;
-                        <Icon name="Block" size={12}/>
+                        {user.display_name}
                     </Flex>
                 </Tooltip>
             )

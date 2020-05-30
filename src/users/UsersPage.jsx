@@ -265,6 +265,9 @@ export class UsersPage extends React.Component {
         if (activeFilterButtons.includes("noEmail")) {
             filteredUsers = filteredUsers.filter(u => !u.credentials_email)
         }
+        if (activeFilterButtons.includes("disabled")) {
+            filteredUsers = filteredUsers.filter(u => u.is_disabled)
+        }
         if (activeFilterButtons.includes("noSSO")) {
             const sso_cred_names = CREDENTIALS_INFO.filter(c => c.is_sso).map(c => c.name)
             filteredUsers = filteredUsers.filter(user => 
@@ -388,6 +391,7 @@ export class UsersPage extends React.Component {
                 <ButtonItem value="noSSO">No SSO</ButtonItem>
                 <ButtonItem value="duplicateEmails">Duplicate Emails</ButtonItem>
                 <ButtonItem value="duplicateNames">Duplicate Names</ButtonItem>
+                <ButtonItem value="disabled">Disabled</ButtonItem>
             </ButtonGroup>
                   
         const searchInput = 
