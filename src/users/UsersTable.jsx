@@ -34,7 +34,7 @@ import {
     Text,
     Tooltip,
     Link,
-    Icon,
+    Icon
 } from '@looker/components'
 
 export class UsersTable extends React.Component {
@@ -43,6 +43,14 @@ export class UsersTable extends React.Component {
     constructor(props) {
         super(props)
     }
+
+makeRowFormatter(user) {
+    const args = {}
+    if (user.is_disabled) {
+       args["color"] = "palette.charcoal400"
+    }
+    return (inner) => { return <Box {...args} >{inner}</Box> }
+}
 
     renderOtherCreds(user) {
         // Take the list of all credential types and add this user's value for that cred type to each
@@ -81,21 +89,12 @@ export class UsersTable extends React.Component {
         )
     }
 
-    getFormatter(user) {
-        const args = {}
-        if (user.is_disabled) {
-           args["color"] = "palette.charcoal400"
-        }
-        return (text) => { return <Box {...args} >{text}</Box> }
-    }
-
     renderDisplayName(user) {
         if (user.is_disabled) {
             return (
                 <Tooltip content="User is disabled">
                     <Flex alignItems="center">
-                        {user.display_name} &nbsp;
-                        <Icon name="Block" size={12}/>
+                        {user.display_name}
                     </Flex>
                 </Tooltip>
             )
@@ -104,7 +103,7 @@ export class UsersTable extends React.Component {
     }
 
     renderUser(user) {
-        const formatIfDisabled = this.getFormatter(user)
+        const formatIfDisabled = this.makeRowFormatter(user)
         const groups = user.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
         const roles = user.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: `Embed-role-id-${rid}`})
 
