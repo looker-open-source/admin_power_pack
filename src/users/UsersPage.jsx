@@ -409,6 +409,7 @@ export class UsersPage extends React.Component {
                 groupsMap={this.state.groupsMap}
                 rolesMap={this.state.rolesMap}
                 selectedUserIds={this.state.selectedUserIds}
+                totalUsersCount={this.state.usersMap.size}
                 onSelectRow={this.onSelectRow}
                 onSelectAll={this.onSelectAll}
                 tableColumns={this.state.tableColumns}

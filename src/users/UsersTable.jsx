@@ -132,9 +132,20 @@ makeRowFormatter(user) {
         )
     }
 
+    renderCounts() {
+        return (
+        <Flex justifyContent="flex-start">
+            <Text fontSize="xsmall">
+                {this.props.totalUsersCount} total users / {this.props.usersList.length} visible / {this.props.selectedUserIds.size} selected
+            </Text>
+        </Flex>
+        )
+    }
+
     render() {
         return (
             <>
+            {this.renderCounts()}
             <ActionListManager isLoading={this.props.isLoading} noResults={false}>
                 <ActionList
                     canSelect
