@@ -521,8 +521,8 @@ export class SchedulesPage extends React.Component<
         scheduleHeader.push(formattedRow);
       });
 
-      console.table(schedules);
-      console.table(scheduleHeader.slice(1));
+      // console.table(schedules);
+      // console.table(scheduleHeader.slice(1));
 
       return scheduleHeader.slice(1);
     }
@@ -618,7 +618,7 @@ export class SchedulesPage extends React.Component<
         }),
     };
 
-    console.log(JSON.stringify(writeScheduledPlan, null, 2));
+    // console.log(JSON.stringify(writeScheduledPlan, null, 2));
 
     return writeScheduledPlan;
   };
@@ -642,7 +642,7 @@ export class SchedulesPage extends React.Component<
       this.context.core40SDK.create_scheduled_plan(writeScheduledPlan)
     );
 
-    console.log(response); // todo return when 422
+    // console.log(response); // todo return when 422
     return response;
   };
 
@@ -668,7 +668,7 @@ export class SchedulesPage extends React.Component<
           updateScheduledPlan
         )
       );
-      console.log(response); // todo return when 422
+      // console.log(response); // todo return when 422
 
       return response;
     } else {
@@ -754,7 +754,7 @@ export class SchedulesPage extends React.Component<
 
   // When our cell renderer calls syncData, we'll use the rowIndex, columnId and new value to update the original data
   syncData = (rowIndex: number, columnId: string, value: string) => {
-    console.log(rowIndex, columnId, value);
+    // console.log(rowIndex, columnId, value);
 
     const editedData = this.state.schedulesArray.map(
       (row: number, index: number) => {
@@ -847,11 +847,11 @@ export class SchedulesPage extends React.Component<
       const rowIndex = rows[i].rowIndex;
       const scheduleId = rows[i].scheduleId;
       if (scheduleId !== "") {
-        console.log("deleting schedule " + scheduleId);
+        // console.log("deleting schedule " + scheduleId);
         await this.deleteSchedule(parseInt(scheduleId));
       }
 
-      console.log("removing row: " + rowIndex);
+      // console.log("removing row: " + rowIndex);
       newArray.splice(rowIndex, 1);
     }
 
@@ -892,7 +892,7 @@ export class SchedulesPage extends React.Component<
 
     const updateTable = cloneDeep(this.state.schedulesArray);
     const currentPlanIds = schedulesToAdd.map((s: IScheduledPlan) => s.id);
-    console.log(currentPlanIds);
+    // console.log(currentPlanIds);
 
     if (!this.state.selectedDashId) {
       return;
@@ -1022,7 +1022,7 @@ export class SchedulesPage extends React.Component<
         const response = await this.context.core40SDK.ok(
           this.context.core40SDK.scheduled_plan_run_once(testScheduledPlan)
         );
-        console.log(response);
+        // console.log(response);
       }
 
       this.setState({
@@ -1086,7 +1086,7 @@ export class SchedulesPage extends React.Component<
           )
         );
         updateTable[rowIndex[i]].enabled = response.enabled; // update table with enabled=false
-        console.log(response); // todo return when 422
+        // console.log(response); // todo return when 422
       }
 
       this.setState({
@@ -1152,7 +1152,7 @@ export class SchedulesPage extends React.Component<
           )
         );
         updateTable[rowIndex[i]].enabled = response.enabled; // update table with enabled=true
-        console.log(response); // todo return when 422
+        // console.log(response); // todo return when 422
       }
 
       this.setState({
