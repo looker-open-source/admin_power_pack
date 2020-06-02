@@ -1172,10 +1172,6 @@ export class SchedulesPage extends React.Component<
   };
 
   render() {
-    if (this.context.initializeError) {
-      return <Banner intent="error">{this.context.initializeError}</Banner>;
-    }
-
     return (
       <>
         {this.state.errorMessage && (

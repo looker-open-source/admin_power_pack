@@ -22,36 +22,18 @@
  * THE SOFTWARE.
  */
 
-const path = require("path");
+import React, { useContext } from 'react'
+import { ExtensionContext } from '@looker/extension-sdk-react'
+import {
+    Banner
+} from '@looker/components'
 
-const PATHS = {
-  app: path.join(__dirname, "src/index.jsx"),
-};
+export function InitializeChecker(props) {
+    const context = useContext(ExtensionContext)
+    
+    if (context.initializeError) {
+        return <Banner intent='error'>{context.initializeError}</Banner>
+    }
 
-module.exports = {
-  entry: {
-    app: PATHS.app,
-  },
-  output: {
-    path: __dirname + "/dist",
-    filename: "looker_admin_power_pack.js",
-  },
-  mode: "production",
-  module: {
-    rules: [
-      {
-        test: /\.(js|jsx|ts|tsx)$/,
-        loader: "babel-loader",
-        exclude: /node_modules/,
-        include: /src/,
-      },
-      {
-        test: /\.css$/i,
-        use: ["style-loader", "css-loader"],
-      },
-    ],
-  },
-  resolve: {
-    extensions: [".tsx", ".ts", ".jsx", ".js"],
-  },
-};
+    return props.children
+}

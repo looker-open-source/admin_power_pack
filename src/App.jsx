@@ -30,6 +30,7 @@ import { ExtensionProvider } from "@looker/extension-sdk-react"
 import { ThemeProvider } from 'styled-components'
 import { GlobalStyle, theme, Box, Flex, Spinner, Heading } from '@looker/components'
 
+import { InitializeChecker } from './shared/InitializeChecker'
 import { PermissionsChecker } from './shared/PermissionsChecker'
 import { NavBar } from './shared/NavBar'
 import { HomePage } from './shared/HomePage'
@@ -80,51 +81,71 @@ function AppInternal(props) {
         </Flex>
     )
 
+    const header = (
+        <Box 
+            pl='small'
+            py='xsmall'
+            bg='palette.charcoal100' 
+            borderBottom='1px solid'
+            borderBottomColor='palette.charcoal300'
+        >
+            <Switch>
+                {PAGES.map((page, index) =>
+                    <Route exact path={page.path} key={index}>
+                        <Heading as='h1' fontWeight='light'>{page.pageTitle}</Heading>
+                    </Route>
+                )}
+            </Switch>
+        </Box>
+    )
+
+    const navBar = (
+        <Box 
+            display="flex"
+            flexDirection="column"
+            width='8rem'
+            borderRight='1px solid'
+            borderRightColor='palette.charcoal300'
+        >
+            <NavBar pages={PAGES} activeRoute={activeRoute} />
+        </Box>
+    )
+
+    const pages = (
+        <Switch>
+            {PAGES.map((page, index) => {
+                const PageComponent = page.component
+                return (
+                    <Route exact path={page.path} key={index}>
+                        <PageComponent />
+                    </Route>
+                )
+            })}
+        </Switch>
+    )
+
     const extension = (
         <ExtensionProvider 
             loadingComponent={loadingComponent} 
-            requiredLookerVersion='>=6.24.0'
+            requiredLookerVersion='>=7.2.0'
             onRouteChange={onRouteChange}
         >
             <ThemeProvider theme={theme}>
                 <>
-                    <GlobalStyle />
+                <GlobalStyle />
+                <InitializeChecker>
                     <PermissionsChecker loadingComponent={loadingComponent}>
                         <Box>
-                            <Box 
-                                pl='small' py='xsmall' bg='palette.charcoal100' 
-                                borderBottom='1px solid' borderBottomColor='palette.charcoal300'
-                            >
-                                <Switch>
-                                    {PAGES.map((page, index) =>
-                                        <Route exact path={page.path} key={index}>
-                                            <Heading as='h1' fontWeight='light'>{page.pageTitle}</Heading>
-                                        </Route>
-                                    )}
-                                </Switch>
-                            </Box>
+                            {header}
                             <Flex height='100vh'>
-                                <Box 
-                                    display="flex" flexDirection="column" width='8rem'
-                                    borderRight='1px solid' borderRightColor='palette.charcoal300'
-                                >
-                                    <NavBar pages={PAGES} activeRoute={activeRoute} />
-                                </Box>
+                                {navBar}
                                 <Box flexGrow={1} overflow="scroll" height="100%">
-                                    <Switch>
-                                        {PAGES.map((page, index) => {
-                                            const PageComponent = page.component
-                                            return (
-                                                <Route exact path={page.path} key={index}>
-                                                    <PageComponent />
-                                                </Route>
-                                            )
-                                        })}
-                                    </Switch>
+                                    {pages}
                                 </Box>
                             </Flex>
                         </Box>
                     </PermissionsChecker>
+                </InitializeChecker>
                 </>
             </ThemeProvider>
         </ExtensionProvider>

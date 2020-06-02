@@ -44,7 +44,7 @@ export function UsersPageLayout(props) {
 
     return (
         <>
-            {props.errorBanner}
+            {props.errorBanner && <JustifiedSection>{props.errorBanner}</JustifiedSection>}
             <JustifiedSection>
                 <Box>
                     <Text variant="secondary" mr="small">Actions</Text>
@@ -62,7 +62,7 @@ export function UsersPageLayout(props) {
                 </Box>
                 {props.searchInput}
             </JustifiedSection>
-            <Box p='large'>
+            <Box px='large' py='xsmall'>
                 {props.usersTable}
             </Box>
         </>
