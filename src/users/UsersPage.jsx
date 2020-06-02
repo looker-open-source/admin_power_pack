@@ -352,10 +352,6 @@ export class UsersPage extends React.Component {
      ******************* RENDERING *******************
      */    
     render() {
-        if (this.context.initializeError) {
-            return <Banner intent='error'>{this.context.initializeError}</Banner>
-        }
-
         const errorBanner = !this.state.errorMessage ? null : <Banner intent='error'>{this.state.errorMessage}</Banner>
 
         const actionsBar = 
