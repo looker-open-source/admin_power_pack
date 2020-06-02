@@ -136,7 +136,7 @@ makeRowFormatter(user) {
         return (
         <Flex justifyContent="flex-start">
             <Text fontSize="xsmall">
-                {this.props.totalUsersCount} total users / {this.props.usersList.length} visible / {this.props.selectedUserIds.size} selected
+            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} visible • {this.props.totalUsersCount} total users
             </Text>
         </Flex>
         )
