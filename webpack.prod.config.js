@@ -34,7 +34,7 @@ module.exports = {
   },
   output: {
     path: __dirname + "/dist",
-    filename: "bundle.js",
+    filename: "looker_admin_power_pack.js",
   },
   mode: "production",
   module: {
