@@ -351,19 +351,12 @@ export class UsersPage extends React.Component {
     /*
      ******************* RENDERING *******************
      */    
-    renderErrorBanner() {
-        if (!this.state.errorMessage) {
-            return
-        }
-        return (
-            <Banner intent='error'>{this.state.errorMessage}</Banner>
-        )
-    }
-
     render() {
         if (this.context.initializeError) {
             return <Banner intent='error'>{this.context.initializeError}</Banner>
         }
+
+        const errorBanner = !this.state.errorMessage ? null : <Banner intent='error'>{this.state.errorMessage}</Banner>
 
         const actionsBar = 
             <ActionsBar 
@@ -418,7 +411,7 @@ export class UsersPage extends React.Component {
 
         return (
             <UsersPageLayout
-                errorBanner={this.renderErrorBanner()}
+                errorBanner={errorBanner}
                 actionsBar={actionsBar}
                 showWhoToggle={showWhoToggle}
                 quickFilterGroup={quickFilterGroup}
