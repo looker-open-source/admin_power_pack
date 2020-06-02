@@ -127,7 +127,7 @@ function AppInternal(props) {
     const extension = (
         <ExtensionProvider 
             loadingComponent={loadingComponent} 
-            requiredLookerVersion='>=7.0.0'
+            requiredLookerVersion='>=7.2.0'
             onRouteChange={onRouteChange}
         >
             <ThemeProvider theme={theme}>
