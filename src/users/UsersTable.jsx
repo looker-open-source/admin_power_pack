@@ -176,12 +176,13 @@ export class UsersTable extends React.Component {
     render() {
         return (
             <>
-            <Grid columns={3}>
-                <Box justifySelf="left">{this.renderCounts()}</Box>
-                <Box justifySelf="center">{this.renderPageSelector()}</Box>
-                <Box justifySelf="right">{this.renderPageSize()}</Box>
-            </Grid>
+            
             <ActionListManager isLoading={this.props.isLoading} noResults={false}>
+                <Grid columns={3}>
+                    <Box justifySelf="left">{this.renderCounts()}</Box>
+                    <Box justifySelf="center">{this.renderPageSelector()}</Box>
+                    <Box justifySelf="right">{this.renderPageSize()}</Box>
+                </Grid>
                 <ActionList
                     canSelect
                     onSelect={(user_id) => this.props.onSelectRow(user_id)}

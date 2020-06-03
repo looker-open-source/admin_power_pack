@@ -54,7 +54,7 @@ export class UsersPage extends React.Component {
             activeFilterButtons: [],
             searchText: '',
             currentPage: 1,
-            pageSize: 3,
+            pageSize: 20,
             usersList: [],
             usersMap: new Map(),
             groupsMap: new Map(),
