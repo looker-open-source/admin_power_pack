@@ -587,9 +587,7 @@ export class ActionsBar extends React.Component {
     renderViewLog() {
         return (
             <>
-            <Tooltip content="View last run log">
-                <ButtonOutline size="small" onClick={this.openViewLog}><Icon name="IdeFileDocument" /></ButtonOutline>
-            </Tooltip>
+            <ButtonOutline size="small" onClick={this.openViewLog}>View Log</ButtonOutline>
             {/*
             ******************* REVIEW Dialog *******************
             */}

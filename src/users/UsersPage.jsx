@@ -39,7 +39,7 @@ export class UsersPage extends React.Component {
     static contextType = ExtensionContext // provides the coreSDK object
     
     /*
-     ******************* React fifecycle methods *******************
+     ******************* React lifecycle methods *******************
      */
     constructor(props) {
         super(props)
@@ -53,6 +53,8 @@ export class UsersPage extends React.Component {
             activeShowWhoButton: "regular",
             activeFilterButtons: [],
             searchText: '',
+            currentPage: 1,
+            pageSize: 3,
             usersList: [],
             usersMap: new Map(),
             groupsMap: new Map(),
@@ -201,7 +203,7 @@ export class UsersPage extends React.Component {
         const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
 
         // Persist
-        this.setState({usersList: new_usersList})
+        this.setState({usersList: new_usersList, currentPage: 1})
     }
 
     onChangeActiveFilterButtons = (new_activeFilterButtons) => {
@@ -213,7 +215,7 @@ export class UsersPage extends React.Component {
         const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
         
         // Persist
-        this.setState({usersList: new_usersList})
+        this.setState({usersList: new_usersList, currentPage: 1})
     }
 
     onChangeActiveShowWhoButton = (new_activeShowWhoButton) => {
@@ -225,7 +227,7 @@ export class UsersPage extends React.Component {
         const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
         
         // Persist
-        this.setState({usersList: new_usersList})
+        this.setState({usersList: new_usersList, currentPage: 1})
     }
 
     makeFilteredUsersList(usersMap = undefined, 
@@ -349,6 +351,17 @@ export class UsersPage extends React.Component {
     }
 
     /*
+     ******************* PAGINATION *******************
+     */ 
+    onChangePage = (new_currentPage) => {
+        this.setState({currentPage: new_currentPage})
+    }
+
+    onChangePageSize = (new_pageSize) => {
+        this.setState({pageSize: new_pageSize})
+    }
+
+    /*
      ******************* RENDERING *******************
      */    
     render() {
@@ -403,6 +416,10 @@ export class UsersPage extends React.Component {
                 onSelectAll={this.onSelectAll}
                 tableColumns={this.state.tableColumns}
                 onSort={this.onSort}
+                pageSize={this.state.pageSize}
+                currentPage={this.state.currentPage}
+                onChangePage={this.onChangePage}
+                onChangePageSize={this.onChangePageSize}
             />
 
         return (

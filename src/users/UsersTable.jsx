@@ -29,12 +29,10 @@ import { InlineEditEmail } from './InlineEditEmail.jsx'
 import {
     ActionListManager, ActionList,
     ActionListItem, ActionListItemColumn, ActionListItemAction,
-    Flex,
-    Box,
-    Text,
-    Tooltip,
-    Link,
-    Icon
+    Pagination, PageSize,
+    Flex, Box, Grid,
+    Text, Tooltip,
+    Link, Icon
 } from '@looker/components'
 
 export class UsersTable extends React.Component {
@@ -44,14 +42,28 @@ export class UsersTable extends React.Component {
         super(props)
     }
 
-makeRowFormatter(user) {
-    const args = {}
-    if (user.is_disabled) {
-       args["color"] = "palette.charcoal400"
+    /*
+     ******************* HELPERS *******************
+     */   
+    makeRowFormatter(user) {
+        const args = {}
+        if (user.is_disabled) {
+           args["color"] = "palette.charcoal400"
+        }
+        return (inner) => { return <Box {...args} >{inner}</Box> }
     }
-    return (inner) => { return <Box {...args} >{inner}</Box> }
-}
 
+    totalRows() {
+        return this.props.usersList.length
+    }
+
+    indexIsInCurrentPage(index) {
+        return Math.floor(index / this.props.pageSize)+1 === this.props.currentPage
+    }
+
+    /*
+     ******************* RENDERING *******************
+     */   
     renderOtherCreds(user) {
         // Take the list of all credential types and add this user's value for that cred type to each
         const used_creds = CREDENTIALS_INFO.map(cred =>
@@ -134,18 +146,41 @@ makeRowFormatter(user) {
 
     renderCounts() {
         return (
-        <Flex justifyContent="flex-start">
-            <Text fontSize="xsmall">
+            <Text fontSize="small">
             {this.props.selectedUserIds.size} selected • {this.props.usersList.length} visible • {this.props.totalUsersCount} total users
             </Text>
-        </Flex>
+        )
+    }
+
+    renderPageSelector() {
+        return (
+            <Pagination
+                current={this.props.currentPage}
+                pages={Math.ceil(this.totalRows() / this.props.pageSize)}
+                onChange={this.props.onChangePage}
+            />
+        )
+    }
+
+    renderPageSize() {
+        return (
+            <PageSize
+                value={this.props.pageSize}
+                options={[5, 10, 20, 50, 100]}
+                total={this.props.usersList.length}
+                onChange={this.props.onChangePageSize}
+            />
         )
     }
 
     render() {
         return (
             <>
-            {this.renderCounts()}
+            <Grid columns={3}>
+                <Box justifySelf="left">{this.renderCounts()}</Box>
+                <Box justifySelf="center">{this.renderPageSelector()}</Box>
+                <Box justifySelf="right">{this.renderPageSize()}</Box>
+            </Grid>
             <ActionListManager isLoading={this.props.isLoading} noResults={false}>
                 <ActionList
                     canSelect
@@ -155,7 +190,7 @@ makeRowFormatter(user) {
                     onSort={this.props.onSort}
                     columns={this.props.tableColumns}
                 >
-                    {this.props.usersList.map(u => this.renderUser(u))}
+                    {this.props.usersList.filter((u,index) => this.indexIsInCurrentPage(index)).map(u => this.renderUser(u))}
                 </ActionList>
             </ActionListManager>
             </>
