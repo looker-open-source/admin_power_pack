@@ -63,7 +63,58 @@ export class UsersTable extends React.Component {
 
     /*
      ******************* RENDERING *******************
-     */   
+     */
+    renderUsers() {
+        return (
+            this.props.usersList
+                .filter( (u,index) => this.indexIsInCurrentPage(index) )
+                .map(u => this.renderUser(u))
+        )
+    }
+
+    renderUser(user) {
+        const formatIfDisabled = this.makeRowFormatter(user)
+        const groups = user.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
+        const roles = user.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: `Embed-role-id-${rid}`})
+
+        const actions = (
+            <ActionListItemAction>
+                <Link onClick={() => this.context.extensionSDK.openBrowserWindow(`/admin/users/${user.id}/edit`, '_blank')} >
+                    Edit <Icon name="External" />
+                </Link>
+            </ActionListItemAction>
+        )
+        return (
+            <ActionListItem
+                key={user.id}
+                id={user.id}
+                actions={actions}
+            >
+                <ActionListItemColumn>{formatIfDisabled(user.id)}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(user))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderEmail(user))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(this.renderOtherCreds(user))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(groups.map(g => g.name).join(", "))}</ActionListItemColumn>
+                <ActionListItemColumn>{formatIfDisabled(roles.map(r => r.name).join(", "))}</ActionListItemColumn>
+            </ActionListItem>
+        )
+    }
+
+    renderDisplayName(user) {
+        if (user.is_disabled) {
+            return (
+                <Tooltip content="User is disabled">
+                    <span>{user.display_name}</span>
+                </Tooltip>
+            )
+        }
+        return <span>{user.display_name}</span>
+    }
+
+    renderEmail(user) {
+        return <InlineEditEmail user={user} />
+    }
+
     renderOtherCreds(user) {
         // Take the list of all credential types and add this user's value for that cred type to each
         const used_creds = CREDENTIALS_INFO.map(cred =>
@@ -101,53 +152,10 @@ export class UsersTable extends React.Component {
         )
     }
 
-    renderDisplayName(user) {
-        if (user.is_disabled) {
-            return (
-                <Tooltip content="User is disabled">
-                    <Flex alignItems="center">
-                        {user.display_name}
-                    </Flex>
-                </Tooltip>
-            )
-        }
-        return <span>{user.display_name}</span>
-    }
-
-    renderUser(user) {
-        const formatIfDisabled = this.makeRowFormatter(user)
-        const groups = user.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
-        const roles = user.role_ids.map(rid => this.props.rolesMap.get(rid) || {id: rid, name: `Embed-role-id-${rid}`})
-
-        const actions = (
-            <ActionListItemAction>
-                <Link
-                    onClick={() => this.context.extensionSDK.openBrowserWindow(`/admin/users/${user.id}/edit`, '_blank')}
-                >
-                    Edit <Icon name="External" />
-                </Link>
-            </ActionListItemAction>
-        )
-        return (
-            <ActionListItem
-                key={user.id}
-                id={user.id}
-                actions={actions}
-            >
-                <ActionListItemColumn>{formatIfDisabled(user.id)}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(user))}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(<InlineEditEmail user={user} />)}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(this.renderOtherCreds(user))}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(groups.map(g => g.name).join(", "))}</ActionListItemColumn>
-                <ActionListItemColumn>{formatIfDisabled(roles.map(r => r.name).join(", "))}</ActionListItemColumn>
-            </ActionListItem>
-        )
-    }
-
     renderCounts() {
         return (
             <Text fontSize="small">
-            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} visible • {this.props.totalUsersCount} total users
+            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} results • {this.props.totalUsersCount} total users
             </Text>
         )
     }
@@ -175,26 +183,28 @@ export class UsersTable extends React.Component {
 
     render() {
         return (
-            <>
-            
-            <ActionListManager isLoading={this.props.isLoading} noResults={false}>
-                <Grid columns={3}>
-                    <Box justifySelf="left">{this.renderCounts()}</Box>
-                    <Box justifySelf="center">{this.renderPageSelector()}</Box>
-                    <Box justifySelf="right">{this.renderPageSize()}</Box>
-                </Grid>
-                <ActionList
-                    canSelect
-                    onSelect={(user_id) => this.props.onSelectRow(user_id)}
-                    onSelectAll={() => this.props.onSelectAll()}
-                    itemsSelected={Array.from(this.props.selectedUserIds)}
-                    onSort={this.props.onSort}
-                    columns={this.props.tableColumns}
-                >
-                    {this.props.usersList.filter((u,index) => this.indexIsInCurrentPage(index)).map(u => this.renderUser(u))}
-                </ActionList>
-            </ActionListManager>
-            </>
+            <Flex flexDirection="column" alignItems="center">
+                <Box width="100%" mb="small">
+                <ActionListManager isLoading={this.props.isLoading} noResults={false}>
+                    <Grid columns={3}>
+                        <Box justifySelf="left">{this.renderCounts()}</Box>
+                        <Box justifySelf="center">{this.renderPageSelector()}</Box>
+                        <Box justifySelf="right">{this.renderPageSize()}</Box>
+                    </Grid>
+                    <ActionList
+                        canSelect
+                        onSelect={(user_id) => this.props.onSelectRow(user_id)}
+                        onSelectAll={() => this.props.onSelectAll()}
+                        itemsSelected={Array.from(this.props.selectedUserIds)}
+                        onSort={this.props.onSort}
+                        columns={this.props.tableColumns}
+                    >
+                        {this.renderUsers()}
+                    </ActionList> 
+                </ActionListManager>
+                </Box>
+                {this.renderPageSelector() /* show again at bottom of table */}    
+                </Flex>
         )
     }
 }
