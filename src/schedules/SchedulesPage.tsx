@@ -440,7 +440,8 @@ export class SchedulesPage extends React.Component<
     formattedRow.owner_id = s.user.id;
     formattedRow.owner = s.user.display_name;
     formattedRow.crontab = s.crontab === null ? "" : s.crontab;
-    formattedRow.datagroup = s.datagroup === null ? " " : s.datagroup; // html select tag does not reset to ""
+    formattedRow.datagroup =
+      s.datagroup === null || s.datagroup === "" ? " " : s.datagroup; // html select tag does not reset to ""
     formattedRow.run_as_recipient =
       s.run_as_recipient === null ? false : s.run_as_recipient;
     formattedRow.long_tables = s.long_tables === null ? false : s.long_tables;
@@ -521,8 +522,8 @@ export class SchedulesPage extends React.Component<
         scheduleHeader.push(formattedRow);
       });
 
-      // console.table(schedules);
-      // console.table(scheduleHeader.slice(1));
+      console.table(schedules);
+      console.table(scheduleHeader.slice(1));
 
       return scheduleHeader.slice(1);
     }
