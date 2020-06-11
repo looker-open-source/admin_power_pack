@@ -155,7 +155,7 @@ export class UsersTable extends React.Component {
     renderCounts() {
         return (
             <Text fontSize="small">
-            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} results • {this.props.totalUsersCount} total users
+            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} in view • {this.props.totalUsersCount} total users
             </Text>
         )
     }
