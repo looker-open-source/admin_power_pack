@@ -38,7 +38,7 @@ export function HomePage(props) {
                 <Heading as="h2">Welcome!</Heading>
                 <Paragraph>
                     This application offers a suite of utilities to help Looker Administrators accomplish certain tasks
-                    more efficiently. It also offers some capabalities that are otherwise not available in the main Looker UI.
+                    more efficiently. It also offers some capabilities that are otherwise not available in the main Looker UI.
                 </Paragraph>
                 <Paragraph>
                     All of these tools require Admin permissions to use. If you are seeing this page, you already have Admin
