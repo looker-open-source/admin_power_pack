@@ -468,10 +468,10 @@ export class ActionsBar extends React.Component {
                 message={
                     <>
                     <Paragraph mb="small">
-                        Enter a qid from a System Activity explore such as&nbsp;
+                        Enter a query slug (qid) from the URL of a System Activity explore such as&nbsp;
                         <Link onClick={() => this.context.extensionSDK.openBrowserWindow("/explore/system__activity/user", '_blank')}>User</Link>
                         &nbsp;or <Link onClick={() => this.context.extensionSDK.openBrowserWindow("/explore/system__activity/history", '_blank')}>History</Link>.
-                        The user.id column will be used to select user accounts.
+                        The query must have a "user.id" column which will be used to select the user accounts.
                     </Paragraph>
                     <InputText value={this.state.selectByQueryText} onChange={this.onChangeSelectByQueryText}/>
                     </>
