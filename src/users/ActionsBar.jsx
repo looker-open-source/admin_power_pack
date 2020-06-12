@@ -425,7 +425,7 @@ export class ActionsBar extends React.Component {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Select By</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown"  mr="xsmall">Select By</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     <MenuItem icon="FindSelected" onClick={this.openSelectByAttribute}>{actionInfo.selectByAttribute.menuTitle}</MenuItem>
@@ -490,7 +490,7 @@ export class ActionsBar extends React.Component {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Manage Email Creds</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Manage Email</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     <MenuItem icon="Return" onClick={this.openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
@@ -573,7 +573,7 @@ export class ActionsBar extends React.Component {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Delete Creds</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Delete Creds</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
@@ -622,7 +622,7 @@ export class ActionsBar extends React.Component {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Disable</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Disable</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     <MenuItem icon="Block" onClick={() => this.openEnableDisable("Disable")}>Disable</MenuItem>
@@ -663,7 +663,7 @@ export class ActionsBar extends React.Component {
     renderViewLog() {
         return (
             <>
-            <ButtonOutline size="small" onClick={this.openViewLog}>View Log</ButtonOutline>
+            <ButtonOutline onClick={this.openViewLog}>View Log</ButtonOutline>
             {/*
             ******************* REVIEW Dialog *******************
             */}
