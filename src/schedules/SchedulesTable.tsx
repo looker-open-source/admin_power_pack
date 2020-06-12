@@ -42,7 +42,6 @@ import {
   TableRow,
   TextArea,
 } from "@looker/components";
-import styled from "styled-components";
 import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
 import cronstrue from "cronstrue";
@@ -387,7 +386,7 @@ const ReactTable = ({
             <ButtonTransparent
               size="xsmall"
               m="xsmall"
-              color="primary"
+              color="neutral"
               iconBefore="Plus"
               onClick={() => {
                 addRow();
@@ -402,7 +401,7 @@ const ReactTable = ({
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
-              color="danger"
+              color="critical"
               iconBefore="Trash"
               onClick={() => {
                 const rows = zipRows(selectedFlatRows, selectedRowIds);
