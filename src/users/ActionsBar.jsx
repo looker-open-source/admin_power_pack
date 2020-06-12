@@ -33,16 +33,18 @@ import {
     Dialog, ConfirmLayout,
     List, ListItem,
     Text, Paragraph,
-    TextArea,
-    Icon,
-    Tooltip,
+    TextArea, InputText,
     Link
   } from '@looker/components'
 
 const actionInfo = {
-    selectBy: {
-        menuTitle: "ID or email address",
-        dialogTitle: "Select Users"
+    selectByAttribute: {
+        menuTitle: "User ID or email address",
+        dialogTitle: "Select Users by ID/Email"
+    },
+    selectByQuery: {
+        menuTitle: "Query ID",
+        dialogTitle: "Select Users from Query"
     },
     emailFill: {
         cred: "email", 
@@ -79,7 +81,8 @@ export class ActionsBar extends React.Component {
             isReview: false,
             deleteCredsType: "",
             enableDisableType: "",
-            selectByText: "",
+            selectByAttributeText: "",
+            selectByQueryText: "",
             emailMapText: "",
             logMessages: []
         }
@@ -141,12 +144,20 @@ export class ActionsBar extends React.Component {
         })
     }
 
-    openSelectBy = () => {
-        this.setState({currentAction: "selectBy"})
+    openSelectByAttribute = () => {
+        this.setState({currentAction: "selectByAttribute"})
     }
 
-    onChangeSelectByText = (e) => {
-        this.setState({selectByText: e.currentTarget.value})
+    openSelectByQuery = () => {
+        this.setState({currentAction: "selectByQuery"})
+    }
+
+    onChangeSelectByAttributeText = (e) => {
+        this.setState({selectByAttributeText: e.currentTarget.value})
+    }
+
+    onChangeSelectByQueryText = (e) => {
+        this.setState({selectByQueryText: e.currentTarget.value})
     }
 
     onChangeEmailMapText = (e) => {
@@ -179,8 +190,12 @@ export class ActionsBar extends React.Component {
         this.setIsReview(true)
     }
 
-    handleRunSelectBy = () => {
-        this.runInWorkflow(this.runSelectBy)
+    handleRunSelectByAttribute = () => {
+        this.runInWorkflow(this.runSelectByAttribute)
+    }
+
+    handleRunSelectByQuery = () => {
+        this.runInWorkflow(this.runSelectByQuery)
     }
 
     handleRunEmailFill = () => {
@@ -245,13 +260,13 @@ export class ActionsBar extends React.Component {
         await this.props.loadUsersAndStuff()
     }
 
-    runSelectBy = async () => {
+    runSelectByAttribute = async () => {
         // we're going to record which tokens match along with which ones didn't
         let foundCounts = {}
         let new_selectedUserIds = new Set()
         
         // this regex should cover us well but I still might be missing corner cases
-        const tokens = this.state.selectByText.trim().split(/[\s,;\t\n]+/).filter(Boolean)
+        const tokens = this.state.selectByAttributeText.trim().split(/[\s,;\t\n]+/).filter(Boolean)
         
         this.log(`${tokens.length} search tokens provided`)
         
@@ -281,6 +296,41 @@ export class ActionsBar extends React.Component {
             this.log("The unmatched tokens are:")
             this.log(unmatched)
         }
+    }
+
+    runSelectByQuery = async () => {
+        const slug = this.state.selectByQueryText
+
+        this.log(`Fetching query slug '${slug}'`)
+        let query
+        try {
+            query = await this.asyncLookerCall('query_for_slug', slug)
+        } catch (error) {
+            this.log("ERROR fetching query for slug. Make sure the slug exists.")
+            this.log(error)
+            return
+        }
+        
+        if (!query.fields.includes("user.id")) {
+            this.log("ERROR: query definition does not contain a 'user.id' column")
+            return
+        }
+        
+        this.log(`Running query id '${query.id}'`)
+        let results
+        try {
+            results = await this.asyncLookerCall('run_query', {query_id: query.id, result_format: 'json'})
+        } catch (error) {
+            this.log("ERROR running query:")
+            this.log(error)
+            return
+        }
+
+        const ids = new Set(results.map(row => row['user.id']))
+        this.log(`Found ${results.length} rows; ${ids.size} distinct user ids`)
+
+        await this.props.setNewSelectedUserIds(ids)
+        this.log("Selection complete")
     }
     
     fillUserEmailCred = async (user) => {
@@ -378,29 +428,55 @@ export class ActionsBar extends React.Component {
                     <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Select By</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="FindSelected" onClick={this.openSelectBy}>{actionInfo.selectBy.menuTitle}</MenuItem>
+                    <MenuItem icon="FindSelected" onClick={this.openSelectByAttribute}>{actionInfo.selectByAttribute.menuTitle}</MenuItem>
+                    <MenuItem icon="Table" onClick={this.openSelectByQuery}>{actionInfo.selectByQuery.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
             {/*
-            ******************* SELECT BY Dialog *******************
+            ******************* SELECT BY ATTRIBUTE Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("selectBy") && !this.state.isReview}
+              isOpen={this.isCurrentAction("selectByAttribute") && !this.state.isReview}
               onClose={this.handleClose}
             >
               <ConfirmLayout
-                title={actionInfo.selectBy.dialogTitle}
+                title={actionInfo.selectByAttribute.dialogTitle}
                 message={
                     <>
                     <Paragraph mb="small">
                         Paste a list of user ids or email addresses. 
                         They can be separated by comma, semicolon, or any whitespace (space, tab, newline).
                     </Paragraph>
-                    <TextArea resize value={this.state.selectByText} onChange={this.onChangeSelectByText}/>
+                    <TextArea resize value={this.state.selectByAttributeText} onChange={this.onChangeSelectByAttributeText}/>
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunSelectBy}>Select</Button>}
+                primaryButton={<Button onClick={this.handleRunSelectByAttribute}>Select</Button>}
+                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+
+            {/*
+            ******************* SELECT BY QUERY Dialog *******************
+            */}
+            <Dialog
+              isOpen={this.isCurrentAction("selectByQuery") && !this.state.isReview}
+              onClose={this.handleClose}
+            >
+              <ConfirmLayout
+                title={actionInfo.selectByQuery.dialogTitle}
+                message={
+                    <>
+                    <Paragraph mb="small">
+                        Enter a qid from a System Activity explore such as&nbsp;
+                        <Link onClick={() => this.context.extensionSDK.openBrowserWindow("/explore/system__activity/user", '_blank')}>User</Link>
+                        &nbsp;or <Link onClick={() => this.context.extensionSDK.openBrowserWindow("/explore/system__activity/history", '_blank')}>History</Link>.
+                        The user.id column will be used to select user accounts.
+                    </Paragraph>
+                    <InputText value={this.state.selectByQueryText} onChange={this.onChangeSelectByQueryText}/>
+                    </>
+                }
+                primaryButton={<Button onClick={this.handleRunSelectByQuery}>Select</Button>}
                 secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
