@@ -28,7 +28,7 @@ import { Switch, Route } from "react-router-dom"
 
 import { ExtensionProvider } from "@looker/extension-sdk-react"
 import { ThemeProvider } from 'styled-components'
-import { GlobalStyle, theme, Box, Flex, Spinner, Heading } from '@looker/components'
+import { ComponentsProvider, theme, Box, Flex, Spinner, Heading } from '@looker/components'
 
 import { InitializeChecker } from './shared/InitializeChecker'
 import { PermissionsChecker } from './shared/PermissionsChecker'
@@ -131,22 +131,21 @@ function AppInternal(props) {
             onRouteChange={onRouteChange}
         >
             <ThemeProvider theme={theme}>
-                <>
-                <GlobalStyle />
-                <InitializeChecker>
-                    <PermissionsChecker loadingComponent={loadingComponent}>
-                        <Box>
-                            {header}
-                            <Flex height='100vh'>
-                                {navBar}
-                                <Box flexGrow={1} overflow="scroll" height="100%">
-                                    {pages}
-                                </Box>
-                            </Flex>
-                        </Box>
-                    </PermissionsChecker>
-                </InitializeChecker>
-                </>
+                <ComponentsProvider>
+                    <InitializeChecker>
+                        <PermissionsChecker loadingComponent={loadingComponent}>
+                            <Box>
+                                {header}
+                                <Flex height='100vh'>
+                                    {navBar}
+                                    <Box flexGrow={1} overflow="scroll" height="100%">
+                                        {pages}
+                                    </Box>
+                                </Flex>
+                            </Box>
+                        </PermissionsChecker>
+                    </InitializeChecker>
+                </ComponentsProvider>
             </ThemeProvider>
         </ExtensionProvider>
     )
