@@ -25,7 +25,6 @@
 import { SchedulesTable } from "./SchedulesTable";
 import { PopulateParams, PopulateRows } from "./PopulateRows";
 import {
-  Banner,
   Box,
   Button,
   ComboboxOptionObject,
@@ -35,6 +34,7 @@ import {
   Heading,
   InputText,
   Label,
+  MessageBar,
   Text,
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
@@ -1176,8 +1176,8 @@ export class SchedulesPage extends React.Component<
     return (
       <>
         {this.state.errorMessage && (
-          <Banner
-            intent="error"
+          <MessageBar
+            intent="critical"
             canDismiss
             onDismiss={() => {
               this.setState({
@@ -1186,7 +1186,7 @@ export class SchedulesPage extends React.Component<
             }}
           >
             {this.state.errorMessage}
-          </Banner>
+          </MessageBar>
         )}
 
         <Box m="large">
@@ -1230,8 +1230,8 @@ export class SchedulesPage extends React.Component<
               )}
 
               {this.state.notificationMessage && (
-                <Banner
-                  intent="confirmation"
+                <MessageBar
+                  intent="positive"
                   canDismiss
                   onDismiss={() => {
                     this.setState({
@@ -1240,7 +1240,7 @@ export class SchedulesPage extends React.Component<
                   }}
                 >
                   {this.state.notificationMessage}
-                </Banner>
+                </MessageBar>
               )}
             </FlexItem>
 
@@ -1259,7 +1259,7 @@ export class SchedulesPage extends React.Component<
                   />{" "}
                   <Confirm
                     confirmLabel="Revert"
-                    buttonColor="danger"
+                    buttonColor="critical"
                     title="Revert Changes"
                     message="Are you sure you want to revert all changes?"
                     onConfirm={(close) => {
@@ -1268,13 +1268,13 @@ export class SchedulesPage extends React.Component<
                     }}
                   >
                     {(open) => (
-                      <Button color="danger" onClick={open}>
+                      <Button color="critical" onClick={open}>
                         Revert
                       </Button>
                     )}
                   </Confirm>{" "}
                   <Confirm
-                    buttonColor="primary"
+                    buttonColor="neutral"
                     title="Update All"
                     message="Are you sure you want to update all schedules?"
                     onConfirm={(close) => {
