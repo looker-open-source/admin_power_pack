@@ -22,8 +22,10 @@
  * THE SOFTWARE.
  */
 
-import React from 'react'
+import React, { useState, useContext } from 'react'
 import Papa from 'papaparse' // csv parsing library
+import { useMachine } from '@xstate/react' // workflow helper
+import { Machine } from 'xstate' 
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
@@ -36,6 +38,7 @@ import {
     TextArea, InputText,
     Link
   } from '@looker/components'
+
 
 const actionInfo = {
     selectByAttribute: {
@@ -63,72 +66,62 @@ const actionInfo = {
     }
 }
 
+const workflowSM = {
+    init: 'closed',
+    transitions: [
+      { name: 'open',   from: 'closed',      to: 'configuring' },
+      { name: 'run',    from: 'configuring', to: 'running'     },
+      { name: 'review', from: ['closed', 'running'],        to: 'reviewing'},
+      { name: 'close',  from: ['configuring', 'reviewing'], to: 'cosed'    }
+    ],
+    data: {
+        action: null
+    }
+}
+
 const MonospaceTextArea = styled(TextArea)`
     textarea {
         font-family:monospace;
     }
 `
 
-export class ActionsBar extends React.Component {
-    static contextType = ExtensionContext // provides the coreSDK object
+export function ActionsBar(props) {
+    const context = useContext(ExtensionContext) // provides the coreSDK object
+    const asyncLookerCall = makeLookerCaller(context.coreSDK)
+    
+    const [currentAction, set_currentAction] = useState(null)
+    const [isRunning, set_isRunning] = useState(false)
+    const [isReview, set_isReview] = useState(false)
 
-    constructor (props) {
-        super(props)
-
-        this.state = {
-            currentAction: false,
-            isRunning: false,
-            isReview: false,
-            deleteCredsType: "",
-            enableDisableType: "",
-            selectByAttributeText: "",
-            selectByQueryText: "",
-            emailMapText: "",
-            logMessages: []
-        }
-    }
-
-    componentDidMount() {
-        this.asyncLookerCall = makeLookerCaller(this.context.coreSDK)
-    }
+    const [deleteCredsType, set_deleteCredsType] = useState("")
+    const [enableDisableType, set_enableDisableType] = useState("")
+    const [selectByAttributeText, set_selectByAttributeText] = useState("")
+    const [selectByQueryText, set_selectByQueryText] = useState("")
+    const [emailMapText, set_emailMapText] = useState("")
+    const [logMessages, set_logMessages] = useState([])
 
     /*
      ******************* HELPERS *******************
      */
 
-    isCurrentAction = (name) => (this.state.currentAction === name)
+    function isCurrentAction(name) { return (currentAction === name) }
 
-    // allows us to wait for the state change to resolve
-    async asyncSetState(newState) {
-        return new Promise(resolve => this.setState(newState, resolve))
+    function clearLog() {
+        set_logMessages([])
     }
 
-    async setRunning(value) {
-        return this.asyncSetState({isRunning: value})
+    function log(entry) {
+        set_logMessages(prevLog => prevLog.concat(entry))
     }
 
-    async setIsReview(value) {
-        return this.asyncSetState({isReview: value})
-    }
-
-    async clearLog() {
-        return this.asyncSetState({logMessages: []})
-    }
-
-    log(entry) {
-        // Array.prototype.concat() returns a copy and handles both scalars and arrays :)
-        const new_logMessages = this.state.logMessages.concat(entry)
-        this.setState({logMessages: new_logMessages})
-    }
-
-    logWidth() {
-        const lineLengths = this.state.logMessages.map(line => line.length)
+    function logWidth() {
+        const lineLengths = logMessages.map(line => line.length)
         return Math.max(...lineLengths)
     }
 
-    reviewDialogTitle() {
-        if (this.state.currentAction) {
-            return `${actionInfo[this.state.currentAction].dialogTitle} - ${this.state.isRunning ? "In Progress" : "Complete"}`
+    function reviewDialogTitle() {
+        if (currentAction) {
+            return `${actionInfo[currentAction].dialogTitle} - ${isRunning ? "In Progress" : "Complete"}`
         }
         return ""
     }
@@ -136,143 +129,161 @@ export class ActionsBar extends React.Component {
     /*
      ******************* DIALOG CALLBACKS *******************
      */
-    handleClose = () => {  
-        if (this.props.isRunning) { return } // Can't close the review dialog while an action is running
-        this.setState({
-            isReview: false,
-            currentAction: null
-        })
+    const handleClose = () => {  
+        if (isRunning) { return } // Can't close the review dialog while an action is running
+        set_isReview(false)
+        set_currentAction(null)
     }
 
-    openSelectByAttribute = () => {
-        this.setState({currentAction: "selectByAttribute"})
+    const openSelectByAttribute = () => {
+        set_currentAction("selectByAttribute")
     }
 
-    openSelectByQuery = () => {
-        this.setState({currentAction: "selectByQuery"})
+    const openSelectByQuery = () => {
+        set_currentAction("selectByQuery")
     }
 
-    onChangeSelectByAttributeText = (e) => {
-        this.setState({selectByAttributeText: e.currentTarget.value})
+    const onChangeSelectByAttributeText = (e) => {
+        set_selectByAttributeText(e.currentTarget.value)
     }
 
-    onChangeSelectByQueryText = (e) => {
-        this.setState({selectByQueryText: e.currentTarget.value})
+    const onChangeSelectByQueryText = (e) => {
+        set_selectByQueryText(e.currentTarget.value)
     }
 
-    onChangeEmailMapText = (e) => {
-        this.setState({emailMapText: e.currentTarget.value})
+    const onChangeEmailMapText = (e) => {
+        set_emailMapText(e.currentTarget.value)
     }
 
-    openEmailFill = () => { 
-        this.setState({currentAction: "emailFill"})
+    const openEmailFill = () => { 
+        set_currentAction("emailFill")
     } 
 
-    openEmailMap = () => {
-        this.setState({currentAction: "emailMap"})
+    const openEmailMap = () => {
+        set_currentAction("emailMap")
     }
     
-    openDelete = (type) => { 
-        this.setState({
-            currentAction: "deleteCreds",
-            deleteCredsType: type
-        })
+    const openDelete = (type) => { 
+        set_currentAction("deleteCreds")
+        set_deleteCredsType(type)
     }
 
-    openEnableDisable = (type) => {
-        this.setState({
-            currentAction: "enableDisable",
-            enableDisableType: type
-        })
+    const openEnableDisable = (type) => {
+        set_currentAction("enableDisable")
+        set_enableDisableType(type)
     }
 
-    openViewLog = () => {
-        this.setIsReview(true)
+    const openViewLog = () => {
+        set_isReview(true)
     }
 
-    handleRunSelectByAttribute = () => {
-        this.runInWorkflow(this.runSelectByAttribute)
-    }
-
-    handleRunSelectByQuery = () => {
-        this.runInWorkflow(this.runSelectByQuery)
-    }
-
-    handleRunEmailFill = () => {
-        this.runInWorkflow(
-            () => this.runOnSelectedUsers(this.fillUserEmailCred, "fill email creds")
+    const runSelectByAttribute = () => {
+        runInWorkflow(
+            selectByAttribute
         )
     }
 
-    handleRunEmailMap = () => {
-        this.runInWorkflow(
-            () => this.runOnSelectedUsers(this.makeMapEmailFunc(), "map email creds") 
+    const runSelectByQuery = () => {
+        runInWorkflow(
+            selectByQuery
         )
     }
 
-    handleRunDeleteCreds = () => { 
-        this.runInWorkflow(
-            () => this.runOnSelectedUsers(this.makeDeleteCredFunc(), `delete ${this.state.deleteCredsType} creds`)
+    const runEmailFill = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                fillUserEmailCred, 
+                "fill email creds"
+        )
         )
     }
 
-    handleRunEnableDisable = () => {
-        this.runInWorkflow(
-            () => this.runOnSelectedUsers(this.makeEnableDisableFunc(), `${this.state.enableDisableType} users`)
+    const runEmailMap = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                makeMapEmailFunc(), 
+                "map email creds"
+            ) 
+        )
+    }
+
+    const runDeleteCreds = () => { 
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                makeDeleteCredFunc(),
+                `delete ${deleteCredsType} creds`
+            )
+        )
+    }
+
+    const runEnableDisable = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                makeEnableDisableFunc(), 
+                enableDisableType.toLowerCase()
+            )
         )
     }
 
     /*
     ******************* ACTION FUNCTIONS *******************
     */
-    runInWorkflow = async (func) => {
-        await this.clearLog()
-        await this.setRunning(true)
-        await this.setIsReview(true)
+    const runInWorkflow = async (func) => {
+        clearLog()
+        set_isRunning(true)
+        set_isReview(true)
 
         try {
             await func()
         } catch (error) {
             console.log(error)
-            this.log(`ERROR: unhandled exception '${error.name}' in function '${func.name}'. Message: '${error.message}'. See console for more info.`)
+            log(`ERROR: unhandled exception in function '${func.name}'. See console too.`)
+            log(error)
         }
 
-        this.setRunning(false)
+        set_isRunning(false)
     }
 
-    runOnSelectedUsers = async (func, name = "unnammed") => {
-        const selectedUsers = Array.from(this.props.selectedUserIds).map(u_id => this.props.usersMap.get(u_id))
+    const runOnSelectedUsers = async (funcToRun, description = "") => {
+        const selectedUsers = Array.from(props.selectedUserIds).map(u_id => props.usersMap.get(u_id))
 
         if (!selectedUsers.length) {
-            this.log(
+            log(
                 "Whoops! No users were selected. Please select some users before running the action. "
-                + "Your inputs will be saved until you refresh the page."
+                + "The last used config inputs will be saved until you refresh the page."
             )
             return
         }
 
-        const promises = selectedUsers.map(func.bind(this))
-        await Promise.all(promises)
+        log(`${props.selectedUserIds.size} users selected to ${description}.`)
+
+        const promises = selectedUsers.map(funcToRun)
         
-        //await new Promise(r => setTimeout(r, 10000));
-        //console.log(`did the ${name} operation`)
-        
-        await this.props.loadUsersAndStuff()
+        try {
+            await Promise.all(promises) 
+            log(`Action complete - refreshing user table`)
+        } catch (error) {
+            log('FATAL: unhandled exception while running action on selected users. The first promise rejection is:')
+            log(error)
+            log('Refreshing user table to avoid showing inconsistent state')
+        } finally {
+            await props.loadUsersAndStuff()
+        }
     }
 
-    runSelectByAttribute = async () => {
+    const selectByAttribute = async () => {
         // we're going to record which tokens match along with which ones didn't
         let foundCounts = {}
         let new_selectedUserIds = new Set()
         
         // this regex should cover us well but I still might be missing corner cases
-        const tokens = this.state.selectByAttributeText.trim().split(/[\s,;\t\n]+/).filter(Boolean)
+        const tokens = selectByAttributeText.trim().split(/[\s,;\t\n]+/).filter(Boolean)
         
-        this.log(`${tokens.length} search tokens provided`)
+        log(`${tokens.length} search tokens provided`)
         
         tokens.forEach(t => foundCounts[t] = 0)
 
-        this.props.usersMap.forEach((user, id) => {
+        props.usersMap.forEach((user, id) => {
             const idStr = id.toString()
             if (tokens.includes(idStr)) {
                 new_selectedUserIds.add(id)
@@ -286,72 +297,73 @@ export class ActionsBar extends React.Component {
             }
         })
 
-        await this.props.setNewSelectedUserIds(new_selectedUserIds)
-        this.log(`${new_selectedUserIds.size} users selected`)
+        await props.setNewSelectedUserIds(new_selectedUserIds)
+        log(`${new_selectedUserIds.size} users selected`)
 
         const unmatched = Object.keys(foundCounts).filter(token => foundCounts[token] === 0)
-        this.log(`${unmatched.length} unmatched tokens`)
+        log(`${unmatched.length} unmatched tokens`)
         
         if (unmatched.length > 0) {
-            this.log("The unmatched tokens are:")
-            this.log(unmatched)
+            log("The unmatched tokens are:")
+            log(unmatched)
         }
     }
 
-    runSelectByQuery = async () => {
-        const slug = this.state.selectByQueryText
+    const selectByQuery = async () => {
+        const slug = selectByQueryText
 
-        this.log(`Fetching query slug '${slug}'`)
+        log(`Fetching query slug '${slug}'`)
         let query
         try {
-            query = await this.asyncLookerCall('query_for_slug', slug)
+            query = await asyncLookerCall('query_for_slug', slug)
         } catch (error) {
-            this.log("ERROR fetching query for slug. Make sure the slug exists.")
-            this.log(error)
+            log("ERROR fetching query for slug. Make sure the slug exists.")
+            log(error)
             return
         }
         
         if (!query.fields.includes("user.id")) {
-            this.log("ERROR: query definition does not contain a 'user.id' column")
+            log("ERROR: query definition does not contain a 'user.id' column")
             return
         }
         
-        this.log(`Running query id '${query.id}'`)
+        log(`Running query id '${query.id}'`)
         let results
         try {
-            results = await this.asyncLookerCall('run_query', {query_id: query.id, result_format: 'json'})
+            results = await asyncLookerCall('run_query', {query_id: query.id, result_format: 'json'})
         } catch (error) {
-            this.log("ERROR running query:")
-            this.log(error)
+            log("ERROR running query:")
+            log(error)
             return
         }
 
         const ids = new Set(results.map(row => row['user.id']))
-        this.log(`Found ${results.length} rows; ${ids.size} distinct user ids`)
+        log(`Found ${results.length} rows; ${ids.size} distinct user ids`)
 
-        await this.props.setNewSelectedUserIds(ids)
-        this.log("Selection complete")
+        await props.setNewSelectedUserIds(ids)
+        log("Selection complete")
     }
     
-    fillUserEmailCred = async (user) => {
+    const fillUserEmailCred = async (user) => {
         if (user.credentials_email) { 
-            this.log(`Skip: user ${user.id} already has email creds: ${user.credentials_email.email}`)
+            log(`Skip: user ${user.id}: already has email creds: ${user.credentials_email.email}`)
             return 
         }
         if (!user.email) { 
-            console.log(`Skip: user ${user.id} has no email address from other creds`)
+            log(`Skip: user ${user.id}: no email address from other creds`)
             return 
         }
         try { 
-            await this.asyncLookerCall('create_user_credentials_email', user.id, {email: user.email})
-            this.log(`Created credentials_email for user id ${user.id}: ${user.email}`)
+            await asyncLookerCall('create_user_credentials_email', user.id, {email: user.email})
+            log(`User ${user.id} - created credentials_email ${user.email}`)
         } catch (error) {
-            this.log(`ERROR: unable to create credentials_email for user id ${user.id}. Message: '${error.message}'`)
+            log(`ERROR: user ${user.id}: unable to create credentials_email. Message: '${error.message}'`)
         }
+        return
     }
 
-    makeMapEmailFunc = () => {
-        const rawData = Papa.parse(this.state.emailMapText).data
+    const makeMapEmailFunc = () => {
+        const rawData = Papa.parse(emailMapText).data
         const cleanData = rawData.map( arr => arr.map( el => el.trim() ).filter(Boolean) )
         const mappings = new Map(cleanData)
 
@@ -360,59 +372,60 @@ export class ActionsBar extends React.Component {
             const newEmail = mappings.get(oldEmail)
 
             if (!newEmail) {
-                this.log(`Skip: user ${user.id} - no mapping for email ${oldEmail}`)
+                log(`Skip: user ${user.id}: no mapping for email ${oldEmail}`)
                 return
             }
 
             const op = user.credentials_email ? "update" : "create"
             
             try {
-                await this.asyncLookerCall(`${op}_user_credentials_email`, user.id, {email: newEmail})
-                this.log(`${op}d credentials_email for user ${user.id}: old= ${oldEmail} :: new= ${newEmail}`)
+                await asyncLookerCall(`${op}_user_credentials_email`, user.id, {email: newEmail})
+                log(`User ${user.id}: ${op}d credentials_email. old= ${oldEmail} :: new= ${newEmail}`)
             } catch (error) {
-                this.log(`ERROR: unable to ${op} credentials_email for user ${user.id}. Message: '${error.message}'. Most likely the email is already in use.`)
+                log(`ERROR: user ${user.id}: unable to ${op} credentials_email. Message: '${error.message}'. Most likely the email is already in use.`)
             }
+            return
         }
         return mapFunc
     }
 
-    makeDeleteCredFunc = () => {
-        const credType = this.state.deleteCredsType.toLowerCase()
+    const makeDeleteCredFunc = () => {
+        const credType = deleteCredsType.toLowerCase()
         const propName = `credentials_${credType}`
         const methName = `delete_user_${propName}`
         
         const deleteFunc = async (user) => {
             if (!user[propName]) {
-                this.log(`Skip: user ${user.id} has no ${propName} to delete`)
+                log(`Skip: user ${user.id}: no ${propName} to delete`)
                 return
             }
-            
             try {
-                await this.asyncLookerCall(methName, user.id)
-                this.log(`deleted ${propName} for user ${user.id}`)
+                await asyncLookerCall(methName, user.id)
+                log(`User ${user.id}: deleted ${propName}`)
             } catch (error) {
-                this.log(`ERROR: unable to delete ${propName} for user ${user.id}. Message: '${error.message}'`)
+                log(`ERROR: user ${user.id}: unable to delete ${propName}. Message: '${error.message}'`)
             }
+            return
         }
         return deleteFunc
     }
 
-    makeEnableDisableFunc = () => {
-        const changeType = this.state.enableDisableType.toLowerCase()
+    const makeEnableDisableFunc = () => {
+        const changeType = enableDisableType.toLowerCase()
         const new_is_disabled = (changeType === "disable")
 
         const enableDisableFunc = async (user) => {
             if (user.is_disabled === new_is_disabled) {
-                this.log(`Skip: user ${user.id} is already ${changeType}d`)
+                log(`Skip: user ${user.id}: already ${changeType}d`)
                 return
             }
-
             try {
-                await this.asyncLookerCall("update_user", user.id, {is_disabled: new_is_disabled})
-                this.log(`${changeType}d user ${user.id}`)
+                await asyncLookerCall("update_user", user.id, {is_disabled: new_is_disabled})
+                log(`User ${user.id}: ${changeType}d`)
             } catch (error) {
-                this.log(`ERROR: unable to ${changeType} user ${user.id}. Message: '${error.message}'`)
+                log(`ERROR: user ${user.id}: unable to ${changeType}. Message: '${error.message}'`)
             }
+            return
         }
         return enableDisableFunc
     }
@@ -420,16 +433,16 @@ export class ActionsBar extends React.Component {
     /*
     ******************* RENDERING *******************
     */
-    renderSelectBy() {
+    function renderSelectBy() {
         return (
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Select By</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown"  mr="xsmall">Select By</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="FindSelected" onClick={this.openSelectByAttribute}>{actionInfo.selectByAttribute.menuTitle}</MenuItem>
-                    <MenuItem icon="Table" onClick={this.openSelectByQuery}>{actionInfo.selectByQuery.menuTitle}</MenuItem>
+                    <MenuItem icon="FindSelected" onClick={openSelectByAttribute}>{actionInfo.selectByAttribute.menuTitle}</MenuItem>
+                    <MenuItem icon="Table" onClick={openSelectByQuery}>{actionInfo.selectByQuery.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -437,8 +450,8 @@ export class ActionsBar extends React.Component {
             ******************* SELECT BY ATTRIBUTE Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("selectByAttribute") && !this.state.isReview}
-              onClose={this.handleClose}
+              isOpen={isCurrentAction("selectByAttribute") && !isReview}
+              onClose={handleClose}
             >
               <ConfirmLayout
                 title={actionInfo.selectByAttribute.dialogTitle}
@@ -448,11 +461,11 @@ export class ActionsBar extends React.Component {
                         Paste a list of user ids or email addresses. 
                         They can be separated by comma, semicolon, or any whitespace (space, tab, newline).
                     </Paragraph>
-                    <TextArea resize value={this.state.selectByAttributeText} onChange={this.onChangeSelectByAttributeText}/>
+                    <TextArea resize value={selectByAttributeText} onChange={onChangeSelectByAttributeText}/>
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunSelectByAttribute}>Select</Button>}
-                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={runSelectByAttribute}>Select</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
 
@@ -460,8 +473,8 @@ export class ActionsBar extends React.Component {
             ******************* SELECT BY QUERY Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("selectByQuery") && !this.state.isReview}
-              onClose={this.handleClose}
+              isOpen={isCurrentAction("selectByQuery") && !isReview}
+              onClose={handleClose}
             >
               <ConfirmLayout
                 title={actionInfo.selectByQuery.dialogTitle}
@@ -469,15 +482,15 @@ export class ActionsBar extends React.Component {
                     <>
                     <Paragraph mb="small">
                         Enter a query slug (qid) from the URL of a System Activity explore such as&nbsp;
-                        <Link onClick={() => this.context.extensionSDK.openBrowserWindow("/explore/system__activity/user", '_blank')}>User</Link>
-                        &nbsp;or <Link onClick={() => this.context.extensionSDK.openBrowserWindow("/explore/system__activity/history", '_blank')}>History</Link>.
+                        <Link onClick={() => context.extensionSDK.openBrowserWindow("/explore/system__activity/user", '_blank')}>User</Link>
+                        &nbsp;or <Link onClick={() => context.extensionSDK.openBrowserWindow("/explore/system__activity/history", '_blank')}>History</Link>.
                         The query must have a "user.id" column which will be used to select the user accounts.
                     </Paragraph>
-                    <InputText value={this.state.selectByQueryText} onChange={this.onChangeSelectByQueryText}/>
+                    <InputText value={selectByQueryText} onChange={onChangeSelectByQueryText}/>
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunSelectByQuery}>Select</Button>}
-                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={runSelectByQuery}>Select</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             </>
@@ -485,16 +498,16 @@ export class ActionsBar extends React.Component {
     }
 
 
-    renderManageEmailCreds() {
+    function renderManageEmailCreds() {
         return (
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Manage Email Creds</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Manage Email</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Return" onClick={this.openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
-                    <MenuItem icon="VisTable" onClick={this.openEmailMap}>{actionInfo.emailMap.menuTitle}</MenuItem>
+                    <MenuItem icon="Return" onClick={openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
+                    <MenuItem icon="VisTable" onClick={openEmailMap}>{actionInfo.emailMap.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -502,14 +515,14 @@ export class ActionsBar extends React.Component {
             ******************* EMAIL FILL Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("emailFill") && !this.state.isReview}
-              onClose={this.handleClose}
+              isOpen={isCurrentAction("emailFill") && !isReview}
+              onClose={handleClose}
             >
               <ConfirmLayout
                 title={actionInfo.emailFill.dialogTitle}
                 message={
                     <>
-                    This will create <Text fontWeight="bold">email</Text> creds for <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users. 
+                    This will create <Text fontWeight="bold">email</Text> creds for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users. 
                     <List type="bullet">
                         <ListItem>
                             It will use the email address already assigned to the user by the other cred types.
@@ -523,16 +536,16 @@ export class ActionsBar extends React.Component {
                     </List>
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunEmailFill}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={runEmailFill}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             {/*
             ******************* EMAIL MAP Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("emailMap") && !this.state.isReview}
-              onClose={this.handleClose}
+              isOpen={isCurrentAction("emailMap") && !isReview}
+              onClose={handleClose}
             >
               <ConfirmLayout
                 title={actionInfo.emailMap.dialogTitle}
@@ -554,30 +567,30 @@ export class ActionsBar extends React.Component {
                     </Paragraph>
                     <MonospaceTextArea 
                         resize 
-                        value={this.state.emailMapText} 
-                        onChange={this.onChangeEmailMapText} 
+                        value={emailMapText} 
+                        onChange={onChangeEmailMapText} 
                         placeholder={"jon.snow@old.com,jsnow@new.com         arya.stark@old.com,astark@new.com"}
                     />
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunEmailMap}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={runEmailMap}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             </>
         )
     }
 
-    renderDeleteCreds() {
+    function renderDeleteCreds() {
         return (
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Delete Creds</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Delete Creds</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
-                        return <MenuItem key={credType} onClick={() => this.openDelete(credType)}>{credType}</MenuItem>
+                        return <MenuItem key={credType} onClick={() => openDelete(credType)}>{credType}</MenuItem>
                     })}
                 </MenuList>
             </Menu>
@@ -585,14 +598,14 @@ export class ActionsBar extends React.Component {
             ******************* DELETE CRED Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("deleteCreds") && !this.state.isReview}
-              onClose={this.handleClose}
+              isOpen={isCurrentAction("deleteCreds") && !isReview}
+              onClose={handleClose}
             >
               <ConfirmLayout
-                title={`Delete ${this.state.deleteCredsType} Credentials`}
+                title={`Delete ${deleteCredsType} Credentials`}
                 message={
                     <>
-                    This will delete <Text fontWeight="bold">{this.state.deleteCredsType}</Text> creds for <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users.
+                    This will delete <Text fontWeight="bold">{deleteCredsType}</Text> creds for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
                     <List type="bullet">
                         <ListItem>
                             If you delete the email creds and don't have SSO enabled, users won't be able to login.
@@ -609,24 +622,24 @@ export class ActionsBar extends React.Component {
                     </List>
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunDeleteCreds}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={runDeleteCreds}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             </>
         )
     }
 
-    renderDisable() {
+    function renderDisable() {
         return (
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" size="small" mr="xsmall">Disable</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Disable</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Block" onClick={() => this.openEnableDisable("Disable")}>Disable</MenuItem>
-                    <MenuItem icon="Undo" onClick={() => this.openEnableDisable("Enable")}>Enable</MenuItem>
+                    <MenuItem icon="Block" onClick={() => openEnableDisable("Disable")}>Disable</MenuItem>
+                    <MenuItem icon="Undo" onClick={() => openEnableDisable("Enable")}>Enable</MenuItem>
                     {/* <MenuItem icon="Trash">Delete</MenuItem> */}
                 </MenuList>
             </Menu>
@@ -634,70 +647,68 @@ export class ActionsBar extends React.Component {
             ******************* ENABLE/DISABLE Dialog *******************
             */}
             <Dialog
-              isOpen={this.isCurrentAction("enableDisable") && !this.state.isReview}
-              onClose={this.handleClose}
+              isOpen={isCurrentAction("enableDisable") && !isReview}
+              onClose={handleClose}
             >
               <ConfirmLayout
-                title={`${this.state.enableDisableType} Users`}
+                title={`${enableDisableType} Users`}
                 message={
                     <>
                     <Paragraph>
-                        This will <Text fontWeight="bold">{this.state.enableDisableType.toLowerCase()}</Text> <Text fontWeight="bold">{this.props.selectedUserIds.size}</Text> selected users.
+                        This will <Text fontWeight="bold">{enableDisableType.toLowerCase()}</Text> <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
                     </Paragraph>
                     <Paragraph>
                         For details about what happens when you disable a user, see the documention for&nbsp;
-                        <Link onClick={() => this.context.extensionSDK.openBrowserWindow("https://docs.looker.com/admin-options/settings/users#removing_user_access", '_blank')}>
+                        <Link onClick={() => context.extensionSDK.openBrowserWindow("https://docs.looker.com/admin-options/settings/users#removing_user_access", '_blank')}>
                             Removing User Access
                         </Link>.
                     </Paragraph>
                     </>
                 }
-                primaryButton={<Button onClick={this.handleRunEnableDisable}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={this.handleClose}>Cancel</ButtonTransparent>}
+                primaryButton={<Button onClick={runEnableDisable}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             </>
         )
     }
 
-    renderViewLog() {
+    function renderViewLog() {
         return (
             <>
-            <ButtonOutline size="small" onClick={this.openViewLog}>View Log</ButtonOutline>
+            <ButtonOutline onClick={openViewLog}>View Log</ButtonOutline>
             {/*
             ******************* REVIEW Dialog *******************
             */}
             <Dialog
-                isOpen={this.state.isReview}
-                onClose={this.handleClose}
+                isOpen={isReview}
+                onClose={handleClose}
                 
             >
                 <ConfirmLayout
-                    title={this.reviewDialogTitle()}
+                    title={reviewDialogTitle()}
                     message={
                       <>
                         <Paragraph mb="small" width="50rem">
                             Execution log:
                         </Paragraph>
-                        <MonospaceTextArea readOnly resize value={this.state.logMessages.join("\n")} />
+                        <MonospaceTextArea readOnly resize value={logMessages.join("\n")} />
                       </>
                     }
-                    primaryButton={(this.state.isRunning || this.props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={this.handleClose}>Close</Button>}
+                    primaryButton={(isRunning || props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={handleClose}>Close</Button>}
                 />
             </Dialog>
             </>
         )
     }
 
-    render() {
-        return (  
-            <>
-            {this.renderSelectBy()}
-            {this.renderManageEmailCreds()}
-            {this.renderDeleteCreds()}
-            {this.renderDisable()}
-            {this.renderViewLog()}
-            </>
-        )
-    }
+    return (  
+        <>
+        {renderSelectBy()}
+        {renderManageEmailCreds()}
+        {renderDeleteCreds()}
+        {renderDisable()}
+        {renderViewLog()}
+        </>
+    )
 }
