@@ -72,7 +72,7 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
   } = prp;
   return (
     <DrawerManager
-      width={"small"}
+      width="260px"
       content={
         <>
           <ModalHeader>Populate Rows</ModalHeader>

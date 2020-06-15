@@ -25,7 +25,7 @@
 import React from "react";
 import {
   Box,
-  ButtonTransparent,
+  ButtonOutline,
   Checkbox,
   ComboboxOptionObject,
   FieldCheckbox,
@@ -184,27 +184,12 @@ const EditableCell = (ec: EditableCellInterface) => {
   };
 
   const DefaultTextArea = (): JSX.Element => {
-    // override initial height
-    // const StyledTextArea = styled(TextArea)`
-    //   textarea {
-    //     min-height: 36px;
-    //     height: 36px;
-    //     width: 200px;
-    //   }
-    // `;
-
     return (
-      // <StyledTextArea // this doesnt work, onChange looses focus with each key stroke
-      <TextArea // this works but min-height is 6.25rem
+      <TextArea
         value={value}
         key={id + index}
-        // width={1}
-        // onChange={(e: any) => {
-        //   console.log(id + index);
-        //   console.log(e.target);
-        //   setValue(e.target.value);
-        //   debugger;
-        // }}
+        minHeight="36px"
+        height="36px"
         onChange={onChange}
         onBlur={onBlur}
         resize
@@ -383,41 +368,44 @@ const ReactTable = ({
       <Flex height="25px" justifyContent="space-between">
         <Flex>
           <FlexItem alignSelf="center">
-            <ButtonTransparent
+            <ButtonOutline
               size="xsmall"
               m="xsmall"
-              color="neutral"
+              color="key"
               iconBefore="Plus"
+              title="Add row to table"
               onClick={() => {
                 addRow();
               }}
             >
               Add
-            </ButtonTransparent>
+            </ButtonOutline>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonTransparent
+            <ButtonOutline
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
               color="critical"
               iconBefore="Trash"
+              title="Delete row/schedule from table"
               onClick={() => {
                 const rows = zipRows(selectedFlatRows, selectedRowIds);
                 deleteRow(rows);
               }}
             >
               Delete
-            </ButtonTransparent>
+            </ButtonOutline>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonTransparent
+            <ButtonOutline
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
               iconBefore="Update"
+              title="Create new schedule or update existing schedule"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
@@ -425,15 +413,16 @@ const ReactTable = ({
               }}
             >
               Create/Update
-            </ButtonTransparent>
+            </ButtonOutline>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonTransparent
+            <ButtonOutline
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
               iconBefore="SendEmail"
+              title='Run the schedule now. This is the same as "Send Test" in the UI'
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
@@ -441,15 +430,16 @@ const ReactTable = ({
               }}
             >
               Run Once
-            </ButtonTransparent>
+            </ButtonOutline>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonTransparent
+            <ButtonOutline
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
               iconBefore="Close"
+              title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
@@ -457,15 +447,16 @@ const ReactTable = ({
               }}
             >
               Disable
-            </ButtonTransparent>
+            </ButtonOutline>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonTransparent
+            <ButtonOutline
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
               iconBefore="FolderOpen"
+              title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
@@ -473,7 +464,7 @@ const ReactTable = ({
               }}
             >
               Enable
-            </ButtonTransparent>
+            </ButtonOutline>
           </FlexItem>
 
           <FlexItem p="small"></FlexItem>

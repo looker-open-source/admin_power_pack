@@ -1190,7 +1190,7 @@ export class SchedulesPage extends React.Component<
         )}
 
         <Box m="large">
-          <Flex justifyContent="space-between">
+          <Flex height="50px" justifyContent="space-between">
             <FlexItem mb="medium">
               <Label pt="xxsmall" color="palette.charcoal500" fontSize="large">
                 Enter A Dashboard ID:{" "}
@@ -1274,7 +1274,7 @@ export class SchedulesPage extends React.Component<
                     )}
                   </Confirm>{" "}
                   <Confirm
-                    buttonColor="neutral"
+                    buttonColor="key"
                     title="Update All"
                     message="Are you sure you want to update all schedules?"
                     onConfirm={(close) => {
