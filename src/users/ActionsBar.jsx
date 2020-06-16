@@ -24,8 +24,6 @@
 
 import React, { useState, useContext } from 'react'
 import Papa from 'papaparse' // csv parsing library
-import { useMachine } from '@xstate/react' // workflow helper
-import { Machine } from 'xstate' 
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
