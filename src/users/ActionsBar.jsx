@@ -23,10 +23,10 @@
  */
 
 import React, { useState, useContext } from 'react'
-import Papa from 'papaparse' // csv parsing library
 import { useMachine } from '@xstate/react' // workflow helper
-import { Machine } from 'xstate' 
+import Papa from 'papaparse' // csv parsing library
 import { ExtensionContext } from '@looker/extension-sdk-react'
+import { ACTION_INFO, WORKFLOW_MACHINE } from './constants'
 import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
 import {
@@ -39,62 +39,18 @@ import {
     Link
   } from '@looker/components'
 
-
-const actionInfo = {
-    selectByAttribute: {
-        menuTitle: "User ID or email address",
-        dialogTitle: "Select Users by ID/Email"
-    },
-    selectByQuery: {
-        menuTitle: "Query ID",
-        dialogTitle: "Select Users from Query"
-    },
-    emailFill: {
-        cred: "email", 
-        menuTitle: "Auto-fill from other creds", 
-        dialogTitle: "Auto-fill Email Credentials"
-    },
-    emailMap: {
-        menuTitle: "Bulk update from mapping",
-        dialogTitle: "Update Emails from Mapping"
-    },
-    deleteCreds: {
-        dialogTitle: "Delete Credentials"
-    },
-    enableDisable: {
-        dialogTitle: "Enable/Disable Users"
-    }
-}
-
-const workflowSM = {
-    init: 'closed',
-    transitions: [
-      { name: 'open',   from: 'closed',      to: 'configuring' },
-      { name: 'run',    from: 'configuring', to: 'running'     },
-      { name: 'review', from: ['closed', 'running'],        to: 'reviewing'},
-      { name: 'close',  from: ['configuring', 'reviewing'], to: 'cosed'    }
-    ],
-    data: {
-        action: null
-    }
-}
-
 const MonospaceTextArea = styled(TextArea)`
     textarea {
         font-family:monospace;
     }
 `
-
 export function ActionsBar(props) {
     const context = useContext(ExtensionContext) // provides the coreSDK object
     const asyncLookerCall = makeLookerCaller(context.coreSDK)
-    
-    const [currentAction, set_currentAction] = useState(null)
-    const [isRunning, set_isRunning] = useState(false)
-    const [isReview, set_isReview] = useState(false)
 
-    const [deleteCredsType, set_deleteCredsType] = useState("")
-    const [enableDisableType, set_enableDisableType] = useState("")
+    const [workflowMachine, sendWorkflowEvent] = useMachine(WORKFLOW_MACHINE)
+    console.log(workflowMachine)
+
     const [selectByAttributeText, set_selectByAttributeText] = useState("")
     const [selectByQueryText, set_selectByQueryText] = useState("")
     const [emailMapText, set_emailMapText] = useState("")
@@ -103,8 +59,29 @@ export function ActionsBar(props) {
     /*
      ******************* HELPERS *******************
      */
+    function currentAction() {
+        return workflowMachine.context.appAction
+    }
 
-    function isCurrentAction(name) { return (currentAction === name) }
+    function deleteCredsType() {
+        return workflowMachine.context.deleteCredsType || ""
+    }
+
+    function enableDisableType() {
+        return workflowMachine.context.enableDisableType || ""
+    }
+
+    function isDialogOpen(name) {
+        return (workflowMachine.matches('configuring') && workflowMachine.context.appAction === name)
+    }
+
+    function isReviewOpen() {
+        return ['running', 'reviewing'].some(workflowMachine.matches)
+    }
+
+    function isRunning() {
+        return workflowMachine.matches('running')
+    }
 
     function clearLog() {
         set_logMessages([])
@@ -120,29 +97,50 @@ export function ActionsBar(props) {
     }
 
     function reviewDialogTitle() {
-        if (currentAction) {
-            return `${actionInfo[currentAction].dialogTitle} - ${isRunning ? "In Progress" : "Complete"}`
-        }
-        return ""
+        if (!currentAction()) return ""
+        
+        return `${ACTION_INFO[currentAction()].dialogTitle} - ${workflowMachine.matches('running') ? 'In Progress' : 'Complete'}`
     }
 
     /*
-     ******************* DIALOG CALLBACKS *******************
+     ******************* DIALOG OPEN/CLOSE *******************
      */
     const handleClose = () => {  
-        if (isRunning) { return } // Can't close the review dialog while an action is running
-        set_isReview(false)
-        set_currentAction(null)
+        if (isRunning()) { return } // Can't close the review dialog while an action is running
+        sendWorkflowEvent('CLOSE')
     }
 
     const openSelectByAttribute = () => {
-        set_currentAction("selectByAttribute")
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'selectByAttribute'})
     }
 
     const openSelectByQuery = () => {
-        set_currentAction("selectByQuery")
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'selectByQuery'})
     }
 
+    const openEmailFill = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailFill'}) 
+    } 
+
+    const openEmailMap = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailMap'})
+    }
+    
+    const openDelete = (type) => { 
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteCreds', deleteCredsType: type})
+    }
+
+    const openEnableDisable = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'enableDisable', enableDisableType: type})
+    }
+
+    const openViewLog = () => {
+        sendWorkflowEvent('REVIEW')
+    }
+
+    /*
+     ******************* INPUT ONCHANGE HANDLERS *******************
+     */
     const onChangeSelectByAttributeText = (e) => {
         set_selectByAttributeText(e.currentTarget.value)
     }
@@ -155,28 +153,9 @@ export function ActionsBar(props) {
         set_emailMapText(e.currentTarget.value)
     }
 
-    const openEmailFill = () => { 
-        set_currentAction("emailFill")
-    } 
-
-    const openEmailMap = () => {
-        set_currentAction("emailMap")
-    }
-    
-    const openDelete = (type) => { 
-        set_currentAction("deleteCreds")
-        set_deleteCredsType(type)
-    }
-
-    const openEnableDisable = (type) => {
-        set_currentAction("enableDisable")
-        set_enableDisableType(type)
-    }
-
-    const openViewLog = () => {
-        set_isReview(true)
-    }
-
+    /*
+     ******************* ACTION RUNNERS *******************
+     */
     const runSelectByAttribute = () => {
         runInWorkflow(
             selectByAttribute
@@ -194,7 +173,7 @@ export function ActionsBar(props) {
             runOnSelectedUsers(
                 fillUserEmailCred, 
                 "fill email creds"
-        )
+            )
         )
     }
 
@@ -211,7 +190,7 @@ export function ActionsBar(props) {
         runInWorkflow(async () => 
             runOnSelectedUsers(
                 makeDeleteCredFunc(),
-                `delete ${deleteCredsType} creds`
+                `delete ${deleteCredsType()} creds`
             )
         )
     }
@@ -220,7 +199,7 @@ export function ActionsBar(props) {
         runInWorkflow(async () => 
             runOnSelectedUsers(
                 makeEnableDisableFunc(), 
-                enableDisableType.toLowerCase()
+                enableDisableType().toLowerCase()
             )
         )
     }
@@ -230,8 +209,7 @@ export function ActionsBar(props) {
     */
     const runInWorkflow = async (func) => {
         clearLog()
-        set_isRunning(true)
-        set_isReview(true)
+        sendWorkflowEvent('RUN')
 
         try {
             await func()
@@ -240,8 +218,8 @@ export function ActionsBar(props) {
             log(`ERROR: unhandled exception in function '${func.name}'. See console too.`)
             log(error)
         }
-
-        set_isRunning(false)
+        
+        sendWorkflowEvent('REVIEW')
     }
 
     const runOnSelectedUsers = async (funcToRun, description = "") => {
@@ -261,7 +239,7 @@ export function ActionsBar(props) {
         
         try {
             await Promise.all(promises) 
-            log(`Action complete - refreshing user table`)
+            log(`Action complete; refreshing user table`)
         } catch (error) {
             log('FATAL: unhandled exception while running action on selected users. The first promise rejection is:')
             log(error)
@@ -355,7 +333,7 @@ export function ActionsBar(props) {
         }
         try { 
             await asyncLookerCall('create_user_credentials_email', user.id, {email: user.email})
-            log(`User ${user.id} - created credentials_email ${user.email}`)
+            log(`User ${user.id}: created credentials_email ${user.email}`)
         } catch (error) {
             log(`ERROR: user ${user.id}: unable to create credentials_email. Message: '${error.message}'`)
         }
@@ -390,7 +368,7 @@ export function ActionsBar(props) {
     }
 
     const makeDeleteCredFunc = () => {
-        const credType = deleteCredsType.toLowerCase()
+        const credType = deleteCredsType().toLowerCase()
         const propName = `credentials_${credType}`
         const methName = `delete_user_${propName}`
         
@@ -411,7 +389,7 @@ export function ActionsBar(props) {
     }
 
     const makeEnableDisableFunc = () => {
-        const changeType = enableDisableType.toLowerCase()
+        const changeType = enableDisableType().toLowerCase()
         const new_is_disabled = (changeType === "disable")
 
         const enableDisableFunc = async (user) => {
@@ -441,8 +419,8 @@ export function ActionsBar(props) {
                     <ButtonOutline iconAfter="ArrowDown"  mr="xsmall">Select By</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="FindSelected" onClick={openSelectByAttribute}>{actionInfo.selectByAttribute.menuTitle}</MenuItem>
-                    <MenuItem icon="Table" onClick={openSelectByQuery}>{actionInfo.selectByQuery.menuTitle}</MenuItem>
+                    <MenuItem icon="FindSelected" onClick={openSelectByAttribute}>{ACTION_INFO.selectByAttribute.menuTitle}</MenuItem>
+                    <MenuItem icon="Table" onClick={openSelectByQuery}>{ACTION_INFO.selectByQuery.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -450,11 +428,11 @@ export function ActionsBar(props) {
             ******************* SELECT BY ATTRIBUTE Dialog *******************
             */}
             <Dialog
-              isOpen={isCurrentAction("selectByAttribute") && !isReview}
+              isOpen={isDialogOpen('selectByAttribute')}
               onClose={handleClose}
             >
               <ConfirmLayout
-                title={actionInfo.selectByAttribute.dialogTitle}
+                title={ACTION_INFO.selectByAttribute.dialogTitle}
                 message={
                     <>
                     <Paragraph mb="small">
@@ -473,11 +451,11 @@ export function ActionsBar(props) {
             ******************* SELECT BY QUERY Dialog *******************
             */}
             <Dialog
-              isOpen={isCurrentAction("selectByQuery") && !isReview}
+              isOpen={isDialogOpen('selectByQuery')}
               onClose={handleClose}
             >
               <ConfirmLayout
-                title={actionInfo.selectByQuery.dialogTitle}
+                title={ACTION_INFO.selectByQuery.dialogTitle}
                 message={
                     <>
                     <Paragraph mb="small">
@@ -506,8 +484,8 @@ export function ActionsBar(props) {
                     <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Manage Email</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Return" onClick={openEmailFill}>{actionInfo.emailFill.menuTitle}</MenuItem>
-                    <MenuItem icon="VisTable" onClick={openEmailMap}>{actionInfo.emailMap.menuTitle}</MenuItem>
+                    <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
+                    <MenuItem icon="VisTable" onClick={openEmailMap}>{ACTION_INFO.emailMap.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -515,11 +493,11 @@ export function ActionsBar(props) {
             ******************* EMAIL FILL Dialog *******************
             */}
             <Dialog
-              isOpen={isCurrentAction("emailFill") && !isReview}
+              isOpen={isDialogOpen("emailFill")}
               onClose={handleClose}
             >
               <ConfirmLayout
-                title={actionInfo.emailFill.dialogTitle}
+                title={ACTION_INFO.emailFill.dialogTitle}
                 message={
                     <>
                     This will create <Text fontWeight="bold">email</Text> creds for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users. 
@@ -544,11 +522,11 @@ export function ActionsBar(props) {
             ******************* EMAIL MAP Dialog *******************
             */}
             <Dialog
-              isOpen={isCurrentAction("emailMap") && !isReview}
+              isOpen={isDialogOpen("emailMap")}
               onClose={handleClose}
             >
               <ConfirmLayout
-                title={actionInfo.emailMap.dialogTitle}
+                title={ACTION_INFO.emailMap.dialogTitle}
                 message={
                     <>
                     <Paragraph mb="small">
@@ -598,14 +576,14 @@ export function ActionsBar(props) {
             ******************* DELETE CRED Dialog *******************
             */}
             <Dialog
-              isOpen={isCurrentAction("deleteCreds") && !isReview}
+              isOpen={isDialogOpen("deleteCreds")}
               onClose={handleClose}
             >
               <ConfirmLayout
-                title={`Delete ${deleteCredsType} Credentials`}
+                title={`Delete ${deleteCredsType()} Credentials`}
                 message={
                     <>
-                    This will delete <Text fontWeight="bold">{deleteCredsType}</Text> creds for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                    This will delete <Text fontWeight="bold">{deleteCredsType()}</Text> creds for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
                     <List type="bullet">
                         <ListItem>
                             If you delete the email creds and don't have SSO enabled, users won't be able to login.
@@ -647,15 +625,15 @@ export function ActionsBar(props) {
             ******************* ENABLE/DISABLE Dialog *******************
             */}
             <Dialog
-              isOpen={isCurrentAction("enableDisable") && !isReview}
+              isOpen={isDialogOpen("enableDisable")}
               onClose={handleClose}
             >
               <ConfirmLayout
-                title={`${enableDisableType} Users`}
+                title={`${enableDisableType()} Users`}
                 message={
                     <>
                     <Paragraph>
-                        This will <Text fontWeight="bold">{enableDisableType.toLowerCase()}</Text> <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                        This will <Text fontWeight="bold">{enableDisableType().toLowerCase()}</Text> <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
                     </Paragraph>
                     <Paragraph>
                         For details about what happens when you disable a user, see the documention for&nbsp;
@@ -681,9 +659,10 @@ export function ActionsBar(props) {
             ******************* REVIEW Dialog *******************
             */}
             <Dialog
-                isOpen={isReview}
+                isOpen={isReviewOpen()}
                 onClose={handleClose}
-                
+                width={`${logWidth()}em`}
+                maxWidth={`${logWidth()}em`}
             >
                 <ConfirmLayout
                     title={reviewDialogTitle()}
@@ -692,10 +671,10 @@ export function ActionsBar(props) {
                         <Paragraph mb="small" width="50rem">
                             Execution log:
                         </Paragraph>
-                        <MonospaceTextArea readOnly resize value={logMessages.join("\n")} />
+                        <MonospaceTextArea readOnly resize height="50vh" value={logMessages.join("\n")} />
                       </>
                     }
-                    primaryButton={(isRunning || props.isLoading) ? <Button disabled>In Progress</Button> : <Button onClick={handleClose}>Close</Button>}
+                    primaryButton={isRunning() ? <Button disabled>In Progress</Button> : <Button onClick={handleClose}>Close</Button>}
                 />
             </Dialog>
             </>
