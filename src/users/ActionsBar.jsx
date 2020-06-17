@@ -218,7 +218,7 @@ export function ActionsBar(props) {
             log(`ERROR: unhandled exception in function '${func.name}'. See console too.`)
             log(error)
         }
-        
+
         sendWorkflowEvent('REVIEW')
     }
 
