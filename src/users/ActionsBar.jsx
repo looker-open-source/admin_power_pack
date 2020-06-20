@@ -49,7 +49,6 @@ export function ActionsBar(props) {
     const asyncLookerCall = makeLookerCaller(context.coreSDK)
 
     const [workflowMachine, sendWorkflowEvent] = useMachine(WORKFLOW_MACHINE)
-    console.log(workflowMachine)
 
     const [selectByAttributeText, set_selectByAttributeText] = useState("")
     const [selectByQueryText, set_selectByQueryText] = useState("")
