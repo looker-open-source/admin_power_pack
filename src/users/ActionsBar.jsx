@@ -661,8 +661,8 @@ export function ActionsBar(props) {
             <Dialog
                 isOpen={isReviewOpen()}
                 onClose={handleClose}
-                width={`${logWidth()}em`}
-                maxWidth={`${logWidth()}em`}
+                width={`${logWidth() * 0.75}em`}
+                maxWidth={`${logWidth() * 0.75}em`}
             >
                 <ConfirmLayout
                     title={reviewDialogTitle()}
