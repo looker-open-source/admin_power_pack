@@ -109,11 +109,6 @@ export function InlineEditEmail(props) {
     /*
      ******************* Rendering *******************
      */
-    if (props.user.is_disabled) {
-        return (
-            value
-        )
-    }
     return (
         <Flex>
             <InlineInputText
