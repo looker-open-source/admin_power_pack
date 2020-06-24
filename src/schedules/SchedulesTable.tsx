@@ -603,7 +603,8 @@ const ReactTable = ({
           </Table>
         </Box>
 
-        <pre>
+        {/* JSON output of rows selected */}
+        {/* <pre>
           <code>
             {JSON.stringify(
               {
@@ -616,7 +617,7 @@ const ReactTable = ({
               2
             )}
           </code>
-        </pre>
+        </pre> */}
       </Styles>
     </>
   );
