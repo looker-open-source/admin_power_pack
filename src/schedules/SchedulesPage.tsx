@@ -94,6 +94,13 @@ export const CHECKBOX_FIELDS = [
   "run_as_recipient",
 ];
 
+const POPULATE_PARAMS = {
+  queryId: "",
+  ownerId: "",
+  scheduleName: "",
+  cron: "",
+};
+
 interface ExtensionState {
   currentDash?: IDashboard;
   selectedDashId?: number;
@@ -150,12 +157,7 @@ export class SchedulesPage extends React.Component<
       runningUpdate: false,
       hiddenColumns: [],
       checkboxStatus: undefined,
-      populateParams: {
-        queryId: undefined,
-        ownerId: undefined,
-        scheduleName: undefined,
-        cron: undefined,
-      },
+      populateParams: POPULATE_PARAMS,
     };
     this.handleDashChange = this.handleDashChange.bind(this);
     this.handleDashSubmit = this.handleDashSubmit.bind(this);
@@ -193,12 +195,7 @@ export class SchedulesPage extends React.Component<
 
   resetPopParams = () => {
     this.setState({
-      populateParams: {
-        queryId: undefined,
-        ownerId: undefined,
-        scheduleName: undefined,
-        cron: undefined,
-      },
+      populateParams: POPULATE_PARAMS,
     });
     return;
   };
@@ -229,7 +226,7 @@ export class SchedulesPage extends React.Component<
       const results: any = await this.context.core40SDK.ok(
         this.context.core40SDK.run_query({
           result_format: "json_detail",
-          query_id: params.queryId,
+          query_id: Number(params.queryId),
         })
       );
 
@@ -258,6 +255,8 @@ export class SchedulesPage extends React.Component<
         newRow.owner_id = params.ownerId;
         newRow.name = params.scheduleName;
         newRow.crontab = params.cron;
+        newRow.datagroup = " ";
+
         if (fieldMapper["Email"] !== undefined) {
           newRow.recipients = results.data[i][fieldMapper["Email"]].value;
         }
@@ -270,12 +269,7 @@ export class SchedulesPage extends React.Component<
         runningUpdate: false,
         errorMessage: undefined,
         notificationMessage: "Rows successfully populated.",
-        populateParams: {
-          queryId: undefined,
-          ownerId: undefined,
-          scheduleName: undefined,
-          cron: undefined,
-        },
+        populateParams: POPULATE_PARAMS,
       });
     } catch (error) {
       this.setState({

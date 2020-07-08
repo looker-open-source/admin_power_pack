@@ -31,6 +31,7 @@ import {
   FieldCheckbox,
   Flex,
   FlexItem,
+  Icon,
   InputText,
   Select,
   Space,
@@ -44,8 +45,8 @@ import {
 } from "@looker/components";
 import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
-import cronstrue from "cronstrue";
 import { Styles } from "./Styles";
+import { translateCron } from "./cronHelper";
 import {
   READ_ONLY_FIELDS,
   SELECT_FIELDS,
@@ -117,16 +118,6 @@ const IndeterminateCheckbox = React.forwardRef(
   }
 );
 
-const translateCron = (cron: string): string => {
-  // console.log(cron);
-  try {
-    const expression = cronstrue.toString(cron);
-    return expression;
-  } catch (error) {
-    return "Not a valid cron expression";
-  }
-};
-
 const EditableCell = (ec: EditableCellInterface) => {
   const {
     value: initialValue,
@@ -180,6 +171,30 @@ const EditableCell = (ec: EditableCellInterface) => {
         onBlur={onBlur}
         disabled={disabled}
       />
+    );
+  };
+
+  const CronInputText = (disabled: boolean): JSX.Element => {
+    const tooltip = translateCron(value);
+    let icon: JSX.Element;
+
+    if (tooltip === "Not a valid cron expression") {
+      icon = <Icon name="CircleCancel" color="palette.red500" />;
+    } else {
+      icon = <Icon name="CircleCheck" color="palette.green500" />;
+    }
+
+    return (
+      <Flex title={tooltip}>
+        <InputText
+          width={1}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          disabled={disabled}
+        />
+        {!disabled && value.length > 0 && <Box m="xsmall"> {icon} </Box>}
+      </Flex>
     );
   };
 
@@ -280,7 +295,7 @@ const EditableCell = (ec: EditableCellInterface) => {
     return DefaultTextArea();
   } else if (id === "crontab") {
     const isDatagroup = data[index].datagroup !== " ";
-    return DefaultInputText(isDatagroup);
+    return CronInputText(isDatagroup);
   } else {
     return DefaultInputText(false);
   }
@@ -580,16 +595,6 @@ const ReactTable = ({
                 return (
                   <TableRow {...row.getRowProps()}>
                     {row.cells.map((cell) => {
-                      if (cell.column.Header === "Crontab") {
-                        return (
-                          <TableDataCell
-                            title={translateCron(cell.value)}
-                            {...cell.getCellProps()}
-                          >
-                            {cell.render("Cell")}
-                          </TableDataCell>
-                        );
-                      }
                       return (
                         <TableDataCell {...cell.getCellProps()}>
                           {cell.render("Cell")}

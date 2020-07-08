@@ -38,12 +38,13 @@ import {
   SpaceVertical,
   Text,
 } from "@looker/components";
+import { validationTypeCron, translateCron } from "./cronHelper";
 
 export interface PopulateParams {
-  queryId?: number;
-  ownerId?: number;
-  scheduleName?: string;
-  cron?: string;
+  queryId: string; // displayed as number in FieldText
+  ownerId: string; // displayed as number in FieldText
+  scheduleName: string;
+  cron: string;
 }
 
 export interface PopulateRowProps {
@@ -84,7 +85,7 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                   label="Query ID"
                   type="number"
                   min="1"
-                  value={String(popParams.queryId)}
+                  value={popParams.queryId}
                   onChange={(e: any) => {
                     handlePopQueryId(e);
                   }}
@@ -93,7 +94,7 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                   label="Owner ID"
                   type="number"
                   min="1"
-                  value={String(popParams.ownerId)}
+                  value={popParams.ownerId}
                   onChange={(e: any) => {
                     handlePopOwnerId(e);
                   }}
@@ -112,6 +113,10 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                   value={popParams.cron}
                   onChange={(e: any) => {
                     handlePopCron(e);
+                  }}
+                  validationMessage={{
+                    type: validationTypeCron(popParams.cron),
+                    message: translateCron(popParams.cron),
                   }}
                 />
               </Fieldset>
