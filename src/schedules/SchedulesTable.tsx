@@ -31,10 +31,10 @@ import {
   FieldCheckbox,
   Flex,
   FlexItem,
-  Icon,
   InputText,
   Select,
   Space,
+  Status,
   Table,
   TableBody,
   TableDataCell,
@@ -176,12 +176,12 @@ const EditableCell = (ec: EditableCellInterface) => {
 
   const CronInputText = (disabled: boolean): JSX.Element => {
     const tooltip = translateCron(value);
-    let icon: JSX.Element;
+    let intent: "critical" | "positive";
 
     if (tooltip === "Not a valid cron expression") {
-      icon = <Icon name="CircleCancel" color="palette.red500" />;
+      intent = "critical";
     } else {
-      icon = <Icon name="CircleCheck" color="palette.green500" />;
+      intent = "positive";
     }
 
     return (
@@ -193,7 +193,11 @@ const EditableCell = (ec: EditableCellInterface) => {
           onBlur={onBlur}
           disabled={disabled}
         />
-        {!disabled && value.length > 0 && <Box m="xsmall"> {icon} </Box>}
+        {!disabled && value.length > 0 && (
+          <Box m="xsmall">
+            <Status intent={intent} />
+          </Box>
+        )}
       </Flex>
     );
   };

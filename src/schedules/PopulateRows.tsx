@@ -28,13 +28,13 @@ import {
   Button,
   ButtonOutline,
   ButtonTransparent,
-  DrawerManager,
+  DialogContent,
+  DialogContext,
+  DialogFooter,
+  DialogHeader,
+  DialogManager,
   Fieldset,
   FieldText,
-  ModalContent,
-  ModalContext,
-  ModalFooter,
-  ModalHeader,
   SpaceVertical,
   Text,
 } from "@looker/components";
@@ -72,14 +72,14 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
     handlePopSubmit,
   } = prp;
   return (
-    <DrawerManager
-      width="260px"
+    <DialogManager
+      maxWidth={["90vw", "60vw", "500px", "800px"]}
       content={
-        <>
-          <ModalHeader>Populate Rows</ModalHeader>
-          <ModalContent>
+        <DialogContent>
+          <DialogHeader>Populate Rows</DialogHeader>
+          <DialogContent>
             <SpaceVertical>
-              <Fieldset>
+              <Fieldset maxWidth="350px">
                 <FieldText
                   required={true}
                   label="Query ID"
@@ -122,10 +122,10 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
               </Fieldset>
               <Box
                 display="inline-block"
-                height="300px"
+                width="350px"
+                height="125px"
                 bg="palette.purple100"
                 p="small"
-                width="180px"
                 fontSize="small"
                 borderRadius="4px"
               >
@@ -139,10 +139,11 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                 <Text fontSize="small"> to populate Recipients.</Text>
               </Box>
             </SpaceVertical>
-          </ModalContent>
-          <ModalContext.Consumer>
+          </DialogContent>
+
+          <DialogContext.Consumer>
             {({ closeModal }) => (
-              <ModalFooter>
+              <DialogFooter>
                 <Button
                   disabled={!validPopParams()}
                   onClick={() => {
@@ -165,15 +166,13 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                 >
                   Cancel
                 </ButtonTransparent>
-              </ModalFooter>
+              </DialogFooter>
             )}
-          </ModalContext.Consumer>
-        </>
+          </DialogContext.Consumer>
+        </DialogContent>
       }
     >
-      {(onClick) => (
-        <ButtonOutline onClick={onClick}>Populate Rows</ButtonOutline>
-      )}
-    </DrawerManager>
+      <ButtonOutline>Populate Rows</ButtonOutline>
+    </DialogManager>
   );
 };

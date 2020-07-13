@@ -94,13 +94,6 @@ export const CHECKBOX_FIELDS = [
   "run_as_recipient",
 ];
 
-const POPULATE_PARAMS = {
-  queryId: "",
-  ownerId: "",
-  scheduleName: "",
-  cron: "",
-};
-
 interface ExtensionState {
   currentDash?: IDashboard;
   selectedDashId?: number;
@@ -157,7 +150,12 @@ export class SchedulesPage extends React.Component<
       runningUpdate: false,
       hiddenColumns: [],
       checkboxStatus: undefined,
-      populateParams: POPULATE_PARAMS,
+      populateParams: {
+        queryId: "",
+        ownerId: "",
+        scheduleName: "",
+        cron: "",
+      },
     };
     this.handleDashChange = this.handleDashChange.bind(this);
     this.handleDashSubmit = this.handleDashSubmit.bind(this);
@@ -195,14 +193,19 @@ export class SchedulesPage extends React.Component<
 
   resetPopParams = () => {
     this.setState({
-      populateParams: POPULATE_PARAMS,
+      populateParams: {
+        queryId: "",
+        ownerId: "",
+        scheduleName: "",
+        cron: "",
+      },
     });
     return;
   };
 
   // ensure all queryId is filled out
   validPopParams = (): boolean => {
-    return this.state.populateParams.queryId !== undefined;
+    return this.state.populateParams.queryId !== "";
   };
 
   // populate rows from Looker Query ID
@@ -213,7 +216,7 @@ export class SchedulesPage extends React.Component<
 
     const params = this.state.populateParams;
 
-    if (this.state.currentDash === undefined || params.queryId === undefined) {
+    if (this.state.currentDash === undefined || params.queryId === "") {
       this.setState({
         runningUpdate: false,
       });
@@ -264,12 +267,13 @@ export class SchedulesPage extends React.Component<
         newArray.push(newRow);
       }
 
+      this.resetPopParams();
+
       this.setState({
         schedulesArray: newArray,
         runningUpdate: false,
         errorMessage: undefined,
         notificationMessage: "Rows successfully populated.",
-        populateParams: POPULATE_PARAMS,
       });
     } catch (error) {
       this.setState({
@@ -287,7 +291,7 @@ export class SchedulesPage extends React.Component<
     this.setState({ selectedDashId: event.target.value });
   };
 
-  keyPressed = (event: any) => {
+  handleKeyPress = (event: any) => {
     if (event.key === "Enter") {
       this.handleDashSubmit();
     }
@@ -1186,17 +1190,18 @@ export class SchedulesPage extends React.Component<
         <Box m="large">
           <Flex height="50px" justifyContent="space-between">
             <FlexItem mb="medium">
-              <Label pt="xxsmall" color="palette.charcoal500" fontSize="large">
-                Enter A Dashboard ID:{" "}
-                <InputText
-                  width="80"
-                  height="25"
-                  type="number"
-                  min="1"
-                  onKeyPress={this.keyPressed}
-                  onChange={this.handleDashChange}
-                />
-              </Label>{" "}
+              <Text variant="secondary" mr="small">
+                Enter A Dashboard ID:
+              </Text>
+              <InputText
+                width="80"
+                height="28"
+                type="number"
+                min="1"
+                onKeyPress={this.handleKeyPress}
+                onChange={this.handleDashChange}
+                mr="small"
+              />
               <Button size="small" mr="small" onClick={this.handleDashSubmit}>
                 Go
               </Button>
