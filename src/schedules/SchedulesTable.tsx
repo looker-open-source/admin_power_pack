@@ -39,6 +39,7 @@ import {
   PopoverContent,
   Select,
   Space,
+  SpaceVertical,
   Status,
   Table,
   TableBody,
@@ -81,6 +82,7 @@ export interface QueryProps {
   disableRow(rowIndex: number[], rows: any[]): void;
   enableRow(rowIndex: number[], rows: any[]): void;
   openExploreWindow(scheduledPlanID: number): void;
+  openDashboardWindow(rowIndex: number): void;
 }
 
 export interface EditableCellInterface {
@@ -90,6 +92,7 @@ export interface EditableCellInterface {
   data: any;
   datagroups: ComboboxOptionObject[];
   openExploreWindow(scheduledPlanID: number): void;
+  openDashboardWindow(rowIndex: number): void;
   syncData(rowIndex: number, columnId: string, value: string): any;
 }
 
@@ -135,6 +138,7 @@ const EditableCell = (ec: EditableCellInterface) => {
     data,
     datagroups,
     openExploreWindow,
+    openDashboardWindow,
     syncData,
   } = ec;
 
@@ -232,14 +236,14 @@ const EditableCell = (ec: EditableCellInterface) => {
         <Popover
           content={
             <PopoverContent p="large">
-              <Heading>Details</Heading>
+              <Heading as="h3">Details</Heading>
               <Paragraph fontSize="small">
                 Created at: {value.created_at}
               </Paragraph>
               <Paragraph fontSize="small">
                 Last updated at: {value.updated_at}
               </Paragraph>
-              <Heading>Cron History</Heading>
+              <Heading as="h3">Cron History</Heading>
               <Paragraph fontSize="small">
                 Next Run at: {value.next_run_at}
               </Paragraph>
@@ -247,15 +251,29 @@ const EditableCell = (ec: EditableCellInterface) => {
                 Last Run at: {value.last_run_at}
               </Paragraph>
 
-              <Button
-                // color={}
-                onClick={() => {
-                  openExploreWindow(value.id);
-                }}
-                title="Scheduled Plan History in System Activity"
-              >
-                Explore Schedule History
-              </Button>
+              <Flex width="100%" height="10px"></Flex>
+
+              <SpaceVertical gap="xsmall">
+                <Button
+                  // color={}
+                  onClick={() => {
+                    openExploreWindow(value.id);
+                  }}
+                  title="Scheduled Plan History in System Activity"
+                >
+                  Explore Schedule History
+                </Button>
+
+                <Button
+                  // color={}
+                  onClick={() => {
+                    openDashboardWindow(index);
+                  }}
+                  title="View Dashboard with Filters Applied"
+                >
+                  Dashboard With Filters
+                </Button>
+              </SpaceVertical>
             </PopoverContent>
           }
         >
@@ -353,6 +371,7 @@ const ReactTable = ({
   disableRow,
   enableRow,
   openExploreWindow,
+  openDashboardWindow,
 }: any): JSX.Element => {
   const {
     getTableProps,
@@ -375,6 +394,7 @@ const ReactTable = ({
       syncData,
       defaultColumn,
       openExploreWindow,
+      openDashboardWindow,
     },
     useRowSelect,
     (hooks) => {
@@ -486,7 +506,7 @@ const ReactTable = ({
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
-              iconBefore="Close"
+              iconBefore="Block"
               title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
@@ -503,7 +523,7 @@ const ReactTable = ({
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
-              iconBefore="FolderOpen"
+              iconBefore="CheckProgress"
               title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
@@ -704,6 +724,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
     disableRow,
     enableRow,
     openExploreWindow,
+    openDashboardWindow,
   } = qp;
 
   return (
@@ -724,6 +745,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
           disableRow={disableRow}
           enableRow={enableRow}
           openExploreWindow={openExploreWindow}
+          openDashboardWindow={openDashboardWindow}
         />
       )}
     </Box>

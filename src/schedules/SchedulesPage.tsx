@@ -30,6 +30,7 @@ import {
   Flex,
   FlexItem,
   Heading,
+  IconButton,
   InputText,
   MessageBar,
   Text,
@@ -503,7 +504,29 @@ export class SchedulesPage extends React.Component<
 
   //////////////// HELPER FUNCTIONS /////////////////
 
-  // link to System Activity Explore
+  // tooltip for dashboard title
+  formatDashboardTitleSpace = (): string => {
+    if (this.state.currentDash && this.state.currentDash.folder) {
+      return (
+        "[" +
+        this.state.currentDash.folder.name +
+        "] " +
+        this.state.currentDash.title
+      );
+    }
+    return "";
+  };
+
+  // open window to dashboard with filters
+  openDashboardWindow = (rowIndex: number): void => {
+    const filtersString = this.stringifyFilters(
+      this.state.schedulesArray[rowIndex]
+    );
+    const url = `/dashboards/${this.state.selectedDashId}${filtersString}`;
+    this.context.extensionSDK.openBrowserWindow(url, "_blank");
+  };
+
+  // open window to System Activity Explore for history of schedule plan
   openExploreWindow = (scheduledPlanID: number): void => {
     const url = `/explore/system__activity/scheduled_plan?fields=scheduled_job.finalized_time,scheduled_job.name,dashboard.title,user.name,scheduled_job.status,scheduled_job.status_detail,scheduled_plan.destination_addresses,scheduled_plan_destination.type,scheduled_plan_destination.format,scheduled_job_stage.runtime&f[scheduled_plan.id]=${scheduledPlanID}&sorts=scheduled_job.finalized_time+desc&limit=500`;
     this.context.extensionSDK.openBrowserWindow(url, "_blank");
@@ -1298,31 +1321,30 @@ export class SchedulesPage extends React.Component<
             </FlexItem>
           </Flex>
 
-          <Box style={{ float: "left" }}>
-            <Heading
-              as="h2"
-              fontWeight="semiBold"
-              style={{ cursor: "pointer", display: "inline" }}
-              title={
-                this.state.currentDash && this.state.currentDash.folder
-                  ? "[" +
-                    this.state.currentDash.folder.name +
-                    "] " +
-                    this.state.currentDash.title
-                  : ""
-              }
-              onClick={() => {
-                this.context.extensionSDK.openBrowserWindow(
-                  "/dashboards/" + this.state.selectedDashId,
-                  "_blank"
-                );
-              }}
-            >
-              {this.state.currentDash && this.state.currentDash.folder
-                ? " " + this.state.currentDash.title
-                : ""}
-            </Heading>
-          </Box>
+          <Flex>
+            {this.state.currentDash && (
+              <>
+                <Heading
+                  as="h2"
+                  fontWeight="semiBold"
+                  title={this.formatDashboardTitleSpace()}
+                >
+                  {this.state.currentDash.title}
+                </Heading>
+                <IconButton
+                  label="Go to Dashboard"
+                  icon="External"
+                  size="small"
+                  onClick={() => {
+                    this.context.extensionSDK.openBrowserWindow(
+                      "/dashboards/" + this.state.selectedDashId,
+                      "_blank"
+                    );
+                  }}
+                />
+              </>
+            )}
+          </Flex>
 
           <Flex width="100%">
             <SchedulesTable
@@ -1339,6 +1361,7 @@ export class SchedulesPage extends React.Component<
               disableRow={this.disableRow}
               enableRow={this.enableRow}
               openExploreWindow={this.openExploreWindow}
+              openDashboardWindow={this.openDashboardWindow}
             />
           </Flex>
         </Box>
