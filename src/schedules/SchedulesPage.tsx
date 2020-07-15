@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-import { SchedulesTable } from "./SchedulesTable";
-import { PopulateParams, PopulateRows } from "./PopulateRows";
 import {
   Box,
   Button,
@@ -48,50 +46,59 @@ import React from "react";
 import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
 import { IWriteScheduledPlan } from "@looker/sdk/dist/sdk/4.0/models";
+import {
+  ADVANCED_FIELDS,
+  FORMATTING_FIELDS,
+  KEY_FIELDS,
+  REQUIRED_FIELDS,
+  REQUIRED_TRIGGER_FIELDS,
+} from "./constants";
+import { SchedulesTable } from "./SchedulesTable";
+import { PopulateParams, PopulateRows } from "./PopulateRows";
 
-export const READ_ONLY_FIELDS = ["details", "enabled", "owner"];
-export const REQUIRED_FIELDS = ["owner_id", "name", "recipients"];
-export const REQUIRED_TRIGGER_FIELDS = ["crontab", "datagroup"];
-export const ADVANCED_FIELDS = [
-  "message",
-  "run_as_recipient",
-  "include_links",
-  "timezone",
-  "format",
-];
-export const FORMATTING_FIELDS = [
-  "apply_formatting",
-  "apply_vis",
-  "long_tables",
-  "pdf_landscape",
-  "pdf_paper_size",
-];
-export const KEY_FIELDS = [
-  ...READ_ONLY_FIELDS,
-  ...REQUIRED_FIELDS,
-  ...REQUIRED_TRIGGER_FIELDS,
-  ...ADVANCED_FIELDS,
-  ...FORMATTING_FIELDS,
-];
+// export const READ_ONLY_FIELDS = ["details", "enabled", "owner"];
+// export const REQUIRED_FIELDS = ["owner_id", "name", "recipients"];
+// export const REQUIRED_TRIGGER_FIELDS = ["crontab", "datagroup"];
+// export const ADVANCED_FIELDS = [
+//   "message",
+//   "run_as_recipient",
+//   "include_links",
+//   "timezone",
+//   "format",
+// ];
+// export const FORMATTING_FIELDS = [
+//   "apply_formatting",
+//   "apply_vis",
+//   "long_tables",
+//   "pdf_landscape",
+//   "pdf_paper_size",
+// ];
+// export const KEY_FIELDS = [
+//   ...READ_ONLY_FIELDS,
+//   ...REQUIRED_FIELDS,
+//   ...REQUIRED_TRIGGER_FIELDS,
+//   ...ADVANCED_FIELDS,
+//   ...FORMATTING_FIELDS,
+// ];
 
-export const SELECT_FIELDS = [
-  "datagroup",
-  "format",
-  "pdf_paper_size",
-  "timezone",
-];
+// export const SELECT_FIELDS = [
+//   "datagroup",
+//   "format",
+//   "pdf_paper_size",
+//   "timezone",
+// ];
 
-export const TEXTAREA_FIELDS = ["message", "recipients"];
+// export const TEXTAREA_FIELDS = ["message", "recipients"];
 
-export const CHECKBOX_FIELDS = [
-  "apply_formatting",
-  "apply_vis",
-  "enabled", // read only
-  "include_links",
-  "long_tables",
-  "pdf_landscape",
-  "run_as_recipient",
-];
+// export const CHECKBOX_FIELDS = [
+//   "apply_formatting",
+//   "apply_vis",
+//   "enabled", // read only
+//   "include_links",
+//   "long_tables",
+//   "pdf_landscape",
+//   "run_as_recipient",
+// ];
 
 interface ExtensionState {
   currentDash?: IDashboard;

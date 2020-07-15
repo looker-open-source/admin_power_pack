@@ -53,6 +53,7 @@ import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
 import { Styles } from "./Styles";
 import { translateCron } from "./cronHelper";
+import { IScheduledPlanTable } from "./SchedulesPage";
 import {
   READ_ONLY_FIELDS,
   SELECT_FIELDS,
@@ -60,9 +61,11 @@ import {
   FORMATTING_FIELDS,
   TEXTAREA_FIELDS,
   KEY_FIELDS,
-  IScheduledPlanTable,
-} from "./SchedulesPage";
-import { TIMEZONES, FORMAT, PDF_PAPER_SIZE } from "./selectOptions";
+  TABLE_HEADING,
+  TIMEZONES,
+  FORMAT,
+  PDF_PAPER_SIZE,
+} from "./constants";
 
 export interface QueryProps {
   results: IScheduledPlanTable;
@@ -665,89 +668,14 @@ const headings = (results?: any): Array<Object> => {
     return [];
   }
 
-  const formattedHeadings: Object[] = Object.keys(results[0])
+  const filterHeadings: Object[] = Object.keys(results[0])
     .filter((item) => !KEY_FIELDS.includes(item)) // remove all key fields and put them in order below
     .map((key) => ({
       Header: key.charAt(0).toUpperCase() + key.slice(1), // format filter columns
       accessor: key,
     }));
 
-  formattedHeadings.splice(
-    0,
-    0,
-    {
-      Header: "Details",
-      accessor: "details",
-    },
-    {
-      Header: "Enabled",
-      accessor: "enabled",
-    },
-    {
-      Header: "Owner",
-      accessor: "owner",
-    },
-    {
-      Header: "Owner ID",
-      accessor: "owner_id",
-    },
-    {
-      Header: "Name",
-      accessor: "name",
-    },
-    {
-      Header: "Crontab",
-      accessor: "crontab",
-    },
-    {
-      Header: "Datagroup",
-      accessor: "datagroup",
-    },
-    {
-      Header: "Recipients",
-      accessor: "recipients",
-    },
-    {
-      Header: "Message",
-      accessor: "message",
-    },
-    {
-      Header: "Run As Recipient",
-      accessor: "run_as_recipient",
-    },
-    {
-      Header: "Include Links",
-      accessor: "include_links",
-    },
-    {
-      Header: "Timezone",
-      accessor: "timezone",
-    },
-    {
-      Header: "Format",
-      accessor: "format",
-    },
-    {
-      Header: "Apply Vis",
-      accessor: "apply_vis",
-    },
-    {
-      Header: "Apply Formatting",
-      accessor: "apply_formatting",
-    },
-    {
-      Header: "Expand Tables",
-      accessor: "long_tables",
-    },
-    {
-      Header: "Paper Size",
-      accessor: "pdf_paper_size",
-    },
-    {
-      Header: "Landscape",
-      accessor: "pdf_landscape",
-    }
-  );
+  const formattedHeadings = [...TABLE_HEADING, ...filterHeadings];
 
   const groupedHeadings = [
     { Header: "Read-Only", columns: formattedHeadings.slice(0, 3) },
