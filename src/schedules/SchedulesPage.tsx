@@ -47,6 +47,7 @@ import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
 import { IWriteScheduledPlan } from "@looker/sdk/dist/sdk/4.0/models";
 import {
+  DEBUG,
   ADVANCED_FIELDS,
   FORMATTING_FIELDS,
   KEY_FIELDS,
@@ -55,50 +56,6 @@ import {
 } from "./constants";
 import { SchedulesTable } from "./SchedulesTable";
 import { PopulateParams, PopulateRows } from "./PopulateRows";
-
-// export const READ_ONLY_FIELDS = ["details", "enabled", "owner"];
-// export const REQUIRED_FIELDS = ["owner_id", "name", "recipients"];
-// export const REQUIRED_TRIGGER_FIELDS = ["crontab", "datagroup"];
-// export const ADVANCED_FIELDS = [
-//   "message",
-//   "run_as_recipient",
-//   "include_links",
-//   "timezone",
-//   "format",
-// ];
-// export const FORMATTING_FIELDS = [
-//   "apply_formatting",
-//   "apply_vis",
-//   "long_tables",
-//   "pdf_landscape",
-//   "pdf_paper_size",
-// ];
-// export const KEY_FIELDS = [
-//   ...READ_ONLY_FIELDS,
-//   ...REQUIRED_FIELDS,
-//   ...REQUIRED_TRIGGER_FIELDS,
-//   ...ADVANCED_FIELDS,
-//   ...FORMATTING_FIELDS,
-// ];
-
-// export const SELECT_FIELDS = [
-//   "datagroup",
-//   "format",
-//   "pdf_paper_size",
-//   "timezone",
-// ];
-
-// export const TEXTAREA_FIELDS = ["message", "recipients"];
-
-// export const CHECKBOX_FIELDS = [
-//   "apply_formatting",
-//   "apply_vis",
-//   "enabled", // read only
-//   "include_links",
-//   "long_tables",
-//   "pdf_landscape",
-//   "run_as_recipient",
-// ];
 
 interface ExtensionState {
   currentDash?: IDashboard;
@@ -230,7 +187,10 @@ export class SchedulesPage extends React.Component<
     }
 
     try {
-      console.log(params);
+      if (DEBUG) {
+        console.log("Params supplied from Populate Rows form:");
+        console.log(params);
+      }
 
       const results: any = await this.context.core40SDK.ok(
         this.context.core40SDK.run_query({
@@ -247,7 +207,11 @@ export class SchedulesPage extends React.Component<
       results.fields.measures.forEach((m: any) => {
         fieldMapper[m.label_short] = m.name;
       });
-      console.table(fieldMapper);
+
+      if (DEBUG) {
+        console.log(`Field Mapper based on query: ${params.queryId}`);
+        console.table(fieldMapper);
+      }
 
       const newArray = cloneDeep(this.state.schedulesArray);
 
@@ -291,7 +255,10 @@ export class SchedulesPage extends React.Component<
 
     return;
   };
-  ///////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////
+
+  ///////////////// DASHBOARD SEARCH AND PREP FOR TABLE ////////////////
 
   handleDashChange = (event: any) => {
     this.setState({ selectedDashId: event.target.value });
@@ -307,106 +274,70 @@ export class SchedulesPage extends React.Component<
     if (!this.state.selectedDashId) {
       return;
     }
-    console.log(
-      "getting schedules for Dashboard: " + this.state.selectedDashId
-    );
+
     this.getDash(this.state.selectedDashId);
   };
 
-  componentDidMount = () => {
-    const { initializeError } = this.context;
-    if (initializeError) {
-      return;
-    }
-  };
-
-  componentDidUpdate = () => {
-    const { initializeError } = this.context;
-    if (initializeError) {
-      return;
-    }
-  };
-
-  //////////////// HELPER FUNCTIONS ////////////////
-
-  // link to System Activity Explore
-  openExploreWindow = (scheduledPlanID: number): void => {
-    const url = `/explore/system__activity/scheduled_plan?fields=scheduled_job.finalized_time,scheduled_job.name,dashboard.title,user.name,scheduled_job.status,scheduled_job.status_detail,scheduled_plan.destination_addresses,scheduled_plan_destination.type,scheduled_plan_destination.format,scheduled_job_stage.runtime&f[scheduled_plan.id]=${scheduledPlanID}&sorts=scheduled_job.finalized_time+desc&limit=500`;
-    this.context.extensionSDK.openBrowserWindow(url, "_blank");
-  };
-
-  // parse string for commas and create array of destiations
-  writeScheduledPlanDestinations = (schedule: IScheduledPlanTable): any => {
-    const scheduledPlanDestinations: any = [];
-    schedule.recipients.split(",").forEach((email) => {
-      scheduledPlanDestinations.push({
-        type: "email",
-        format: schedule.format,
-        address: email,
-        apply_formatting: false,
-        apply_vis: false,
-        ...(schedule.message !== "" && { message: schedule.message }),
-        ...(schedule.format === "csv_zip" && {
-          apply_formatting: schedule.apply_formatting,
-          apply_vis: schedule.apply_vis,
-        }),
-      });
+  getDash = async (dash_id: number) => {
+    this.setState({
+      selectedDashId: dash_id,
+      currentDash: undefined,
+      runningQuery: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+      datagroups: [],
+      schedulesArray: [],
+      schedulesArrayBackup: [],
     });
-    return scheduledPlanDestinations;
-  };
 
-  // convert from scheduledPlan object to html encoded string_filter
-  stringifyFilters = (newSchedule: IScheduledPlanTable): string => {
-    let filtersString = "?";
-    for (let [key, value] of Object.entries(newSchedule)) {
-      if (KEY_FIELDS.includes(key)) {
-        continue;
-      }
-
-      // ensure to keep empty filters to preserve table (defaults to "is any value/time")
-
-      filtersString = filtersString.concat(
-        encodeURIComponent(key),
-        "=",
-        encodeURIComponent(value),
-        "&"
+    try {
+      const dash = await this.context.core40SDK.ok(
+        this.context.core40SDK.dashboard(dash_id.toString())
       );
-    }
-    return filtersString.slice(0, -1);
-  };
+      const schedulesArray = await this.getScheduledPlans(dash_id, dash);
+      const datagroups = await this.getDatagroups();
 
-  // check all required fields are populated. returns true if validated
-  validateRow = (row: IScheduledPlanTable): boolean => {
-    for (let [key, value] of Object.entries(row)) {
-      if (REQUIRED_FIELDS.includes(key) && value === "") {
-        return false;
+      if (DEBUG) {
+        console.log(`Dashboard for: ${dash_id}`);
+        console.log(dash);
       }
-    }
 
-    // 1 trigger field must be filled out, empty datagroups will be: " "
-    const triggers = [
-      row[REQUIRED_TRIGGER_FIELDS[0]],
-      row[REQUIRED_TRIGGER_FIELDS[1]],
-    ];
-    if (
-      triggers.reduce(
-        (acc: number, field: string) => acc + (field.length > 1 ? 1 : 0),
-        0
-      ) !== 1
-    ) {
-      return false;
-    }
+      if (dash.deleted == true) {
+        this.setState({
+          errorMessage: "Dashboard is deleted.",
+          runningQuery: false,
+        });
+        return;
+      }
 
-    return true;
+      this.setState({
+        currentDash: dash,
+        datagroups: datagroups,
+        schedulesArray: schedulesArray,
+        schedulesArrayBackup: schedulesArray,
+        runningQuery: false,
+        hiddenColumns: [...ADVANCED_FIELDS, ...FORMATTING_FIELDS],
+        checkboxStatus: {
+          "Show All": "mixed",
+          "Read-Only": true,
+          Required: true,
+          Advanced: false,
+          Formatting: false,
+          Filters: true,
+        },
+      });
+    } catch (error) {
+      this.setState({
+        errorMessage: "Unable to load Dashboard.",
+        runningQuery: false,
+      });
+    }
   };
 
-  // loads empty first row in table. Gets called if Dashboard has no schedules, or,
-  // if all rows have been deleted from table
-  prepareEmptyTable = async (dash_id: number) => {
-    const dash = await this.context.core40SDK.ok(
-      this.context.core40SDK.dashboard(dash_id.toString())
-    );
-    const jsonDash: any = cloneDeep(dash);
+  // loads empty first row in table
+  // gets called if Dashboard has no schedules, or, if all rows have been deleted from table
+  prepareEmptyTable = async (currentDash: IDashboard) => {
+    const jsonDash: any = cloneDeep(currentDash);
 
     const filtersArray = jsonDash.dashboard_filters.map((f: any) => f.name);
     const headerArray = [...KEY_FIELDS, ...filtersArray];
@@ -487,7 +418,7 @@ export class SchedulesPage extends React.Component<
   };
 
   // get all scheduled plans for dashboard and prepare for table
-  getScheduledPlans = async (dash_id: number) => {
+  getScheduledPlans = async (dash_id: number, dash: IDashboard) => {
     const schedules = await this.context.core40SDK.ok(
       this.context.core40SDK.scheduled_plans_for_dashboard({
         dashboard_id: dash_id,
@@ -507,10 +438,13 @@ export class SchedulesPage extends React.Component<
       (s) => s.scheduled_plan_destination[0].type === "email"
     );
 
-    const scheduleHeader = await this.prepareEmptyTable(dash_id);
+    const scheduleHeader = await this.prepareEmptyTable(dash);
 
     if (emailSchedulesArray.length === 0) {
-      console.log("no schedules found. preparing empty table");
+      if (DEBUG) {
+        console.log("No schedules found. Preparing empty table:");
+        console.log(scheduleHeader[0]);
+      }
       return scheduleHeader;
     } else {
       emailSchedulesArray.forEach((s: IScheduledPlanTable) => {
@@ -526,15 +460,19 @@ export class SchedulesPage extends React.Component<
         scheduleHeader.push(formattedRow);
       });
 
-      // console.table(schedules);
-      // console.table(scheduleHeader.slice(1));
+      if (DEBUG) {
+        console.log("Schedules returned from Looker:");
+        console.table(schedules);
+        console.log("Schedules prepared for table:");
+        console.table(scheduleHeader.slice(1));
+      }
 
       return scheduleHeader.slice(1);
     }
   };
 
   // get all datagroups defined on instance to use as schedule option
-  // preparing select https://components.looker.com/components/forms/select/
+  // todo filter deleted datagroups - not currently possible
   getDatagroups = async () => {
     const datagroups = await this.context.core40SDK.ok(
       this.context.core40SDK.all_datagroups()
@@ -548,9 +486,105 @@ export class SchedulesPage extends React.Component<
         .map((d) => {
           return { value: d, label: d };
         });
-      datagroupNames.unshift({ value: " ", label: "" }); // html select tag does not reset to ""
+
+      // first element is " " as html select tag does not reset to ""
+      datagroupNames.unshift({ value: " ", label: "" });
+
+      if (DEBUG) {
+        console.log("Datagroups found:");
+        console.log(datagroupNames);
+      }
+
       return datagroupNames;
     }
+  };
+
+  ///////////////////////////////////////////////////
+
+  //////////////// HELPER FUNCTIONS /////////////////
+
+  // link to System Activity Explore
+  openExploreWindow = (scheduledPlanID: number): void => {
+    const url = `/explore/system__activity/scheduled_plan?fields=scheduled_job.finalized_time,scheduled_job.name,dashboard.title,user.name,scheduled_job.status,scheduled_job.status_detail,scheduled_plan.destination_addresses,scheduled_plan_destination.type,scheduled_plan_destination.format,scheduled_job_stage.runtime&f[scheduled_plan.id]=${scheduledPlanID}&sorts=scheduled_job.finalized_time+desc&limit=500`;
+    this.context.extensionSDK.openBrowserWindow(url, "_blank");
+  };
+
+  // parse string for commas and create array of destiations
+  writeScheduledPlanDestinations = (schedule: IScheduledPlanTable): any => {
+    const scheduledPlanDestinations: any = [];
+    schedule.recipients.split(",").forEach((email) => {
+      scheduledPlanDestinations.push({
+        type: "email",
+        format: schedule.format,
+        address: email,
+        apply_formatting: false,
+        apply_vis: false,
+        ...(schedule.message !== "" && { message: schedule.message }),
+        ...(schedule.format === "csv_zip" && {
+          apply_formatting: schedule.apply_formatting,
+          apply_vis: schedule.apply_vis,
+        }),
+      });
+    });
+    return scheduledPlanDestinations;
+  };
+
+  // convert from scheduledPlan object to html encoded string_filter
+  // keeps empty filters to preserve table (defaults to "is any value/time")
+  stringifyFilters = (newSchedule: IScheduledPlanTable): string => {
+    let filtersString = "?";
+    for (let [key, value] of Object.entries(newSchedule)) {
+      if (KEY_FIELDS.includes(key)) {
+        continue;
+      }
+
+      filtersString = filtersString.concat(
+        encodeURIComponent(key),
+        "=",
+        encodeURIComponent(value),
+        "&"
+      );
+    }
+    return filtersString.slice(0, -1);
+  };
+
+  // check all required fields are populated. returns true if validated
+  validateRow = (row: IScheduledPlanTable): boolean => {
+    for (let [key, value] of Object.entries(row)) {
+      if (REQUIRED_FIELDS.includes(key) && value === "") {
+        return false;
+      }
+    }
+
+    // 1 trigger field must be filled out, empty datagroups will be: " "
+    const triggers = [
+      row[REQUIRED_TRIGGER_FIELDS[0]],
+      row[REQUIRED_TRIGGER_FIELDS[1]],
+    ];
+    if (
+      triggers.reduce(
+        (acc: number, field: string) => acc + (field.length > 1 ? 1 : 0),
+        0
+      ) !== 1
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // sets default values for rows
+  setDefaultRowParams = (row: any) => {
+    row.datagroup = " ";
+    row.format = "wysiwyg_pdf";
+    row.timezone = "UTC";
+    row.run_as_recipient = false;
+    row.apply_vis = false;
+    row.apply_formatting = false;
+    row.long_tables = false;
+    row.pdf_landscape = false;
+
+    return row;
   };
 
   // create ScheduledPlan object
@@ -590,15 +624,16 @@ export class SchedulesPage extends React.Component<
         }),
     };
 
-    // console.log(JSON.stringify(writeScheduledPlan, null, 2));
+    if (DEBUG) {
+      console.log("ScheduledPlan object created:");
+      console.log(JSON.stringify(writeScheduledPlan, null, 2));
+    }
 
     return writeScheduledPlan;
   };
 
-  // create schedule plan
+  // create new schedule plan
   createSchedule = async (newSchedule: IScheduledPlanTable) => {
-    console.log("creating new schedule");
-
     const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
       newSchedule
     );
@@ -614,18 +649,23 @@ export class SchedulesPage extends React.Component<
       this.context.core40SDK.create_scheduled_plan(writeScheduledPlan)
     );
 
-    // console.log(response); // todo return when 422
+    if (DEBUG) {
+      console.log("Create new schedule response:");
+      console.log(JSON.stringify(response, null, 2)); // todo return when 422
+    }
+
     return response;
   };
 
   // update schedule with new data in table
   updateSchedule = async (currentSchedule: any, storedSchedule: any) => {
     if (isEqual(currentSchedule, storedSchedule)) {
-      console.log("No update to schedule id: " + currentSchedule.details.id);
+      if (DEBUG) {
+        console.log(`No update for schedule id: ${currentSchedule.details.id}`);
+      }
+
       return;
     }
-
-    console.log("Updating schedule id: " + currentSchedule.details.id);
 
     const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
       currentSchedule
@@ -644,79 +684,28 @@ export class SchedulesPage extends React.Component<
         updateScheduledPlan
       )
     );
-    // console.log(response); // todo return when 422
+
+    if (DEBUG) {
+      console.log(
+        `Update schedule response for: ${currentSchedule.details.id}`
+      );
+      console.log(JSON.stringify(response, null, 2)); // todo return when 422
+    }
 
     return response;
   };
 
-  ///////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
 
-  getDash = async (dash_id: number) => {
-    this.setState({
-      selectedDashId: dash_id,
-      runningQuery: true,
-      errorMessage: undefined,
-      notificationMessage: undefined,
-    });
+  ////////////////// FUNCTIONS FOR SCHEDULESTABLE /////////////////
 
-    try {
-      const dash = await this.context.core40SDK.ok(
-        this.context.core40SDK.dashboard(dash_id.toString())
-      );
-      // console.table(dash)
-
-      if (dash.deleted == true) {
-        this.setState({
-          selectedDashId: undefined,
-          currentDash: undefined,
-          datagroups: [],
-          errorMessage: "Dashboard is deleted.",
-          notificationMessage: undefined,
-          schedulesArray: [],
-          schedulesArrayBackup: [],
-          runningQuery: false,
-        });
-        return;
-      }
-
-      const schedulesArray = await this.getScheduledPlans(dash_id);
-      const datagroups = await this.getDatagroups();
-
-      this.setState({
-        selectedDashId: dash_id,
-        currentDash: dash,
-        datagroups: datagroups,
-        schedulesArray: schedulesArray,
-        schedulesArrayBackup: schedulesArray,
-        runningQuery: false,
-        hiddenColumns: [...ADVANCED_FIELDS, ...FORMATTING_FIELDS],
-        checkboxStatus: {
-          "Show All": "mixed",
-          "Read-Only": true,
-          Required: true,
-          Advanced: false,
-          Formatting: false,
-          Filters: true,
-        },
-      });
-    } catch (error) {
-      this.setState({
-        selectedDashId: undefined,
-        currentDash: undefined,
-        datagroups: [],
-        schedulesArray: [],
-        schedulesArrayBackup: [],
-        runningQuery: false,
-        errorMessage: "Unable to load Dashboard.",
-        notificationMessage: undefined,
-      });
-    }
-  };
-
-  // updating checkbox status
+  // updating checkbox status for showing/hiding grouped headings
   handleVisible = (hiddenColumns: string[], checkboxStatus: any) => {
-    // console.log(hiddenColumns);
-    // console.log(checkboxStatus);
+    if (DEBUG) {
+      console.log(`Hidden Columns: ${hiddenColumns}`);
+      console.log("Checkbox Status:");
+      console.log(checkboxStatus);
+    }
 
     this.setState({
       hiddenColumns: hiddenColumns,
@@ -726,7 +715,11 @@ export class SchedulesPage extends React.Component<
 
   // When our cell renderer calls syncData, we'll use the rowIndex, columnId and new value to update the original data
   syncData = (rowIndex: number, columnId: string, value: string) => {
-    // console.log(rowIndex, columnId, value);
+    if (DEBUG) {
+      console.log(
+        `Updating row '${rowIndex + 1}' column '${columnId}' with: ${value}`
+      );
+    }
 
     const editedData = this.state.schedulesArray.map(
       (row: number, index: number) => {
@@ -745,14 +738,13 @@ export class SchedulesPage extends React.Component<
       errorMessage: undefined,
       notificationMessage: undefined,
     });
-
-    // console.table(this.state.schedulesArray);
-    // console.table(this.state.schedulesArrayBackup);
   };
 
-  // remove all changes
+  // remove all local changes (reverts to what is stored in Looker)
   resetData = () => {
-    console.log("resetting data");
+    if (DEBUG) {
+      console.log("resetting data");
+    }
 
     this.setState({
       schedulesArray: this.state.schedulesArrayBackup,
@@ -761,29 +753,19 @@ export class SchedulesPage extends React.Component<
     });
   };
 
-  // sets default values for rows
-  setDefaultRowParams = (row: any) => {
-    row.datagroup = " ";
-    row.format = "wysiwyg_pdf";
-    row.timezone = "UTC";
-    row.run_as_recipient = false;
-    row.apply_vis = false;
-    row.apply_formatting = false;
-    row.long_tables = false;
-    row.pdf_landscape = false;
-
-    return row;
-  };
-
   // add row to bottom of table
   addRow = () => {
-    console.log("adding row");
-
     const newArray = cloneDeep(this.state.schedulesArray);
-    const emptyRow = cloneDeep(newArray[0]);
-    Object.keys(emptyRow).forEach((v) => (emptyRow[v] = ""));
+    const firstRow = cloneDeep(newArray[0]);
+    Object.keys(firstRow).forEach((v) => (firstRow[v] = ""));
+    const emptyRow = this.setDefaultRowParams(firstRow);
 
-    newArray.push(this.setDefaultRowParams(emptyRow));
+    if (DEBUG) {
+      console.log("Adding empty row:");
+      console.log(emptyRow);
+    }
+
+    newArray.push(emptyRow);
 
     let rowCount = 1;
     if (this.state.notificationMessage?.includes("Added")) {
@@ -806,12 +788,21 @@ export class SchedulesPage extends React.Component<
   // delete row from table and scheduled_plan (if it exists)
   // rows coming in descending order to slice rows off table one at a time
   deleteRow = async (rows: { rowIndex: number; scheduleId: string }[]) => {
-    console.log("deleting rows:");
-    console.table(rows);
+    if (DEBUG) {
+      console.log("Deleting Rows:");
+      console.table(rows);
+    }
 
-    this.setState({
-      runningUpdate: true,
-    });
+    if (!this.state.currentDash) {
+      this.setState({
+        notificationMessage: "Dashboard not found",
+      });
+      return;
+    } else {
+      this.setState({
+        runningUpdate: true,
+      });
+    }
 
     const newArray = cloneDeep(this.state.schedulesArray);
 
@@ -819,10 +810,14 @@ export class SchedulesPage extends React.Component<
       const rowIndex = rows[i].rowIndex;
       const scheduleId = rows[i].scheduleId;
       if (scheduleId !== undefined) {
-        // console.log("deleting schedule " + scheduleId);
-        await this.context.core40SDK.ok(
+        const response = await this.context.core40SDK.ok(
           this.context.core40SDK.delete_scheduled_plan(parseInt(scheduleId))
         );
+
+        if (DEBUG) {
+          console.log(`Delete schedule response for: ${scheduleId}`);
+          console.log(JSON.stringify(response, null, 2));
+        }
       }
 
       newArray.splice(rowIndex, 1);
@@ -831,8 +826,13 @@ export class SchedulesPage extends React.Component<
     // if no more rows, recreate table
     if (newArray.length === 0 && this.state.selectedDashId) {
       const scheduleHeader = await this.prepareEmptyTable(
-        this.state.selectedDashId
+        this.state.currentDash
       );
+
+      if (DEBUG) {
+        console.log("All rows have been deleted. Preparing empty table:");
+        console.log(scheduleHeader[0]);
+      }
 
       this.setState({
         schedulesArray: scheduleHeader,
@@ -853,10 +853,12 @@ export class SchedulesPage extends React.Component<
     });
   };
 
-  // updates scheduled_plan or creates new if it doesn't exist
+  // create/update schedule - updates scheduled_plan or creates new if it doesn't exist
   updateRow = async (rowIndex: number[], schedulesToAdd: any[]) => {
-    console.log("creating/updating rows");
-    console.log(schedulesToAdd);
+    if (DEBUG) {
+      console.log("Creating / Updating rows:");
+      console.table(schedulesToAdd);
+    }
 
     this.setState({
       runningUpdate: true,
@@ -865,13 +867,18 @@ export class SchedulesPage extends React.Component<
 
     const updateTable = cloneDeep(this.state.schedulesArray);
 
-    if (!this.state.selectedDashId) {
+    if (!this.state.selectedDashId || !this.state.currentDash) {
+      this.setState({
+        runningUpdate: false,
+        notificationMessage: "Dashboard not found",
+      });
       return;
     }
 
     try {
       const schedulesToCheck = await this.getScheduledPlans(
-        this.state.selectedDashId
+        this.state.selectedDashId,
+        this.state.currentDash
       );
 
       // ensure all key fields are filled out
@@ -913,13 +920,11 @@ export class SchedulesPage extends React.Component<
           (obj: any) => obj.details.id === schedulesToAdd[i].details.id
         )[0];
 
-        console.log(schedulesToAdd[i]);
-        console.log(storedSchedule);
-
         const response = await this.updateSchedule(
           schedulesToAdd[i],
           storedSchedule
         );
+
         if (response !== undefined) {
           const responseJson: IScheduledPlanTable = JSON.parse(
             JSON.stringify(response)
@@ -944,10 +949,12 @@ export class SchedulesPage extends React.Component<
     }
   };
 
-  // send 1:all rows to scheduled_plan_run_once
+  // run once - send 1:all rows to scheduled_plan_run_once
   testRow = async (rowIndex: number[], schedulesToTest: any[]) => {
-    console.log("testing rows");
-    console.log(schedulesToTest);
+    if (DEBUG) {
+      console.log("Testing rows:");
+      console.table(schedulesToTest);
+    }
 
     this.setState({
       runningUpdate: true,
@@ -975,7 +982,7 @@ export class SchedulesPage extends React.Component<
 
       // todo validate cron, owner_id, recipients
 
-      // endpoint is rate limited to 10 calls per second
+      // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
       const delay = (i: number) => new Promise((r) => setTimeout(r, i));
 
       for (let i = 0; i < schedulesToTest.length; i++) {
@@ -994,7 +1001,15 @@ export class SchedulesPage extends React.Component<
         const response = await this.context.core40SDK.ok(
           this.context.core40SDK.scheduled_plan_run_once(testScheduledPlan)
         );
-        // console.log(response);
+
+        if (DEBUG) {
+          console.log(
+            `Run schedule once response for row ${
+              rowIndex[i] + 1
+            } schedule ID: ${schedulesToTest[i].details.id}`
+          );
+          console.log(JSON.stringify(response, null, 2));
+        }
       }
 
       this.setState({
@@ -1013,8 +1028,10 @@ export class SchedulesPage extends React.Component<
 
   // disabling 1:all rows
   disableRow = async (rowIndex: number[], schedulesToDisable: any[]) => {
-    console.log("disabling rows");
-    console.log(schedulesToDisable);
+    if (DEBUG) {
+      console.log("Disabling rows:");
+      console.table(schedulesToDisable);
+    }
 
     this.setState({
       runningUpdate: true,
@@ -1024,7 +1041,7 @@ export class SchedulesPage extends React.Component<
       // ensure all rows are created and have ids
       if (
         !schedulesToDisable.reduce(
-          (acc: boolean, row: any) => acc && row.details.id !== "",
+          (acc: boolean, row: any) => acc && row.details !== "",
           true
         )
       ) {
@@ -1058,7 +1075,13 @@ export class SchedulesPage extends React.Component<
           )
         );
         updateTable[rowIndex[i]].enabled = response.enabled; // update table with enabled=false
-        // console.log(response); // todo return when 422
+
+        if (DEBUG) {
+          console.log(
+            `Disable schedule response for: ${schedulesToDisable[i].details.id}`
+          );
+          console.log(JSON.stringify(response, null, 2)); // todo return when 422
+        }
       }
 
       this.setState({
@@ -1079,8 +1102,10 @@ export class SchedulesPage extends React.Component<
 
   // enable 1:all rows
   enableRow = async (rowIndex: number[], schedulesToEnable: any[]) => {
-    console.log("enabling rows");
-    console.log(schedulesToEnable);
+    if (DEBUG) {
+      console.log("Enabling rows:");
+      console.table(schedulesToEnable);
+    }
 
     this.setState({
       runningUpdate: true,
@@ -1090,7 +1115,7 @@ export class SchedulesPage extends React.Component<
       // ensure all rows are created and have ids
       if (
         !schedulesToEnable.reduce(
-          (acc: boolean, row: any) => acc && row.details.id !== "",
+          (acc: boolean, row: any) => acc && row.details !== "",
           true
         )
       ) {
@@ -1124,7 +1149,12 @@ export class SchedulesPage extends React.Component<
           )
         );
         updateTable[rowIndex[i]].enabled = response.enabled; // update table with enabled=true
-        // console.log(response); // todo return when 422
+        if (DEBUG) {
+          console.log(
+            `Enable schedule response for: ${schedulesToEnable[i].details.id}`
+          );
+          console.log(JSON.stringify(response, null, 2)); // todo return when 422
+        }
       }
 
       this.setState({

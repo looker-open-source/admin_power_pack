@@ -22,6 +22,8 @@
  * THE SOFTWARE.
  */
 
+export const DEBUG = process.env.NODE_ENV === "development";
+
 //////////////// Order for table Headings ////////////////
 
 export const TABLE_HEADING = [

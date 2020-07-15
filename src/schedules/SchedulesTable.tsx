@@ -46,7 +46,6 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
-  Text,
   TextArea,
 } from "@looker/components";
 import { useTable, useRowSelect } from "react-table";
@@ -55,6 +54,7 @@ import { Styles } from "./Styles";
 import { translateCron } from "./cronHelper";
 import { IScheduledPlanTable } from "./SchedulesPage";
 import {
+  DEBUG,
   READ_ONLY_FIELDS,
   SELECT_FIELDS,
   CHECKBOX_FIELDS,

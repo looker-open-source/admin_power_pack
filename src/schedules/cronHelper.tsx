@@ -5,6 +5,7 @@ export const translateCron = (cron: string): string => {
 
   if (cron !== "") {
     try {
+      // valid cron must have 4 spaces
       const spaceCount = cron.split(" ").length - 1;
       if (spaceCount > 4) {
         return "Not a valid cron expression";
@@ -20,11 +21,10 @@ export const translateCron = (cron: string): string => {
   }
 };
 
-// only validate if cronstring has >=4 spaces
+// used for validationMessage.type to show in error formatting
 export const validationTypeCron = (cron: string): "error" | undefined => {
   const cronExpression = translateCron(cron);
 
-  //   const spaceCount = cron.split(" ").length - 1;
   if (cron !== "" && cronExpression === "Not a valid cron expression") {
     return "error";
   }
