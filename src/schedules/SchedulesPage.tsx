@@ -33,7 +33,6 @@ import {
   FlexItem,
   Heading,
   InputText,
-  Label,
   MessageBar,
   Text,
 } from "@looker/components";
@@ -50,7 +49,7 @@ import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
 import { IWriteScheduledPlan } from "@looker/sdk/dist/sdk/4.0/models";
 
-export const READ_ONLY_FIELDS = ["id", "enabled", "owner"];
+export const READ_ONLY_FIELDS = ["details", "enabled", "owner"];
 export const REQUIRED_FIELDS = ["owner_id", "name", "recipients"];
 export const REQUIRED_TRIGGER_FIELDS = ["crontab", "datagroup"];
 export const ADVANCED_FIELDS = [
@@ -246,8 +245,9 @@ export class SchedulesPage extends React.Component<
       const newArray = cloneDeep(this.state.schedulesArray);
 
       for (let i = 0; i < results.data.length; i++) {
-        const newRow = cloneDeep(newArray[0]);
+        let newRow = cloneDeep(newArray[0]);
         Object.keys(newRow).forEach((k) => (newRow[k] = "")); // clear row values first
+        newRow = this.setDefaultRowParams(newRow);
 
         Object.keys(newRow).forEach((k: any) => {
           if (!KEY_FIELDS.includes(k) && fieldMapper[k] !== undefined) {
@@ -258,7 +258,6 @@ export class SchedulesPage extends React.Component<
         newRow.owner_id = params.ownerId;
         newRow.name = params.scheduleName;
         newRow.crontab = params.cron;
-        newRow.datagroup = " ";
 
         if (fieldMapper["Email"] !== undefined) {
           newRow.recipients = results.data[i][fieldMapper["Email"]].value;
@@ -329,15 +328,6 @@ export class SchedulesPage extends React.Component<
     this.context.extensionSDK.openBrowserWindow(url, "_blank");
   };
 
-  // delete unecessary keys from object
-  deleteKeys = (
-    obj: IScheduledPlanTable,
-    key: string[]
-  ): IScheduledPlanTable => {
-    key.forEach((k) => delete obj[k]);
-    return obj;
-  };
-
   // parse string for commas and create array of destiations
   writeScheduledPlanDestinations = (schedule: IScheduledPlanTable): any => {
     const scheduledPlanDestinations: any = [];
@@ -366,10 +356,7 @@ export class SchedulesPage extends React.Component<
         continue;
       }
 
-      // don't create empty filters
-      if (value === "") {
-        continue;
-      }
+      // ensure to keep empty filters to preserve table (defaults to "is any value/time")
 
       filtersString = filtersString.concat(
         encodeURIComponent(key),
@@ -426,10 +413,28 @@ export class SchedulesPage extends React.Component<
     return [this.setDefaultRowParams(scheduleHeader)];
   };
 
+  // converts date to UTC string
+  formatDate = (date: Date | undefined) => {
+    if (date === undefined || date === null) {
+      return "N/A";
+    }
+    const formattedDate = new Date(date);
+    return formattedDate.toUTCString();
+  };
+
+  // prepares row for table from IScheduledPlanTable object
   assignRowValues = (s: IScheduledPlanTable) => {
     const formattedRow: any = {};
 
-    formattedRow.id = s.id;
+    // formattedRow.id = s.id;
+    formattedRow.details = {
+      id: s.id,
+      created_at: this.formatDate(s.created_at),
+      updated_at: this.formatDate(s.updated_at),
+      next_run_at: this.formatDate(s.next_run_at),
+      last_run_at: this.formatDate(s.last_run_at),
+    };
+
     formattedRow.enabled = s.enabled;
     formattedRow.name = s.name;
     formattedRow.timezone = s.timezone;
@@ -459,10 +464,10 @@ export class SchedulesPage extends React.Component<
       spd.apply_formatting === null ? false : spd.apply_formatting;
 
     // grab everything after the ? until filter_config
-    formattedRow.filters_string = decodeURIComponent(s.filters_string || "")
+    const filters_string = decodeURIComponent(s.filters_string || "")
       .slice(1)
       .split("&filter_config=")[0];
-    let filter = formattedRow.filters_string.split("&") || "";
+    let filter = filters_string.split("&") || "";
 
     if (filter[0] !== "") {
       filter.forEach((f: string) => {
@@ -470,12 +475,6 @@ export class SchedulesPage extends React.Component<
         formattedRow[filterValue[0]] = filterValue[1];
       });
     }
-
-    this.deleteKeys(formattedRow, [
-      "filters_string",
-      "scheduled_plan_destination",
-      "user",
-    ]);
 
     return formattedRow;
   };
@@ -487,7 +486,7 @@ export class SchedulesPage extends React.Component<
         dashboard_id: dash_id,
         all_users: true,
         fields:
-          "enabled,id,name,filters_string,crontab,datagroup,scheduled_plan_destination(type,address,message,format,apply_vis,apply_formatting),run_as_recipient,include_links,timezone,long_tables,pdf_paper_size,pdf_landscape,user(id,display_name)",
+          "enabled,id,name,filters_string,crontab,datagroup,scheduled_plan_destination(type,address,message,format,apply_vis,apply_formatting),run_as_recipient,include_links,timezone,long_tables,pdf_paper_size,pdf_landscape,user(id,display_name),created_at,updated_at, next_run_at,last_run_at",
       })
     );
 
@@ -513,15 +512,15 @@ export class SchedulesPage extends React.Component<
         // add empty filter values for schedules
         for (let [key, value] of Object.entries(scheduleHeader[0])) {
           if (!(key in formattedRow)) {
-            formattedRow[key] = value;
+            formattedRow[key] = "";
           }
         }
 
         scheduleHeader.push(formattedRow);
       });
 
-      console.table(schedules);
-      console.table(scheduleHeader.slice(1));
+      // console.table(schedules);
+      // console.table(scheduleHeader.slice(1));
 
       return scheduleHeader.slice(1);
     }
@@ -545,39 +544,6 @@ export class SchedulesPage extends React.Component<
       datagroupNames.unshift({ value: " ", label: "" }); // html select tag does not reset to ""
       return datagroupNames;
     }
-  };
-
-  // returns schedule object from scheduledPlans[], returns [] if not found
-  extractSchedule = (scheduledPlans: any, id: number): any => {
-    return scheduledPlans.filter((obj: any) => obj.id === id)[0];
-  };
-
-  // compare scheduled plan id arrays and process deletes
-  deleteSchedules = (
-    storedPlanIds: (number | undefined)[],
-    currentPlanIds: number[]
-  ) => {
-    if (storedPlanIds === undefined) {
-      return;
-    }
-
-    for (let s of storedPlanIds) {
-      if (s === undefined) {
-        continue;
-      }
-      if (!currentPlanIds.includes(s)) {
-        this.deleteSchedule(s);
-      }
-    }
-  };
-
-  // delete schedule plan
-  deleteSchedule = async (s: number) => {
-    console.log("deleting schedule id: " + s);
-
-    await this.context.core40SDK.ok(
-      this.context.core40SDK.delete_scheduled_plan(s)
-    );
   };
 
   // create ScheduledPlan object
@@ -647,33 +613,33 @@ export class SchedulesPage extends React.Component<
 
   // update schedule with new data in table
   updateSchedule = async (currentSchedule: any, storedSchedule: any) => {
-    if (!isEqual(currentSchedule, storedSchedule)) {
-      console.log("Updating schedule id: " + currentSchedule.id);
-
-      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-        currentSchedule
-      );
-      const filtersString = this.stringifyFilters(currentSchedule);
-
-      const updateScheduledPlan = this.writeScheduledPlanObject(
-        currentSchedule,
-        scheduledPlanDestinations,
-        filtersString
-      );
-
-      const response = await this.context.core40SDK.ok(
-        this.context.core40SDK.update_scheduled_plan(
-          currentSchedule.id,
-          updateScheduledPlan
-        )
-      );
-      // console.log(response); // todo return when 422
-
-      return response;
-    } else {
-      console.log("No update to schedule id: " + currentSchedule.id);
+    if (isEqual(currentSchedule, storedSchedule)) {
+      console.log("No update to schedule id: " + currentSchedule.details.id);
+      return;
     }
-    return;
+
+    console.log("Updating schedule id: " + currentSchedule.details.id);
+
+    const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
+      currentSchedule
+    );
+    const filtersString = this.stringifyFilters(currentSchedule);
+
+    const updateScheduledPlan = this.writeScheduledPlanObject(
+      currentSchedule,
+      scheduledPlanDestinations,
+      filtersString
+    );
+
+    const response = await this.context.core40SDK.ok(
+      this.context.core40SDK.update_scheduled_plan(
+        currentSchedule.details.id,
+        updateScheduledPlan
+      )
+    );
+    // console.log(response); // todo return when 422
+
+    return response;
   };
 
   ///////////////////////////////////////////////////
@@ -789,17 +755,17 @@ export class SchedulesPage extends React.Component<
   };
 
   // sets default values for rows
-  setDefaultRowParams = (emptyRow: any) => {
-    emptyRow.datagroup = " ";
-    emptyRow.format = "wysiwyg_pdf";
-    emptyRow.timezone = "UTC";
-    emptyRow.run_as_recipient = false;
-    emptyRow.apply_vis = false;
-    emptyRow.apply_formatting = false;
-    emptyRow.long_tables = false;
-    emptyRow.pdf_landscape = false;
+  setDefaultRowParams = (row: any) => {
+    row.datagroup = " ";
+    row.format = "wysiwyg_pdf";
+    row.timezone = "UTC";
+    row.run_as_recipient = false;
+    row.apply_vis = false;
+    row.apply_formatting = false;
+    row.long_tables = false;
+    row.pdf_landscape = false;
 
-    return emptyRow;
+    return row;
   };
 
   // add row to bottom of table
@@ -845,12 +811,13 @@ export class SchedulesPage extends React.Component<
     for (let i = 0; i < rows.length; i++) {
       const rowIndex = rows[i].rowIndex;
       const scheduleId = rows[i].scheduleId;
-      if (scheduleId !== "") {
+      if (scheduleId !== undefined) {
         // console.log("deleting schedule " + scheduleId);
-        await this.deleteSchedule(parseInt(scheduleId));
+        await this.context.core40SDK.ok(
+          this.context.core40SDK.delete_scheduled_plan(parseInt(scheduleId))
+        );
       }
 
-      // console.log("removing row: " + rowIndex);
       newArray.splice(rowIndex, 1);
     }
 
@@ -881,7 +848,7 @@ export class SchedulesPage extends React.Component<
 
   // updates scheduled_plan or creates new if it doesn't exist
   updateRow = async (rowIndex: number[], schedulesToAdd: any[]) => {
-    console.log("updating rows");
+    console.log("creating/updating rows");
     console.log(schedulesToAdd);
 
     this.setState({
@@ -890,8 +857,6 @@ export class SchedulesPage extends React.Component<
     });
 
     const updateTable = cloneDeep(this.state.schedulesArray);
-    const currentPlanIds = schedulesToAdd.map((s: IScheduledPlan) => s.id);
-    // console.log(currentPlanIds);
 
     if (!this.state.selectedDashId) {
       return;
@@ -925,8 +890,8 @@ export class SchedulesPage extends React.Component<
 
       // creates new scheduled_plan if it doesn't exist, or, update scheduled_plan if it's been modified
       for (let i = 0; i < schedulesToAdd.length; i++) {
-        // assume if schedule has no id in table it is new
-        if (schedulesToAdd[i].id === "") {
+        // assume schedule is new if it has no details in table
+        if (schedulesToAdd[i].details === "") {
           const response = await this.createSchedule(schedulesToAdd[i]);
           const responseJson: IScheduledPlanTable = JSON.parse(
             JSON.stringify(response)
@@ -936,12 +901,13 @@ export class SchedulesPage extends React.Component<
           continue;
         }
 
-        const storedSchedule = this.extractSchedule(
-          schedulesToCheck,
-          schedulesToAdd[i].id
-        );
-        // console.table(schedulesToAdd[i]);
-        // console.table(storedSchedule);
+        // assume schedule exists and check if it has changed, then update
+        const storedSchedule = schedulesToCheck.filter(
+          (obj: any) => obj.details.id === schedulesToAdd[i].details.id
+        )[0];
+
+        console.log(schedulesToAdd[i]);
+        console.log(storedSchedule);
 
         const response = await this.updateSchedule(
           schedulesToAdd[i],
@@ -1051,7 +1017,7 @@ export class SchedulesPage extends React.Component<
       // ensure all rows are created and have ids
       if (
         !schedulesToDisable.reduce(
-          (acc: boolean, row: any) => acc && row.id !== "",
+          (acc: boolean, row: any) => acc && row.details.id !== "",
           true
         )
       ) {
@@ -1080,7 +1046,7 @@ export class SchedulesPage extends React.Component<
 
         const response = await this.context.core40SDK.ok(
           this.context.core40SDK.update_scheduled_plan(
-            schedulesToDisable[i].id,
+            schedulesToDisable[i].details.id,
             disabledScheduledPlan
           )
         );
@@ -1106,7 +1072,7 @@ export class SchedulesPage extends React.Component<
 
   // enable 1:all rows
   enableRow = async (rowIndex: number[], schedulesToEnable: any[]) => {
-    console.log("disabling rows");
+    console.log("enabling rows");
     console.log(schedulesToEnable);
 
     this.setState({
@@ -1117,7 +1083,7 @@ export class SchedulesPage extends React.Component<
       // ensure all rows are created and have ids
       if (
         !schedulesToEnable.reduce(
-          (acc: boolean, row: any) => acc && row.id !== "",
+          (acc: boolean, row: any) => acc && row.details.id !== "",
           true
         )
       ) {
@@ -1146,7 +1112,7 @@ export class SchedulesPage extends React.Component<
 
         const response = await this.context.core40SDK.ok(
           this.context.core40SDK.update_scheduled_plan(
-            schedulesToEnable[i].id,
+            schedulesToEnable[i].details.id,
             enabledScheduledPlan
           )
         );
@@ -1190,7 +1156,7 @@ export class SchedulesPage extends React.Component<
         <Box m="large">
           <Flex height="50px" justifyContent="space-between">
             <FlexItem mb="medium">
-              <Text variant="secondary" mr="small">
+              <Text variant="secondary" mr="xxsmall">
                 Enter A Dashboard ID:
               </Text>
               <InputText
@@ -1202,7 +1168,7 @@ export class SchedulesPage extends React.Component<
                 onChange={this.handleDashChange}
                 mr="small"
               />
-              <Button size="small" mr="small" onClick={this.handleDashSubmit}>
+              <Button size="small" mr="xxsmall" onClick={this.handleDashSubmit}>
                 Go
               </Button>
             </FlexItem>

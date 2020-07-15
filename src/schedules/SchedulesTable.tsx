@@ -25,13 +25,18 @@
 import React from "react";
 import {
   Box,
+  Button,
   ButtonOutline,
   Checkbox,
   ComboboxOptionObject,
   FieldCheckbox,
   Flex,
   FlexItem,
+  Heading,
   InputText,
+  Paragraph,
+  Popover,
+  PopoverContent,
   Select,
   Space,
   Status,
@@ -41,6 +46,7 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
+  Text,
   TextArea,
 } from "@looker/components";
 import { useTable, useRowSelect } from "react-table";
@@ -86,7 +92,7 @@ export interface EditableCellInterface {
 
 // returns {rowIndex3: scheduleId3, rowIndex2: scheduleId2, etc.}
 const zipRows = (selectedFlatRows: any, selectedRowIds: any) => {
-  const scheduleIds = selectedFlatRows.map((d: any) => d.original.id);
+  const scheduleIds = selectedFlatRows.map((d: any) => d.original.details.id);
   const rowIndex = Object.keys(selectedRowIds);
   const rows = [];
   for (let i = 0; i < scheduleIds.length; i++) {
@@ -216,22 +222,42 @@ const EditableCell = (ec: EditableCellInterface) => {
     );
   };
 
-  // covering DefaultInputText with Box with link
-  const IdInputText = (): JSX.Element => {
+  // Popover with details of scheduled run history and link to system activity
+  const IdPopover = (): JSX.Element => {
     return (
       <>
-        <Box
-          onClick={() => {
-            openExploreWindow(value);
-          }}
-          cursor="pointer"
-          title="Scheduler History in System Activity"
-          display="inline-block"
-          position="relative"
+        <Popover
+          content={
+            <PopoverContent p="large">
+              <Heading>Details</Heading>
+              <Paragraph fontSize="small">
+                Created at: {value.created_at}
+              </Paragraph>
+              <Paragraph fontSize="small">
+                Last updated at: {value.updated_at}
+              </Paragraph>
+              <Heading>Cron History</Heading>
+              <Paragraph fontSize="small">
+                Next Run at: {value.next_run_at}
+              </Paragraph>
+              <Paragraph fontSize="small">
+                Last Run at: {value.last_run_at}
+              </Paragraph>
+
+              <Button
+                // color={}
+                onClick={() => {
+                  openExploreWindow(value.id);
+                }}
+                title="Scheduled Plan History in System Activity"
+              >
+                Explore Schedule History
+              </Button>
+            </PopoverContent>
+          }
         >
-          <DefaultInputText {...true} />
-          <Box position="absolute" left={0} right={0} top={0} bottom={0} />
-        </Box>
+          <ButtonOutline>{value.id}</ButtonOutline>
+        </Popover>
       </>
     );
   };
@@ -290,8 +316,8 @@ const EditableCell = (ec: EditableCellInterface) => {
       return DefaultCheckbox(false); // include_links, run_as_recipient
     }
   } else if (READ_ONLY_FIELDS.includes(id)) {
-    if (id === "id") {
-      return IdInputText();
+    if (id === "details") {
+      return IdPopover();
     } else {
       return DefaultInputText(true);
     }
@@ -640,9 +666,9 @@ const headings = (results?: any): Array<Object> => {
   }
 
   const formattedHeadings: Object[] = Object.keys(results[0])
-    .filter((item) => !KEY_FIELDS.includes(item)) // move headers around
+    .filter((item) => !KEY_FIELDS.includes(item)) // remove all key fields and put them in order below
     .map((key) => ({
-      Header: key.charAt(0).toUpperCase() + key.slice(1),
+      Header: key.charAt(0).toUpperCase() + key.slice(1), // format filter columns
       accessor: key,
     }));
 
@@ -650,8 +676,8 @@ const headings = (results?: any): Array<Object> => {
     0,
     0,
     {
-      Header: "ID",
-      accessor: "id",
+      Header: "Details",
+      accessor: "details",
     },
     {
       Header: "Enabled",
