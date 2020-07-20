@@ -147,7 +147,6 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                 <Button
                   disabled={!validPopParams()}
                   onClick={() => {
-                    console.log("submitting populate row parameters");
                     handlePopSubmit();
                     if (closeModal !== undefined) {
                       closeModal();

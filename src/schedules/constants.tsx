@@ -32,14 +32,6 @@ export const TABLE_HEADING = [
     accessor: "details",
   },
   {
-    Header: "Enabled",
-    accessor: "enabled",
-  },
-  {
-    Header: "Owner",
-    accessor: "owner",
-  },
-  {
     Header: "Owner ID",
     accessor: "owner_id",
   },
@@ -103,9 +95,12 @@ export const TABLE_HEADING = [
 
 //////////////// FIELD LISTS  ////////////////
 
-export const READ_ONLY_FIELDS = ["details", "enabled", "owner"];
+export const READ_ONLY_FIELDS = ["details"];
+
 export const REQUIRED_FIELDS = ["owner_id", "name", "recipients"];
+
 export const REQUIRED_TRIGGER_FIELDS = ["crontab", "datagroup"];
+
 export const ADVANCED_FIELDS = [
   "message",
   "run_as_recipient",
@@ -113,6 +108,7 @@ export const ADVANCED_FIELDS = [
   "timezone",
   "format",
 ];
+
 export const FORMATTING_FIELDS = [
   "apply_formatting",
   "apply_vis",
@@ -120,6 +116,7 @@ export const FORMATTING_FIELDS = [
   "pdf_landscape",
   "pdf_paper_size",
 ];
+
 export const KEY_FIELDS = [
   ...READ_ONLY_FIELDS,
   ...REQUIRED_FIELDS,
@@ -131,6 +128,7 @@ export const KEY_FIELDS = [
 export const SELECT_FIELDS = [
   "datagroup",
   "format",
+  "owner_id",
   "pdf_paper_size",
   "timezone",
 ];
@@ -140,7 +138,6 @@ export const TEXTAREA_FIELDS = ["message", "recipients"];
 export const CHECKBOX_FIELDS = [
   "apply_formatting",
   "apply_vis",
-  "enabled", // read only
   "include_links",
   "long_tables",
   "pdf_landscape",

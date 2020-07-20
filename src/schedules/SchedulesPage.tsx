@@ -62,6 +62,7 @@ interface ExtensionState {
   currentDash?: IDashboard;
   selectedDashId?: number;
   datagroups: ComboboxOptionObject[]; // array of datagroup string names
+  users: ComboboxOptionObject[]; // array of user ids and display names
   schedulesArray: any; // IScheduledPlanTable[] - array of schedules (can be edited)
   schedulesArrayBackup: any; // IScheduledPlanTable[] - array of schedules stored for reverting edits
   runningQuery: boolean; // false shows 'getting data', true displays table
@@ -85,14 +86,17 @@ interface IWriteScheduledPlanNulls extends IWriteScheduledPlan {
 
 // used to display specific fields for all schedules on a Dashboard
 export interface IScheduledPlanTable extends IScheduledPlan {
-  owner?: string;
-  owner_id?: number;
+  owner_id: string;
   recipients: string; // converting Array<string> to string
   run_as_recipient?: any;
   include_links?: any;
   [key: string]: any; // needed to dynamically display filters
   scheduled_plan_destination: IScheduledPlanDestination[]; // overriding to make this required
-  user: IUserPublic; // overriding to make this required
+  user: IUserPublicExtended; // overriding to make this required
+}
+
+export interface IUserPublicExtended extends IUserPublic {
+  id: number; // overriding to make this required
 }
 
 export class SchedulesPage extends React.Component<
@@ -108,6 +112,7 @@ export class SchedulesPage extends React.Component<
       currentDash: undefined,
       selectedDashId: undefined,
       datagroups: [],
+      users: [],
       schedulesArray: [],
       schedulesArrayBackup: [],
       runningQuery: false,
@@ -210,6 +215,8 @@ export class SchedulesPage extends React.Component<
       });
 
       if (DEBUG) {
+        console.log(`Query ${params.queryId} results:`);
+        console.log(results.data);
         console.log(`Field Mapper based on query: ${params.queryId}`);
         console.table(fieldMapper);
       }
@@ -286,7 +293,6 @@ export class SchedulesPage extends React.Component<
       runningQuery: true,
       errorMessage: undefined,
       notificationMessage: undefined,
-      datagroups: [],
       schedulesArray: [],
       schedulesArrayBackup: [],
     });
@@ -297,9 +303,10 @@ export class SchedulesPage extends React.Component<
       );
       const schedulesArray = await this.getScheduledPlans(dash_id, dash);
       const datagroups = await this.getDatagroups();
+      const users = await this.getAllUsers();
 
       if (DEBUG) {
-        console.log(`Dashboard for: ${dash_id}`);
+        console.log(`Dashboard ${dash_id} found:`);
         console.log(dash);
       }
 
@@ -314,13 +321,13 @@ export class SchedulesPage extends React.Component<
       this.setState({
         currentDash: dash,
         datagroups: datagroups,
+        users: users,
         schedulesArray: schedulesArray,
         schedulesArrayBackup: schedulesArray,
         runningQuery: false,
         hiddenColumns: [...ADVANCED_FIELDS, ...FORMATTING_FIELDS],
         checkboxStatus: {
           "Show All": "mixed",
-          "Read-Only": true,
           Required: true,
           Advanced: false,
           Formatting: false,
@@ -365,22 +372,20 @@ export class SchedulesPage extends React.Component<
   assignRowValues = (s: IScheduledPlanTable) => {
     const formattedRow: any = {};
 
-    // formattedRow.id = s.id;
     formattedRow.details = {
       id: s.id,
+      enabled: s.enabled,
       created_at: this.formatDate(s.created_at),
       updated_at: this.formatDate(s.updated_at),
       next_run_at: this.formatDate(s.next_run_at),
       last_run_at: this.formatDate(s.last_run_at),
     };
 
-    formattedRow.enabled = s.enabled;
     formattedRow.name = s.name;
     formattedRow.timezone = s.timezone;
     formattedRow.include_links = s.include_links;
 
-    formattedRow.owner_id = s.user.id;
-    formattedRow.owner = s.user.display_name;
+    formattedRow.owner_id = s.user.id.toString(); // change from number to string for better compatability with Select
     formattedRow.crontab = s.crontab === null ? "" : s.crontab;
     formattedRow.datagroup =
       s.datagroup === null || s.datagroup === "" ? " " : s.datagroup; // html select tag does not reset to ""
@@ -435,8 +440,9 @@ export class SchedulesPage extends React.Component<
     );
 
     // only keep email based schedules, for now.
+    // need to check for s.user because a deleted users schedules will still appear, however these schedules cannot be patched and thus are useless
     const emailSchedulesArray = schedulesArray.filter(
-      (s) => s.scheduled_plan_destination[0].type === "email"
+      (s) => s.scheduled_plan_destination[0].type === "email" && s.user
     );
 
     const scheduleHeader = await this.prepareEmptyTable(dash);
@@ -500,6 +506,28 @@ export class SchedulesPage extends React.Component<
     }
   };
 
+  getAllUsers = async () => {
+    const allUsers = await this.context.core40SDK.ok(
+      this.context.core40SDK.all_users({
+        fields: "id, display_name, is_disabled",
+        sorts: "first_name",
+      })
+    );
+
+    const usersSelect = allUsers
+      .filter((u: any) => !u.is_disabled)
+      .map((u: any) => {
+        return { value: u.id.toString(), label: u.display_name };
+      });
+
+    if (DEBUG) {
+      console.log("All users retrieved:");
+      console.log(usersSelect);
+    }
+
+    return usersSelect;
+  };
+
   ///////////////////////////////////////////////////
 
   //////////////// HELPER FUNCTIONS /////////////////
@@ -528,7 +556,7 @@ export class SchedulesPage extends React.Component<
 
   // open window to System Activity Explore for history of schedule plan
   openExploreWindow = (scheduledPlanID: number): void => {
-    const url = `/explore/system__activity/scheduled_plan?fields=scheduled_job.finalized_time,scheduled_job.name,dashboard.title,user.name,scheduled_job.status,scheduled_job.status_detail,scheduled_plan.destination_addresses,scheduled_plan_destination.type,scheduled_plan_destination.format,scheduled_job_stage.runtime&f[scheduled_plan.id]=${scheduledPlanID}&sorts=scheduled_job.finalized_time+desc&limit=500`;
+    const url = `/explore/system__activity/scheduled_plan?fields=scheduled_job.created_time,scheduled_job.finalized_time,scheduled_job.name,dashboard.title,user.name,scheduled_job.status,scheduled_job.status_detail,scheduled_plan.destination_addresses,scheduled_plan_destination.type,scheduled_plan_destination.format&f[scheduled_plan.id]=${scheduledPlanID}&sorts=scheduled_job.finalized_time+desc&limit=500`;
     this.context.extensionSDK.openBrowserWindow(url, "_blank");
   };
 
@@ -617,7 +645,7 @@ export class SchedulesPage extends React.Component<
     filtersString: string
   ) => {
     const writeScheduledPlan: IWriteScheduledPlanNulls = {
-      user_id: rowDetails.owner_id,
+      user_id: Number(rowDetails.owner_id),
       name: rowDetails.name,
       dashboard_id: this.state.selectedDashId,
       timezone: rowDetails.timezone,
@@ -1097,7 +1125,7 @@ export class SchedulesPage extends React.Component<
             disabledScheduledPlan
           )
         );
-        updateTable[rowIndex[i]].enabled = response.enabled; // update table with enabled=false
+        updateTable[rowIndex[i]].details.enabled = response.enabled; // update table with enabled=false
 
         if (DEBUG) {
           console.log(
@@ -1171,7 +1199,7 @@ export class SchedulesPage extends React.Component<
             enabledScheduledPlan
           )
         );
-        updateTable[rowIndex[i]].enabled = response.enabled; // update table with enabled=true
+        updateTable[rowIndex[i]].details.enabled = response.enabled; // update table with enabled=true
         if (DEBUG) {
           console.log(
             `Enable schedule response for: ${schedulesToEnable[i].details.id}`
@@ -1350,6 +1378,7 @@ export class SchedulesPage extends React.Component<
             <SchedulesTable
               results={this.state.schedulesArray}
               datagroups={this.state.datagroups}
+              users={this.state.users}
               hiddenColumns={this.state.hiddenColumns}
               handleVisible={this.handleVisible}
               checkboxStatus={this.state.checkboxStatus}

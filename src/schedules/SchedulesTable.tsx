@@ -27,12 +27,14 @@ import {
   Box,
   Button,
   ButtonOutline,
+  ButtonTransparent,
   Checkbox,
   ComboboxOptionObject,
   FieldCheckbox,
   Flex,
   FlexItem,
   Heading,
+  Icon,
   InputText,
   Paragraph,
   Popover,
@@ -71,6 +73,7 @@ import {
 export interface QueryProps {
   results: IScheduledPlanTable;
   datagroups: ComboboxOptionObject[];
+  users: ComboboxOptionObject[];
   hiddenColumns: string[];
   checkboxStatus: any;
   handleVisible(hiddenColumns: string[], checkboxStatus: any): void;
@@ -86,11 +89,12 @@ export interface QueryProps {
 }
 
 export interface EditableCellInterface {
-  value: any; // (string | boolean)
+  value: any; // (string | number | boolean)
   row: { index: number };
   column: { id: string };
   data: any;
   datagroups: ComboboxOptionObject[];
+  users: ComboboxOptionObject[];
   openExploreWindow(scheduledPlanID: number): void;
   openDashboardWindow(rowIndex: number): void;
   syncData(rowIndex: number, columnId: string, value: string): any;
@@ -137,6 +141,7 @@ const EditableCell = (ec: EditableCellInterface) => {
     column: { id },
     data,
     datagroups,
+    users,
     openExploreWindow,
     openDashboardWindow,
     syncData,
@@ -144,17 +149,50 @@ const EditableCell = (ec: EditableCellInterface) => {
 
   // We need to keep and update the state of the cell normally
   const [value, setValue] = React.useState(initialValue);
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // If the initialValue is changed external, sync it up with our state
+  React.useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  // only update the schedulesArrayBackup when the input is blurred
+  const onBlur = () => {
+    syncData(index, id, value);
+  };
+
+  const onChange = (e: any) => {
+    setValue(e.target.value);
+  };
+
+  const onSelectChange = (e: any) => {
+    setValue(e);
+  };
+
+  const handleSelectFilter = (term: string) => {
+    setSearchTerm(term);
+  };
 
   const DefaultSelect = (options: any, disabled: boolean): JSX.Element => {
+    const newOptions = React.useMemo(() => {
+      if (searchTerm === "") return options;
+      return options.filter((o: any) => {
+        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+      });
+    }, [searchTerm]);
+
     return (
       <Select
         width={1}
         value={value}
         title={value}
-        options={options}
+        options={newOptions}
         disabled={disabled}
         onChange={onSelectChange}
+        onFilter={handleSelectFilter}
         onBlur={onBlur}
+        isFilterable
+        isClearable
       />
     );
   };
@@ -231,28 +269,44 @@ const EditableCell = (ec: EditableCellInterface) => {
 
   // Popover with details of scheduled run history and link to system activity
   const IdPopover = (): JSX.Element => {
+    let icon: any = {};
+
+    if (value.enabled) {
+      icon.name = "CheckProgress";
+      icon.color = "key";
+      icon.size = "small";
+    } else {
+      icon.name = "Block";
+      icon.color = "neutral";
+      icon.size = "xsmall";
+    }
+
     return (
       <>
         <Popover
           content={
             <PopoverContent p="large">
-              <Heading as="h3">Details</Heading>
+              <Heading as="h2">{data[index].name}</Heading>
               <Paragraph fontSize="small">
                 Created at: {value.created_at}
               </Paragraph>
               <Paragraph fontSize="small">
                 Last updated at: {value.updated_at}
               </Paragraph>
-              <Heading as="h3">Cron History</Heading>
+              <Heading as="h3">Cron Details</Heading>
+              <Paragraph fontSize="small" maxWidth="350px">
+                {translateCron(data[index].crontab)}
+              </Paragraph>
               <Paragraph fontSize="small">
-                Next Run at: {value.next_run_at}
+                Next Run at:{" "}
+                {value.enabled
+                  ? value.next_run_at
+                  : "Schedule Plan is disabled"}
               </Paragraph>
               <Paragraph fontSize="small">
                 Last Run at: {value.last_run_at}
               </Paragraph>
-
               <Flex width="100%" height="10px"></Flex>
-
               <SpaceVertical gap="xsmall">
                 <Button
                   // color={}
@@ -277,34 +331,29 @@ const EditableCell = (ec: EditableCellInterface) => {
             </PopoverContent>
           }
         >
-          <ButtonOutline>{value.id}</ButtonOutline>
+          <ButtonTransparent
+            fullWidth
+            color={icon.color}
+            disabled={value == ""}
+          >
+            {value == "" ? "New" : value.id}
+            {value == "" ? (
+              ""
+            ) : (
+              <Icon m="xxsmall" size={icon.size} name={icon.name} />
+            )}
+          </ButtonTransparent>
         </Popover>
       </>
     );
   };
 
-  const onChange = (e: any) => {
-    setValue(e.target.value);
-  };
-
-  const onSelectChange = (e: string) => {
-    setValue(e);
-  };
-
-  // We'll only update the external data when the input is blurred
-  const onBlur = () => {
-    syncData(index, id, value);
-  };
-
-  // If the initialValue is changed external, sync it up with our state
-  React.useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
   if (SELECT_FIELDS.includes(id)) {
     if (id === "datagroup") {
       const isCrontab = data[index].crontab !== "";
       return DefaultSelect(datagroups, isCrontab);
+    } else if (id === "owner_id") {
+      return DefaultSelect(users, false);
     } else if (id === "timezone") {
       return DefaultSelect(TIMEZONES, false);
     } else if (id === "format") {
@@ -331,8 +380,6 @@ const EditableCell = (ec: EditableCellInterface) => {
       } else {
         return DefaultCheckbox(false);
       }
-    } else if (id === "enabled") {
-      return DefaultCheckbox(true);
     } else {
       return DefaultCheckbox(false); // include_links, run_as_recipient
     }
@@ -360,6 +407,7 @@ const ReactTable = ({
   columns,
   data,
   datagroups,
+  users,
   hiddenColumnsState,
   handleVisible,
   checkboxStatus,
@@ -391,6 +439,7 @@ const ReactTable = ({
       columns,
       data,
       datagroups,
+      users,
       syncData,
       defaultColumn,
       openExploreWindow,
@@ -554,7 +603,10 @@ const ReactTable = ({
                   if (newCheckboxStatus["Show All"]) {
                     newHiddenColumns = [];
                   } else {
-                    newHiddenColumns = Object.keys(data[0]);
+                    // always show details
+                    newHiddenColumns = Object.keys(data[0]).filter(
+                      (c: any) => c !== "details"
+                    );
                   }
                   handleVisible(newHiddenColumns, newCheckboxStatus);
                 }}
@@ -562,7 +614,10 @@ const ReactTable = ({
               />
 
               {headers.map((header: any) => {
-                if (header.originalId === "selection_placeholder") {
+                if (
+                  header.originalId === "selection_placeholder" ||
+                  header.originalId === " "
+                ) {
                   return;
                 }
                 return (
@@ -575,9 +630,11 @@ const ReactTable = ({
                       newCheckboxStatus[header.Header] = !newCheckboxStatus[
                         header.Header
                       ];
+
                       const headerColumns = header.columns.map(
                         (c: any) => c.id
                       );
+
                       let newHiddenColumns = [];
 
                       if (!e.target.checked) {
@@ -662,20 +719,22 @@ const ReactTable = ({
         </Box>
 
         {/* JSON output of rows selected */}
-        {/* <pre>
-          <code>
-            {JSON.stringify(
-              {
-                selectedRowIds: selectedRowIds,
-                "selectedFlatRows[].original": selectedFlatRows.map(
-                  (d) => d.original
-                ),
-              },
-              null,
-              2
-            )}
-          </code>
-        </pre> */}
+        {DEBUG && (
+          <pre>
+            <code>
+              {JSON.stringify(
+                {
+                  selectedRowIds: selectedRowIds,
+                  "selectedFlatRows[].original": selectedFlatRows.map(
+                    (d) => d.original
+                  ),
+                },
+                null,
+                2
+              )}
+            </code>
+          </pre>
+        )}
       </Styles>
     </>
   );
@@ -698,11 +757,11 @@ const headings = (results?: any): Array<Object> => {
   const formattedHeadings = [...TABLE_HEADING, ...filterHeadings];
 
   const groupedHeadings = [
-    { Header: "Read-Only", columns: formattedHeadings.slice(0, 3) },
-    { Header: "Required", columns: formattedHeadings.slice(3, 8) },
-    { Header: "Advanced", columns: formattedHeadings.slice(8, 13) },
-    { Header: "Formatting", columns: formattedHeadings.slice(13, 18) },
-    { Header: "Filters", columns: formattedHeadings.slice(18) },
+    { Header: " ", columns: formattedHeadings.slice(0, 1) },
+    { Header: "Required", columns: formattedHeadings.slice(1, 6) },
+    { Header: "Advanced", columns: formattedHeadings.slice(6, 11) },
+    { Header: "Formatting", columns: formattedHeadings.slice(11, 16) },
+    { Header: "Filters", columns: formattedHeadings.slice(16) },
   ];
   // console.log(groupedHeadings);
 
@@ -713,6 +772,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
   const {
     results,
     datagroups,
+    users,
     hiddenColumns,
     handleVisible,
     checkboxStatus,
@@ -734,6 +794,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
           columns={headings(results)}
           data={results}
           datagroups={datagroups}
+          users={users}
           hiddenColumnsState={hiddenColumns}
           handleVisible={handleVisible}
           checkboxStatus={checkboxStatus}
