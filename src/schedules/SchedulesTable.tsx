@@ -348,54 +348,66 @@ const EditableCell = (ec: EditableCellInterface) => {
     );
   };
 
-  if (SELECT_FIELDS.includes(id)) {
-    if (id === "datagroup") {
+  const isPDF = (): boolean => {
+    return ["wysiwyg_pdf", "assembled_pdf"].includes(data[index].format);
+  };
+
+  const isCsv = (): boolean => {
+    return data[index].format === "csv_zip";
+  };
+
+  const isPaperSize = (): boolean => {
+    return data[index].pdf_paper_size !== "";
+  };
+
+  switch (id) {
+    // SELECT_FIELDS //
+    case "datagroup":
       const isCrontab = data[index].crontab !== "";
       return DefaultSelect(datagroups, isCrontab);
-    } else if (id === "owner_id") {
+    case "owner_id":
       return DefaultSelect(users, false);
-    } else if (id === "timezone") {
+    case "timezone":
       return DefaultSelect(TIMEZONES, false);
-    } else if (id === "format") {
+    case "format":
       return DefaultSelect(FORMAT, false);
-    } else if (id === "pdf_paper_size") {
-      const isPDF = ["wysiwyg_pdf", "assembled_pdf"].includes(
-        data[index].format
-      );
-      return DefaultSelect(PDF_PAPER_SIZE, !isPDF);
-    }
-  } else if (CHECKBOX_FIELDS.includes(id)) {
-    if (FORMATTING_FIELDS.includes(id)) {
-      const isPDF = ["wysiwyg_pdf", "assembled_pdf"].includes(
-        data[index].format
-      );
-      const isCsv = data[index].format === "csv_zip";
-      const isPaperSize = data[index].pdf_paper_size !== "";
-      if ((id === "apply_formatting" || id === "apply_vis") && !isCsv) {
-        return DefaultCheckbox(true);
-      } else if (id === "long_tables" && !isPDF) {
-        return DefaultCheckbox(true);
-      } else if (id === "pdf_landscape" && (!isPDF || !isPaperSize)) {
-        return DefaultCheckbox(true);
-      } else {
-        return DefaultCheckbox(false);
-      }
-    } else {
-      return DefaultCheckbox(false); // include_links, run_as_recipient
-    }
-  } else if (READ_ONLY_FIELDS.includes(id)) {
-    if (id === "details") {
+    case "pdf_paper_size":
+      return DefaultSelect(PDF_PAPER_SIZE, !isPDF());
+
+    // CHECKBOX_FIELDS //
+    case "include_links":
+      return DefaultCheckbox(false);
+    case "run_as_recipient":
+      return DefaultCheckbox(false);
+    case "apply_formatting":
+      return DefaultCheckbox(!isCsv());
+    case "apply_vis":
+      return DefaultCheckbox(!isCsv());
+    case "long_tables":
+      return DefaultCheckbox(!isPDF());
+    case "pdf_landscape":
+      return DefaultCheckbox(!isPDF() || !isPaperSize());
+
+    // READ_ONLY_FIELDS //
+    case "details":
       return IdPopover();
-    } else {
-      return DefaultInputText(true);
-    }
-  } else if (TEXTAREA_FIELDS.includes(id)) {
-    return DefaultTextArea();
-  } else if (id === "crontab") {
-    const isDatagroup = data[index].datagroup !== "";
-    return CronInputText(isDatagroup);
-  } else {
-    return DefaultInputText(false);
+
+    // TEXTAREA_FIELDS //
+    case "message":
+      return DefaultTextArea();
+    case "recipients":
+      return DefaultTextArea();
+
+    // CRONTAB AND INPUT_TEXT FIELDS //
+    case "crontab":
+      const isDatagroup = data[index].datagroup !== "";
+      return CronInputText(isDatagroup);
+    case "name":
+      return DefaultInputText(false);
+
+    // Filters will be DefaultInputText //
+    default:
+      return DefaultInputText(false);
   }
 };
 

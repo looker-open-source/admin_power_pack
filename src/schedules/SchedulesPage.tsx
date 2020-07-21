@@ -32,12 +32,12 @@ import {
   FlexItem,
   Heading,
   IconButton,
-  InputText,
   MessageBar,
+  Select,
   Text,
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
-import { isEqual, cloneDeep } from "lodash";
+import { isEqual, cloneDeep, chain, sortBy, groupBy } from "lodash";
 import {
   IDashboard,
   IScheduledPlan,
@@ -58,10 +58,13 @@ import {
 } from "./constants";
 import { SchedulesTable } from "./SchedulesTable";
 import { PopulateParams, PopulateRows } from "./PopulateRows";
+// import { DashboardSelect } from "./DashboardSelect";
 
 interface ExtensionState {
   currentDash?: IDashboard;
-  selectedDashId?: number;
+  selectedDashId: string;
+  dashSearchString: string;
+  dashboards: any[]; // array of dashboard and folder names/ids for Select
   datagroups: ComboboxOptionObject[]; // array of datagroup string names
   users: ComboboxOptionObject[]; // array of user ids and display names
   schedulesArray: any; // IScheduledPlanTable[] - array of schedules (can be edited)
@@ -111,7 +114,9 @@ export class SchedulesPage extends React.Component<
     super(props);
     this.state = {
       currentDash: undefined,
-      selectedDashId: undefined,
+      selectedDashId: "",
+      dashSearchString: "",
+      dashboards: [],
       datagroups: [],
       users: [],
       schedulesArray: [],
@@ -127,13 +132,14 @@ export class SchedulesPage extends React.Component<
         cron: "",
       },
     };
-    this.handleDashChange = this.handleDashChange.bind(this);
     this.handleDashSubmit = this.handleDashSubmit.bind(this);
     this.handlePopQueryId = this.handlePopQueryId.bind(this);
     this.handlePopOwnerId = this.handlePopOwnerId.bind(this);
     this.handlePopName = this.handlePopName.bind(this);
     this.handlePopCron = this.handlePopCron.bind(this);
   }
+
+  //////////////// RUN ON PAGE LOAD ////////////////
 
   componentDidMount = async () => {
     const { initializeError } = this.context;
@@ -142,19 +148,145 @@ export class SchedulesPage extends React.Component<
     }
 
     try {
+      const dashboards = await this.getAllDashboards();
       const datagroups = await this.getDatagroups();
       const users = await this.getAllUsers();
 
-      this.setState({ datagroups: datagroups, users: users });
+      this.setState({
+        dashboards: dashboards,
+        datagroups: datagroups,
+        users: users,
+      });
     } catch (error) {
       this.setState({
-        errorMessage: "Unable to load Datagroups and Users.",
+        errorMessage: "Unable to load Dashboards.",
         runningQuery: false,
       });
 
       return;
     }
   };
+
+  // get all Dashboards for drop down Select
+  getAllDashboards = async () => {
+    const dashboards: any = await this.context.coreSDK.ok(
+      this.context.core40SDK.all_dashboards("id,title,folder(id,name)")
+    );
+
+    const dashboardList = chain(dashboards)
+      .filter((d: any) => d.folder.id !== "lookml")
+      .map((d: any) => {
+        return {
+          label: d.title + " - " + d.id,
+          value: d.id,
+          folder: d.folder.name + " - " + d.folder.id,
+        };
+      })
+      .sortBy(["folder", "label"])
+      .groupBy("folder")
+      .map((value, key) => ({ label: key, options: value })) // 'key' is groups name (folder), 'value' is the array of dashboard value/labels
+      .value();
+
+    // need to remove the folders in options?
+
+    // fix sort!!
+
+    if (DEBUG) {
+      console.log("Dashboards found:");
+      console.log(dashboardList);
+    }
+    return dashboardList;
+  };
+
+  // Searchable Select dropdown to choose Dashboard
+  DashboardSelect = (): JSX.Element => {
+    const dashboards = this.state.dashboards;
+    const value = this.state.selectedDashId;
+    const searchTerm = this.state.dashSearchString;
+
+    const onSelectChange = (e: any) => {
+      this.setState({ selectedDashId: e });
+    };
+
+    const handleSelectFilter = (term: string) => {
+      this.setState({ dashSearchString: term });
+    };
+
+    const newOptions = () => {
+      if (searchTerm === "") return dashboards;
+      return dashboards.filter((o: any) => {
+        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+      });
+    };
+
+    return (
+      <Select
+        options={this.state.dashboards}
+        // options={newOptions}
+        onChange={onSelectChange}
+        onFilter={handleSelectFilter}
+        value={value}
+        isFilterable
+        autoResize
+      />
+    );
+  };
+
+  // get all datagroups defined on instance to use as schedule option
+  // todo filter deleted datagroups - not currently possible
+  getDatagroups = async () => {
+    const datagroups = await this.context.core40SDK.ok(
+      this.context.core40SDK.all_datagroups()
+    );
+    if (datagroups === undefined || datagroups.length === 0) {
+      return [];
+    } else {
+      const datagroupNames = datagroups
+        .map((d) => d.model_name + "::" + d.name)
+        .sort()
+        .map((d) => {
+          return { value: d, label: d };
+        });
+
+      // first element is " " as html select tag does not reset to ""
+      datagroupNames.unshift({ value: " ", label: "" });
+
+      if (DEBUG) {
+        console.log("Datagroups found:");
+        console.log(datagroupNames);
+      }
+
+      return datagroupNames;
+    }
+  };
+
+  // get all active users for owner_id
+  getAllUsers = async () => {
+    const allUsers = await this.context.core40SDK.ok(
+      this.context.core40SDK.all_users({
+        fields: "id, display_name, is_disabled",
+        sorts: "display_name",
+      })
+    );
+
+    const usersSelect = allUsers
+      .filter((u: any) => !u.is_disabled)
+      .map((u: any) => {
+        return {
+          value: u.id.toString(),
+          label: u.display_name.concat(" - ", u.id.toString()),
+        };
+      });
+
+    if (DEBUG) {
+      console.log("All users retrieved:");
+      console.log(usersSelect);
+    }
+
+    return usersSelect;
+  };
+
+  ///////////////////////////////////////////////
 
   //////////////// POPULATE ROWS ////////////////
 
@@ -290,16 +422,6 @@ export class SchedulesPage extends React.Component<
 
   ///////////////// DASHBOARD SEARCH AND PREP FOR TABLE ////////////////
 
-  handleDashChange = (event: any) => {
-    this.setState({ selectedDashId: event.target.value });
-  };
-
-  handleKeyPress = (event: any) => {
-    if (event.key === "Enter") {
-      this.handleDashSubmit();
-    }
-  };
-
   handleDashSubmit = () => {
     if (!this.state.selectedDashId) {
       return;
@@ -308,7 +430,7 @@ export class SchedulesPage extends React.Component<
     this.getDash(this.state.selectedDashId);
   };
 
-  getDash = async (dash_id: number) => {
+  getDash = async (dash_id: string) => {
     this.setState({
       selectedDashId: dash_id,
       currentDash: undefined,
@@ -321,7 +443,7 @@ export class SchedulesPage extends React.Component<
 
     try {
       const dash = await this.context.core40SDK.ok(
-        this.context.core40SDK.dashboard(dash_id.toString())
+        this.context.core40SDK.dashboard(dash_id)
       );
       const schedulesArray = await this.getScheduledPlans(dash_id, dash);
 
@@ -441,10 +563,10 @@ export class SchedulesPage extends React.Component<
   };
 
   // get all scheduled plans for dashboard and prepare for table
-  getScheduledPlans = async (dash_id: number, dash: IDashboard) => {
+  getScheduledPlans = async (dash_id: string, dash: IDashboard) => {
     const schedules = await this.context.core40SDK.ok(
       this.context.core40SDK.scheduled_plans_for_dashboard({
-        dashboard_id: dash_id,
+        dashboard_id: Number(dash_id),
         all_users: true,
         fields:
           "enabled,id,name,filters_string,crontab,datagroup,scheduled_plan_destination(type,address,message,format,apply_vis,apply_formatting),run_as_recipient,include_links,timezone,long_tables,pdf_paper_size,pdf_landscape,user(id,display_name),created_at,updated_at, next_run_at,last_run_at",
@@ -493,59 +615,6 @@ export class SchedulesPage extends React.Component<
 
       return scheduleHeader.slice(1);
     }
-  };
-
-  // get all datagroups defined on instance to use as schedule option
-  // todo filter deleted datagroups - not currently possible
-  getDatagroups = async () => {
-    const datagroups = await this.context.core40SDK.ok(
-      this.context.core40SDK.all_datagroups()
-    );
-    if (datagroups === undefined || datagroups.length === 0) {
-      return [];
-    } else {
-      const datagroupNames = datagroups
-        .map((d) => d.model_name + "::" + d.name)
-        .sort()
-        .map((d) => {
-          return { value: d, label: d };
-        });
-
-      // first element is " " as html select tag does not reset to ""
-      datagroupNames.unshift({ value: " ", label: "" });
-
-      if (DEBUG) {
-        console.log("Datagroups found:");
-        console.log(datagroupNames);
-      }
-
-      return datagroupNames;
-    }
-  };
-
-  getAllUsers = async () => {
-    const allUsers = await this.context.core40SDK.ok(
-      this.context.core40SDK.all_users({
-        fields: "id, display_name, is_disabled",
-        sorts: "display_name",
-      })
-    );
-
-    const usersSelect = allUsers
-      .filter((u: any) => !u.is_disabled)
-      .map((u: any) => {
-        return {
-          value: u.id.toString(),
-          label: u.display_name.concat(" - ", u.id.toString()),
-        };
-      });
-
-    if (DEBUG) {
-      console.log("All users retrieved:");
-      console.log(usersSelect);
-    }
-
-    return usersSelect;
   };
 
   ///////////////////////////////////////////////////
@@ -666,7 +735,7 @@ export class SchedulesPage extends React.Component<
     const writeScheduledPlan: IWriteScheduledPlanNulls = {
       user_id: Number(rowDetails.owner_id),
       name: rowDetails.name,
-      dashboard_id: this.state.selectedDashId,
+      dashboard_id: Number(this.state.selectedDashId),
       timezone: rowDetails.timezone,
       include_links: rowDetails.include_links,
       run_as_recipient: rowDetails.run_as_recipient,
@@ -894,7 +963,7 @@ export class SchedulesPage extends React.Component<
     }
 
     // if no more rows, recreate table
-    if (newArray.length === 0 && this.state.selectedDashId) {
+    if (newArray.length === 0) {
       const scheduleHeader = await this.prepareEmptyTable(
         this.state.currentDash
       );
@@ -937,7 +1006,7 @@ export class SchedulesPage extends React.Component<
 
     const updateTable = cloneDeep(this.state.schedulesArray);
 
-    if (!this.state.selectedDashId || !this.state.currentDash) {
+    if (!this.state.currentDash) {
       this.setState({
         runningUpdate: false,
         notificationMessage: "Dashboard not found",
@@ -1262,23 +1331,17 @@ export class SchedulesPage extends React.Component<
 
         <Box m="large">
           <Flex height="50px" justifyContent="space-between">
-            <FlexItem mb="medium">
-              <Text variant="secondary" mr="xxsmall">
-                Enter A Dashboard ID:
-              </Text>
-              <InputText
-                width="80"
-                height="28"
-                type="number"
-                min="1"
-                onKeyPress={this.handleKeyPress}
-                onChange={this.handleDashChange}
-                mr="small"
-              />
-              <Button size="small" mr="xxsmall" onClick={this.handleDashSubmit}>
-                Go
-              </Button>
-            </FlexItem>
+            <Flex alignItems="center">
+              <FlexItem>
+                <Text variant="secondary">Select A Dashboard: </Text>{" "}
+              </FlexItem>
+              <FlexItem>{this.DashboardSelect()}</FlexItem>{" "}
+              <FlexItem>
+                <Button size="medium" onClick={this.handleDashSubmit}>
+                  Go
+                </Button>
+              </FlexItem>
+            </Flex>
 
             <FlexItem width="40%">
               {this.state.runningQuery && (
