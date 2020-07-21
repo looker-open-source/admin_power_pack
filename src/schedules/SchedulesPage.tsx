@@ -135,6 +135,27 @@ export class SchedulesPage extends React.Component<
     this.handlePopCron = this.handlePopCron.bind(this);
   }
 
+  componentDidMount = async () => {
+    const { initializeError } = this.context;
+    if (initializeError) {
+      return;
+    }
+
+    try {
+      const datagroups = await this.getDatagroups();
+      const users = await this.getAllUsers();
+
+      this.setState({ datagroups: datagroups, users: users });
+    } catch (error) {
+      this.setState({
+        errorMessage: "Unable to load Datagroups and Users.",
+        runningQuery: false,
+      });
+
+      return;
+    }
+  };
+
   //////////////// POPULATE ROWS ////////////////
 
   handlePopQueryId = (event: any) => {
@@ -303,8 +324,6 @@ export class SchedulesPage extends React.Component<
         this.context.core40SDK.dashboard(dash_id.toString())
       );
       const schedulesArray = await this.getScheduledPlans(dash_id, dash);
-      const datagroups = await this.getDatagroups();
-      const users = await this.getAllUsers();
 
       if (DEBUG) {
         console.log(`Dashboard ${dash_id} found:`);
@@ -321,8 +340,6 @@ export class SchedulesPage extends React.Component<
 
       this.setState({
         currentDash: dash,
-        datagroups: datagroups,
-        users: users,
         schedulesArray: schedulesArray,
         schedulesArrayBackup: schedulesArray,
         runningQuery: false,
