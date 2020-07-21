@@ -25,6 +25,7 @@
 import {
   Box,
   Button,
+  ButtonOutline,
   ComboboxOptionObject,
   Confirm,
   Flex,
@@ -510,14 +511,17 @@ export class SchedulesPage extends React.Component<
     const allUsers = await this.context.core40SDK.ok(
       this.context.core40SDK.all_users({
         fields: "id, display_name, is_disabled",
-        sorts: "first_name",
+        sorts: "display_name",
       })
     );
 
     const usersSelect = allUsers
       .filter((u: any) => !u.is_disabled)
       .map((u: any) => {
-        return { value: u.id.toString(), label: u.display_name };
+        return {
+          value: u.id.toString(),
+          label: u.display_name.concat(" - ", u.id.toString()),
+        };
       });
 
     if (DEBUG) {
@@ -1321,28 +1325,10 @@ export class SchedulesPage extends React.Component<
                     }}
                   >
                     {(open) => (
-                      <Button color="critical" onClick={open}>
+                      <ButtonOutline color="critical" onClick={open}>
                         Revert
-                      </Button>
+                      </ButtonOutline>
                     )}
-                  </Confirm>{" "}
-                  <Confirm
-                    buttonColor="key"
-                    title="Update All"
-                    message="Are you sure you want to update all schedules?"
-                    onConfirm={(close) => {
-                      const schedulesToAdd = JSON.parse(
-                        JSON.stringify(this.state.schedulesArray)
-                      );
-                      const rowIndex: number[] = [];
-                      schedulesToAdd.forEach((e: any, i: number) => {
-                        rowIndex.push(i);
-                      });
-                      this.updateRow(rowIndex, schedulesToAdd);
-                      close();
-                    }}
-                  >
-                    {(open) => <Button onClick={open}>Update All</Button>}
                   </Confirm>
                 </>
               )}
