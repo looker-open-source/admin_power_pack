@@ -392,7 +392,7 @@ const EditableCell = (ec: EditableCellInterface) => {
   } else if (TEXTAREA_FIELDS.includes(id)) {
     return DefaultTextArea();
   } else if (id === "crontab") {
-    const isDatagroup = data[index].datagroup !== " ";
+    const isDatagroup = data[index].datagroup !== "";
     return CronInputText(isDatagroup);
   } else {
     return DefaultInputText(false);

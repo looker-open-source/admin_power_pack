@@ -388,8 +388,7 @@ export class SchedulesPage extends React.Component<
 
     formattedRow.owner_id = s.user.id.toString(); // change from number to string for better compatability with Select
     formattedRow.crontab = s.crontab === null ? "" : s.crontab;
-    formattedRow.datagroup =
-      s.datagroup === null || s.datagroup === "" ? " " : s.datagroup; // html select tag does not reset to ""
+    formattedRow.datagroup = s.datagroup === null ? "" : s.datagroup;
     formattedRow.run_as_recipient =
       s.run_as_recipient === null ? false : s.run_as_recipient;
     formattedRow.long_tables = s.long_tables === null ? false : s.long_tables;
@@ -611,14 +610,14 @@ export class SchedulesPage extends React.Component<
       }
     }
 
-    // 1 trigger field must be filled out, empty datagroups will be: " "
+    // 1 trigger field must be filled out
     const triggers = [
       row[REQUIRED_TRIGGER_FIELDS[0]],
       row[REQUIRED_TRIGGER_FIELDS[1]],
     ];
     if (
       triggers.reduce(
-        (acc: number, field: string) => acc + (field.length > 1 ? 1 : 0),
+        (acc: number, field: string) => acc + (field.length > 0 ? 1 : 0),
         0
       ) !== 1
     ) {
@@ -630,7 +629,6 @@ export class SchedulesPage extends React.Component<
 
   // sets default values for rows
   setDefaultRowParams = (row: any) => {
-    row.datagroup = " ";
     row.format = "wysiwyg_pdf";
     row.timezone = "UTC";
     row.run_as_recipient = false;
@@ -660,7 +658,7 @@ export class SchedulesPage extends React.Component<
         crontab: rowDetails.crontab,
         datagroup: null,
       }),
-      ...(rowDetails.datagroup !== " " && {
+      ...(rowDetails.datagroup !== "" && {
         datagroup: rowDetails.datagroup,
         crontab: null,
       }),
