@@ -182,54 +182,62 @@ export class SchedulesPage extends React.Component<
           folder: d.folder.name + " - " + d.folder.id,
         };
       })
-      .sortBy(["folder", "label"])
+      .sortBy(["folder", "label"]) // TODO fix dash sort per folder!!
       .groupBy("folder")
-      .map((value, key) => ({ label: key, options: value })) // 'key' is groups name (folder), 'value' is the array of dashboard value/labels
-      .value();
-
-    // need to remove the folders in options?
-
-    // fix sort!!
+      .map((value, key) => ({
+        label: key,
+        options: value,
+      })) // 'key' is groups name (folder), 'value' is the array of dashboard value/labels
+      .value(); // ok keeping folder in options
 
     if (DEBUG) {
-      console.log("Dashboards found:");
+      console.log("All Dashboards found:");
       console.log(dashboardList);
     }
+
     return dashboardList;
   };
 
-  // Searchable Select dropdown to choose Dashboard
-  DashboardSelect = (): JSX.Element => {
-    const dashboards = this.state.dashboards;
-    const value = this.state.selectedDashId;
+  onDashSelectChange = (e: any) => {
+    this.setState({ selectedDashId: e });
+  };
+
+  handleDashSelectFilter = (term: string) => {
+    this.setState({ dashSearchString: term });
+  };
+
+  newDashSelectOptions = () => {
     const searchTerm = this.state.dashSearchString;
+    const groupedDashboards = this.state.dashboards;
 
-    const onSelectChange = (e: any) => {
-      this.setState({ selectedDashId: e });
-    };
+    if (searchTerm === "") return groupedDashboards;
 
-    const handleSelectFilter = (term: string) => {
-      this.setState({ dashSearchString: term });
-    };
+    let newOptions: any = [];
 
-    const newOptions = () => {
-      if (searchTerm === "") return dashboards;
-      return dashboards.filter((o: any) => {
-        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
-      });
-    };
+    groupedDashboards.filter((group: any) => {
+      const foundDashboardsPerFolder = group.options.filter(
+        (dashboards: any) => {
+          return (
+            dashboards.label.toLowerCase().indexOf(searchTerm.toLowerCase()) >
+            -1
+          );
+        }
+      );
 
-    return (
-      <Select
-        options={this.state.dashboards}
-        // options={newOptions}
-        onChange={onSelectChange}
-        onFilter={handleSelectFilter}
-        value={value}
-        isFilterable
-        autoResize
-      />
-    );
+      if (foundDashboardsPerFolder.length > 0) {
+        newOptions.push({
+          label: group.label,
+          options: foundDashboardsPerFolder,
+        });
+      }
+    });
+
+    if (DEBUG) {
+      console.log("Dashboards search filters:");
+      console.log(newOptions);
+    }
+
+    return newOptions;
   };
 
   // get all datagroups defined on instance to use as schedule option
@@ -1333,9 +1341,19 @@ export class SchedulesPage extends React.Component<
           <Flex height="50px" justifyContent="space-between">
             <Flex alignItems="center">
               <FlexItem>
-                <Text variant="secondary">Select A Dashboard: </Text>{" "}
+                <Text variant="secondary">Select A Dashboard: </Text>
               </FlexItem>
-              <FlexItem>{this.DashboardSelect()}</FlexItem>{" "}
+              <FlexItem mx="medium">
+                <Select
+                  options={this.newDashSelectOptions()}
+                  onChange={this.onDashSelectChange}
+                  onFilter={this.handleDashSelectFilter}
+                  value={this.state.selectedDashId}
+                  isFilterable
+                  autoResize
+                  minWidth="160"
+                />
+              </FlexItem>
               <FlexItem>
                 <Button size="medium" onClick={this.handleDashSubmit}>
                   Go
