@@ -58,7 +58,7 @@ import {
 } from "./constants";
 import { SchedulesTable } from "./SchedulesTable";
 import { PopulateParams, PopulateRows } from "./PopulateRows";
-// import { DashboardSelect } from "./DashboardSelect";
+import { GlobalActions } from "./GlobalActions";
 
 interface ExtensionState {
   currentDash?: IDashboard;
@@ -132,7 +132,6 @@ export class SchedulesPage extends React.Component<
         cron: "",
       },
     };
-    this.handleDashSubmit = this.handleDashSubmit.bind(this);
     this.handlePopQueryId = this.handlePopQueryId.bind(this);
     this.handlePopOwnerId = this.handlePopOwnerId.bind(this);
     this.handlePopName = this.handlePopName.bind(this);
@@ -147,6 +146,8 @@ export class SchedulesPage extends React.Component<
       return;
     }
 
+    this.setState({ notificationMessage: "Retrieving all dashboards..." });
+
     try {
       const dashboards = await this.getAllDashboards();
       const datagroups = await this.getDatagroups();
@@ -156,11 +157,13 @@ export class SchedulesPage extends React.Component<
         dashboards: dashboards,
         datagroups: datagroups,
         users: users,
+        notificationMessage: "Retrieving all dashboards...Done",
       });
     } catch (error) {
       this.setState({
         errorMessage: "Unable to load Dashboards.",
         runningQuery: false,
+        notificationMessage: undefined,
       });
 
       return;
@@ -200,12 +203,15 @@ export class SchedulesPage extends React.Component<
 
   onDashSelectChange = (e: any) => {
     this.setState({ selectedDashId: e });
+
+    this.getDash(e);
   };
 
   handleDashSelectFilter = (term: string) => {
     this.setState({ dashSearchString: term });
   };
 
+  // filter dashboards list with search term. retains folder grouping
   newDashSelectOptions = () => {
     const searchTerm = this.state.dashSearchString;
     const groupedDashboards = this.state.dashboards;
@@ -430,12 +436,17 @@ export class SchedulesPage extends React.Component<
 
   ///////////////// DASHBOARD SEARCH AND PREP FOR TABLE ////////////////
 
-  handleDashSubmit = () => {
-    if (!this.state.selectedDashId) {
-      return;
-    }
-
-    this.getDash(this.state.selectedDashId);
+  runningMessage = (message: string): JSX.Element => {
+    return (
+      <Text
+        color="palette.charcoal500"
+        fontWeight="semiBold"
+        mr="large"
+        textAlign="center"
+      >
+        {message}
+      </Text>
+    );
   };
 
   getDash = async (dash_id: string) => {
@@ -1338,49 +1349,33 @@ export class SchedulesPage extends React.Component<
         )}
 
         <Box m="large">
-          <Flex height="50px" justifyContent="space-between">
-            <Flex alignItems="center">
-              <FlexItem>
-                <Text variant="secondary">Select A Dashboard: </Text>
-              </FlexItem>
-              <FlexItem mx="medium">
-                <Select
-                  options={this.newDashSelectOptions()}
-                  onChange={this.onDashSelectChange}
-                  onFilter={this.handleDashSelectFilter}
-                  value={this.state.selectedDashId}
-                  isFilterable
-                  autoResize
-                  minWidth="160"
-                />
-              </FlexItem>
-              <FlexItem>
-                <Button size="medium" onClick={this.handleDashSubmit}>
-                  Go
-                </Button>
-              </FlexItem>
-            </Flex>
+          <Flex height="50px" flexWrap="nowrap" justifyContent="space-between">
+            <FlexItem>
+              <Flex alignItems="center">
+                <FlexItem>
+                  <Text variant="secondary">Select A Dashboard: </Text>
+                </FlexItem>
+                <FlexItem mx="medium">
+                  <Select
+                    options={this.newDashSelectOptions()}
+                    onChange={this.onDashSelectChange}
+                    onFilter={this.handleDashSelectFilter}
+                    value={this.state.selectedDashId}
+                    isFilterable
+                    autoResize
+                    minWidth="160"
+                    maxWidth="320"
+                  />
+                </FlexItem>
+              </Flex>
+            </FlexItem>
 
-            <FlexItem width="40%">
-              {this.state.runningQuery && (
-                <Text
-                  color="palette.charcoal500"
-                  fontWeight="semiBold"
-                  mr="large"
-                >
-                  Getting Schedules Data ...
-                </Text>
-              )}
+            <FlexItem>
+              {this.state.runningQuery &&
+                this.runningMessage("Getting Schedules Data ...")}
 
-              {this.state.runningUpdate && (
-                <Text
-                  color="palette.charcoal500"
-                  fontWeight="semiBold"
-                  mr="large"
-                >
-                  Processing ...
-                </Text>
-              )}
+              {this.state.runningUpdate &&
+                this.runningMessage("Processing ...")}
 
               {this.state.notificationMessage && (
                 <MessageBar
@@ -1397,7 +1392,7 @@ export class SchedulesPage extends React.Component<
               )}
             </FlexItem>
 
-            <FlexItem>
+            <FlexItem flexBasis="400px">
               {this.state.schedulesArray.length > 0 && (
                 <>
                   <PopulateRows
@@ -1425,7 +1420,8 @@ export class SchedulesPage extends React.Component<
                         Revert
                       </ButtonOutline>
                     )}
-                  </Confirm>
+                  </Confirm>{" "}
+                  <GlobalActions />
                 </>
               )}
             </FlexItem>
