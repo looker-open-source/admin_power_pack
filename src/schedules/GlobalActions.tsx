@@ -25,24 +25,23 @@
 import React from "react";
 import styled from "styled-components";
 import {
-  Box,
   Button,
   ButtonTransparent,
   ConfirmLayout,
   Dialog,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
   Menu,
   MenuDisclosure,
   MenuItem,
   MenuList,
   Paragraph,
-  SpaceVertical,
-  Text,
   TextArea,
 } from "@looker/components";
 import { DEBUG } from "./constants";
+
+export interface QueryProps {
+  GlobalFindReplaceEmail(EmailMap: string): void;
+}
 
 const MonospaceTextArea = styled(TextArea)`
   textarea {
@@ -50,14 +49,16 @@ const MonospaceTextArea = styled(TextArea)`
   }
 `;
 
-export const GlobalActions = (): JSX.Element => {
+export const GlobalActions = (qp: QueryProps): JSX.Element => {
+  const { GlobalFindReplaceEmail } = qp;
+
   const [isToggledGFR, setisToggledGFR] = React.useState(false);
   const [isToggledVSJ, setisToggledVSJ] = React.useState(false);
 
-  const [EmailMapGFR, setEmailMapGFR] = React.useState("");
-
   const ToggleGFR = () => setisToggledGFR((on) => !on);
   const ToggleVSJ = () => setisToggledVSJ((on) => !on);
+
+  const [EmailMap, setEmailMap] = React.useState("");
 
   return (
     <Menu>
@@ -77,17 +78,17 @@ export const GlobalActions = (): JSX.Element => {
                   addresses per line, separated by a comma.
                 </Paragraph>
                 <Paragraph mb="small">
-                  If a schedule plan destination currently has the email address
-                  in the first column, the address will be updated to the value
-                  in the second column. This will update all schedules across
-                  the instance where there is a match.
+                  If a schedule plan destination has the email address in the
+                  first column, the address will be updated to the value in the
+                  second column. This will update all schedule plans across the
+                  instance where there is a match.
                 </Paragraph>
                 <Paragraph mb="small">
                   Note that the emails are not case sensitive.
                 </Paragraph>
                 <MonospaceTextArea
                   resize
-                  onChange={(e: any) => setEmailMapGFR(e.target.value)}
+                  onChange={(e: any) => setEmailMap(e.target.value)}
                   placeholder={
                     "jon.snow@old.com,jsnow@new.com         arya.stark@old.com,astark@new.com"
                   }
@@ -97,11 +98,8 @@ export const GlobalActions = (): JSX.Element => {
             primaryButton={
               <Button
                 onClick={() => {
-                  if (DEBUG) {
-                    console.log("CSV of email addresses:");
-                    console.log(EmailMapGFR);
-                  }
-
+                  GlobalFindReplaceEmail(EmailMap);
+                  setEmailMap("");
                   ToggleGFR();
                 }}
               >
@@ -118,7 +116,8 @@ export const GlobalActions = (): JSX.Element => {
 
       <MenuList>
         <MenuItem onClick={ToggleGFR}>Find & Replace Email</MenuItem>
-        <MenuItem>Validate Recent Schedule Jobs</MenuItem>
+        {/* <MenuItem>Validate Recent Schedule Jobs</MenuItem> */}
+        {/* Under Construction */}
       </MenuList>
     </Menu>
   );

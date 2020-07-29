@@ -38,16 +38,17 @@ import {
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
 import { isEqual, cloneDeep, chain, sortBy, groupBy } from "lodash";
+import Papa from "papaparse";
+import React from "react";
+import { RouteComponentProps, withRouter } from "react-router-dom";
+import { hot } from "react-hot-loader/root";
 import {
   IDashboard,
   IScheduledPlan,
   IScheduledPlanDestination,
   IUserPublic,
-} from "@looker/sdk";
-import React from "react";
-import { RouteComponentProps, withRouter } from "react-router-dom";
-import { hot } from "react-hot-loader/root";
-import { IWriteScheduledPlan } from "@looker/sdk/dist/sdk/4.0/models";
+  IWriteScheduledPlan,
+} from "@looker/sdk/dist/sdk/4.0/models";
 import {
   DEBUG,
   ADVANCED_FIELDS,
@@ -146,7 +147,9 @@ export class SchedulesPage extends React.Component<
       return;
     }
 
-    this.setState({ notificationMessage: "Retrieving all dashboards..." });
+    this.setState({
+      notificationMessage: "Retrieving all dashboards...",
+    });
 
     try {
       const dashboards = await this.getAllDashboards();
@@ -172,7 +175,7 @@ export class SchedulesPage extends React.Component<
 
   // get all Dashboards for drop down Select
   getAllDashboards = async () => {
-    const dashboards: any = await this.context.coreSDK.ok(
+    const dashboards: any = await this.context.core40SDK.ok(
       this.context.core40SDK.all_dashboards("id,title,folder(id,name)")
     );
 
@@ -430,6 +433,38 @@ export class SchedulesPage extends React.Component<
     }
 
     return;
+  };
+
+  /////////////////////////////////////////////////////
+
+  //////////////// GLOBAL FIND REPLACE ////////////////
+
+  GlobalFindReplaceEmail = async (EmailMap: string) => {
+    try {
+      const allSchedules = await this.context.core40SDK.ok(
+        this.context.core40SDK.all_scheduled_plans({
+          all_users: true,
+        })
+      );
+
+      const rawData = Papa.parse(EmailMap).data;
+      const cleanData = rawData.map((arr: any) =>
+        arr.map((el: string) => el.trim()).filter(Boolean)
+      );
+      const mappings = new Map(cleanData);
+
+      if (DEBUG) {
+        console.log("CSV of email addresses:");
+        console.log(mappings);
+      }
+
+      console.log(allSchedules[0]);
+
+      // filter on "type": "email"
+    } catch (error) {
+      console.log`ERROR: '${error.message}'`;
+      // console.log`ERROR: email destination ${email}. Message: '${error.message}'`;
+    }
   };
 
   /////////////////////////////////////////////////////////////////////
@@ -1421,7 +1456,9 @@ export class SchedulesPage extends React.Component<
                       </ButtonOutline>
                     )}
                   </Confirm>{" "}
-                  <GlobalActions />
+                  <GlobalActions
+                    GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
+                  />
                 </>
               )}
             </FlexItem>

@@ -20,6 +20,7 @@
     "@looker/extension-sdk-react": "^0.4.0",
     "@looker/sdk": ">=0.2.0-beta",
     "@types/jest": "^26.0.0",
+    "@types/papaparse": "^5.0.6",
     "@xstate/react": "^0.8.1",
     "cronstrue": "^1.94.0",
     "lodash": "^4.17.15",
