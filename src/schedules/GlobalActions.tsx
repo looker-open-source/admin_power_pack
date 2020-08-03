@@ -84,7 +84,8 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
                   instance where there is a match.
                 </Paragraph>
                 <Paragraph mb="small">
-                  Note that the emails are not case sensitive.
+                  Note that the schedule plans must be enabled to be updated.
+                  Emails are not case sensitive.
                 </Paragraph>
                 <MonospaceTextArea
                   resize
@@ -115,8 +116,10 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
       {/* GlobalFindReplace Dialog End */}
 
       <MenuList>
-        <MenuItem onClick={ToggleGFR}>Find & Replace Email</MenuItem>
-        {/* <MenuItem>Validate Recent Schedule Jobs</MenuItem> */}
+        <MenuItem icon="Beaker" onClick={ToggleGFR}>
+          Find & Replace Email
+        </MenuItem>
+        {/* <MenuItem icon="Beaker">Validate Recent Schedule Jobs</MenuItem> */}
         {/* Under Construction */}
       </MenuList>
     </Menu>

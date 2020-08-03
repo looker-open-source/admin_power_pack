@@ -440,6 +440,12 @@ export class SchedulesPage extends React.Component<
   //////////////// GLOBAL FIND REPLACE ////////////////
 
   GlobalFindReplaceEmail = async (EmailMap: string) => {
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
     try {
       const allSchedules = await this.context.core40SDK.ok(
         this.context.core40SDK.all_scheduled_plans({
@@ -449,21 +455,81 @@ export class SchedulesPage extends React.Component<
 
       const rawData = Papa.parse(EmailMap).data;
       const cleanData = rawData.map((arr: any) =>
-        arr.map((el: string) => el.trim()).filter(Boolean)
+        arr.map((el: string) => el.trim().toLowerCase()).filter(Boolean)
       );
-      const mappings = new Map(cleanData);
+      const mappings: Map<string, string> = new Map(cleanData);
+      const emailsToChange = Array.from(mappings.keys());
 
       if (DEBUG) {
         console.log("CSV of email addresses:");
         console.log(mappings);
+
+        console.log("Original Schedules (All):");
+        console.log(allSchedules);
       }
 
-      console.log(allSchedules[0]);
+      const emailSchedules = allSchedules
+        // filter on schedules that contain any matches to emailsToChange
+        .filter((s) => {
+          const recipients = s.scheduled_plan_destination!.map((a: any) =>
+            a.address.toLowerCase()
+          );
+          return recipients.some((email) => emailsToChange.includes(email));
+        })
+        .map((s) => {
+          // update address with mappings value
+          s.scheduled_plan_destination!.map((spd) => {
+            const spdEmail = spd.address!.toLowerCase();
+            spd.address =
+              mappings.get(spdEmail) !== undefined
+                ? mappings.get(spdEmail)
+                : spd.address;
+            return spd;
+          });
+          return s;
+        });
 
-      // filter on "type": "email"
+      if (emailSchedules.length === 0) {
+        this.setState({
+          runningUpdate: false,
+          errorMessage: undefined,
+          notificationMessage:
+            "No update. There were no matches to the CSV email mapping.",
+        });
+        return;
+      }
+
+      if (DEBUG) {
+        console.log("Schedules to Update:");
+        console.log(emailSchedules);
+      }
+
+      // TODO if run_as_recipiant is enabled and email is not a Looker account, will return 422
+      await Promise.all(
+        emailSchedules.map(async (s) => {
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.update_scheduled_plan(s.id!, s)
+          );
+          if (DEBUG) {
+            console.log(`Update schedule response for: ${response.id}`);
+            console.log(JSON.stringify(response, null, 2)); // todo return when 422
+          }
+        })
+      ).then((values) => {
+        const scheduleIds = emailSchedules.map((s) => s.id);
+
+        this.setState({
+          runningUpdate: false,
+          errorMessage: undefined,
+          notificationMessage: `Emails successfully updated for schedules: ${scheduleIds}`,
+        });
+      });
     } catch (error) {
-      console.log`ERROR: '${error.message}'`;
-      // console.log`ERROR: email destination ${email}. Message: '${error.message}'`;
+      this.setState({
+        runningUpdate: false,
+        errorMessage: "Error updating emails. See console for more details.",
+        notificationMessage: undefined,
+      });
     }
   };
 
@@ -1372,8 +1438,7 @@ export class SchedulesPage extends React.Component<
         {this.state.errorMessage && (
           <MessageBar
             intent="critical"
-            canDismiss
-            onDismiss={() => {
+            onPrimaryClick={() => {
               this.setState({
                 errorMessage: undefined,
               });
@@ -1415,8 +1480,7 @@ export class SchedulesPage extends React.Component<
               {this.state.notificationMessage && (
                 <MessageBar
                   intent="positive"
-                  canDismiss
-                  onDismiss={() => {
+                  onPrimaryClick={() => {
                     this.setState({
                       notificationMessage: undefined,
                     });
@@ -1427,39 +1491,45 @@ export class SchedulesPage extends React.Component<
               )}
             </FlexItem>
 
-            <FlexItem flexBasis="400px">
+            <FlexItem flexBasis="410px">
               {this.state.schedulesArray.length > 0 && (
-                <>
-                  <PopulateRows
-                    popParams={this.state.populateParams}
-                    resetPopParams={this.resetPopParams}
-                    validPopParams={this.validPopParams}
-                    handlePopQueryId={this.handlePopQueryId}
-                    handlePopOwnerId={this.handlePopOwnerId}
-                    handlePopName={this.handlePopName}
-                    handlePopCron={this.handlePopCron}
-                    handlePopSubmit={this.handlePopSubmit}
-                  />{" "}
-                  <Confirm
-                    confirmLabel="Revert"
-                    buttonColor="critical"
-                    title="Revert Changes"
-                    message="Are you sure you want to revert all changes?"
-                    onConfirm={(close) => {
-                      this.resetData();
-                      close();
-                    }}
-                  >
-                    {(open) => (
-                      <ButtonOutline color="critical" onClick={open}>
-                        Revert
-                      </ButtonOutline>
-                    )}
-                  </Confirm>{" "}
-                  <GlobalActions
-                    GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
-                  />
-                </>
+                <Flex flexWrap="nowrap">
+                  <FlexItem mx="xxxsmall">
+                    <PopulateRows
+                      popParams={this.state.populateParams}
+                      resetPopParams={this.resetPopParams}
+                      validPopParams={this.validPopParams}
+                      handlePopQueryId={this.handlePopQueryId}
+                      handlePopOwnerId={this.handlePopOwnerId}
+                      handlePopName={this.handlePopName}
+                      handlePopCron={this.handlePopCron}
+                      handlePopSubmit={this.handlePopSubmit}
+                    />
+                  </FlexItem>
+                  <FlexItem mx="xxxsmall">
+                    <Confirm
+                      confirmLabel="Revert"
+                      buttonColor="critical"
+                      title="Revert Changes"
+                      message="Are you sure you want to revert all changes?"
+                      onConfirm={(close) => {
+                        this.resetData();
+                        close();
+                      }}
+                    >
+                      {(open) => (
+                        <ButtonOutline color="critical" onClick={open}>
+                          Revert
+                        </ButtonOutline>
+                      )}
+                    </Confirm>
+                  </FlexItem>
+                  <FlexItem mx="xxxsmall">
+                    <GlobalActions
+                      GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
+                    />
+                  </FlexItem>
+                </Flex>
               )}
             </FlexItem>
           </Flex>
