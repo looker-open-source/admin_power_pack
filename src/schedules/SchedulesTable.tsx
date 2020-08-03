@@ -36,6 +36,7 @@ import {
   Heading,
   Icon,
   InputText,
+  InputChips,
   Paragraph,
   Popover,
   PopoverContent,
@@ -58,11 +59,6 @@ import { translateCron } from "./cronHelper";
 import { IScheduledPlanTable } from "./SchedulesPage";
 import {
   DEBUG,
-  READ_ONLY_FIELDS,
-  SELECT_FIELDS,
-  CHECKBOX_FIELDS,
-  FORMATTING_FIELDS,
-  TEXTAREA_FIELDS,
   KEY_FIELDS,
   TABLE_HEADING,
   TIMEZONES,
@@ -147,7 +143,6 @@ const EditableCell = (ec: EditableCellInterface) => {
     syncData,
   } = ec;
 
-  // We need to keep and update the state of the cell normally
   const [value, setValue] = React.useState(initialValue);
   const [searchTerm, setSearchTerm] = React.useState("");
 
@@ -264,6 +259,53 @@ const EditableCell = (ec: EditableCellInterface) => {
         onBlur={onBlur}
         resize
       />
+    );
+  };
+
+  const RecipientsInputChips = (): JSX.Element => {
+    const [invalidValue, setInvalidValue] = React.useState("");
+    const [duplicateValue, setDuplicateValue] = React.useState("");
+
+    const emailValidator = new RegExp(
+      /^(([^<>()\[\]\\.,:\s@"]+(\.[^<>()\[\]\\.,:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    );
+
+    function handleChange(newValues: string[]) {
+      setValue(newValues);
+      setInvalidValue("");
+      setDuplicateValue("");
+    }
+    function validate(valueToValidate: string) {
+      return emailValidator.test(valueToValidate);
+    }
+    function handleInvalid(invalidValue: string[]) {
+      setInvalidValue(invalidValue[0]);
+    }
+    function handleDuplicate(duplicateValue: string[]) {
+      setDuplicateValue(duplicateValue[0]);
+    }
+
+    return (
+      <>
+        <InputChips
+          values={value}
+          validate={validate}
+          onChange={handleChange}
+          onValidationFail={handleInvalid}
+          onDuplicate={handleDuplicate}
+          onBlur={() => {
+            onBlur();
+            handleChange(value);
+          }}
+        />
+        <Paragraph fontSize="small" variant="critical">
+          {invalidValue !== ""
+            ? `Invalid email: ${invalidValue}`
+            : duplicateValue !== ""
+            ? `${duplicateValue} has already been entered`
+            : ""}
+        </Paragraph>
+      </>
     );
   };
 
@@ -395,8 +437,10 @@ const EditableCell = (ec: EditableCellInterface) => {
     // TEXTAREA_FIELDS //
     case "message":
       return DefaultTextArea();
+
+    // INPUTCHIPS FIELDS//
     case "recipients":
-      return DefaultTextArea();
+      return RecipientsInputChips();
 
     // CRONTAB AND INPUT_TEXT FIELDS //
     case "crontab":

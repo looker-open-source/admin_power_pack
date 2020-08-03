@@ -125,25 +125,6 @@ export const KEY_FIELDS = [
   ...FORMATTING_FIELDS,
 ];
 
-export const SELECT_FIELDS = [
-  "datagroup",
-  "format",
-  "owner_id",
-  "pdf_paper_size",
-  "timezone",
-];
-
-export const TEXTAREA_FIELDS = ["message", "recipients"];
-
-export const CHECKBOX_FIELDS = [
-  "apply_formatting",
-  "apply_vis",
-  "include_links",
-  "long_tables",
-  "pdf_landscape",
-  "run_as_recipient",
-];
-
 //////////////// SELECT OPTIONS  ////////////////
 
 export const FORMAT = [

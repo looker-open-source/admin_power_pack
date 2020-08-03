@@ -92,7 +92,7 @@ interface IWriteScheduledPlanNulls extends IWriteScheduledPlan {
 // used to display specific fields for all schedules on a Dashboard
 export interface IScheduledPlanTable extends IScheduledPlan {
   owner_id: string;
-  recipients: string; // converting Array<string> to string
+  recipients: string[];
   run_as_recipient?: any;
   include_links?: any;
   [key: string]: any; // needed to dynamically display filters
@@ -410,7 +410,7 @@ export class SchedulesPage extends React.Component<
         newRow.crontab = params.cron;
 
         if (fieldMapper["Email"] !== undefined) {
-          newRow.recipients = results.data[i][fieldMapper["Email"]].value;
+          newRow.recipients = [results.data[i][fieldMapper["Email"]].value];
         }
 
         newArray.push(newRow);
@@ -655,9 +655,9 @@ export class SchedulesPage extends React.Component<
       s.pdf_landscape === null ? false : s.pdf_landscape;
     formattedRow.pdf_paper_size =
       s.pdf_paper_size === null ? "" : s.pdf_paper_size;
-    formattedRow.recipients = s.scheduled_plan_destination
-      .map((a: any) => a.address)
-      .toString();
+    formattedRow.recipients = s.scheduled_plan_destination.map(
+      (a: any) => a.address
+    );
 
     const spd = s.scheduled_plan_destination[0];
     formattedRow.message = spd.message === null ? "" : spd.message;
@@ -772,7 +772,7 @@ export class SchedulesPage extends React.Component<
   // parse string for commas and create array of destiations
   writeScheduledPlanDestinations = (schedule: IScheduledPlanTable): any => {
     const scheduledPlanDestinations: any = [];
-    schedule.recipients.split(",").forEach((email) => {
+    schedule.recipients.forEach((email) => {
       scheduledPlanDestinations.push({
         type: "email",
         format: schedule.format,
@@ -811,8 +811,11 @@ export class SchedulesPage extends React.Component<
   // check all required fields are populated. returns true if validated
   validateRow = (row: IScheduledPlanTable): boolean => {
     for (let [key, value] of Object.entries(row)) {
-      if (REQUIRED_FIELDS.includes(key) && value === "") {
-        return false;
+      if (REQUIRED_FIELDS.includes(key)) {
+        if (key === "recipients") {
+          if (value.length === 0) return false;
+        }
+        if (value === "") return false;
       }
     }
 
@@ -835,6 +838,7 @@ export class SchedulesPage extends React.Component<
 
   // sets default values for rows
   setDefaultRowParams = (row: any) => {
+    row.recipients = [];
     row.format = "wysiwyg_pdf";
     row.timezone = "UTC";
     row.run_as_recipient = false;
@@ -1052,16 +1056,11 @@ export class SchedulesPage extends React.Component<
       console.table(rows);
     }
 
-    if (!this.state.currentDash) {
-      this.setState({
-        notificationMessage: "Dashboard not found",
-      });
-      return;
-    } else {
-      this.setState({
-        runningUpdate: true,
-      });
-    }
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
 
     const newArray = cloneDeep(this.state.schedulesArray);
 
@@ -1085,7 +1084,7 @@ export class SchedulesPage extends React.Component<
     // if no more rows, recreate table
     if (newArray.length === 0) {
       const scheduleHeader = await this.prepareEmptyTable(
-        this.state.currentDash
+        this.state.currentDash!
       );
 
       if (DEBUG) {
@@ -1121,6 +1120,7 @@ export class SchedulesPage extends React.Component<
 
     this.setState({
       runningUpdate: true,
+      errorMessage: undefined,
       notificationMessage: undefined,
     });
 
@@ -1217,6 +1217,8 @@ export class SchedulesPage extends React.Component<
 
     this.setState({
       runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
     });
 
     try {
@@ -1294,6 +1296,8 @@ export class SchedulesPage extends React.Component<
 
     this.setState({
       runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
     });
 
     try {
@@ -1368,6 +1372,8 @@ export class SchedulesPage extends React.Component<
 
     this.setState({
       runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
     });
 
     try {
