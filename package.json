@@ -15,14 +15,16 @@
     "node": ">=10"
   },
   "dependencies": {
-    "@looker/components": "^0.8.7",
+    "@looker/components": "^0.9.5",
     "@looker/extension-sdk": "^0.5.1",
     "@looker/extension-sdk-react": "^0.4.0",
     "@looker/sdk": ">=0.2.0-beta",
     "@types/jest": "^26.0.0",
+    "@types/papaparse": "^5.0.6",
     "@xstate/react": "^0.8.1",
     "cronstrue": "^1.94.0",
     "lodash": "^4.17.15",
+    "mime": "^2.4.6",
     "papaparse": "^5.2.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",

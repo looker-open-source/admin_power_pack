@@ -22,6 +22,111 @@
  * THE SOFTWARE.
  */
 
+export const DEBUG = process.env.NODE_ENV === "development";
+
+//////////////// Order for table Headings ////////////////
+
+export const TABLE_HEADING = [
+  {
+    Header: "Details",
+    accessor: "details",
+  },
+  {
+    Header: "Owner ID",
+    accessor: "owner_id",
+  },
+  {
+    Header: "Name",
+    accessor: "name",
+  },
+  {
+    Header: "Crontab",
+    accessor: "crontab",
+  },
+  {
+    Header: "Datagroup",
+    accessor: "datagroup",
+  },
+  {
+    Header: "Recipients",
+    accessor: "recipients",
+  },
+  {
+    Header: "Message",
+    accessor: "message",
+  },
+  {
+    Header: "Run As Recipient",
+    accessor: "run_as_recipient",
+  },
+  {
+    Header: "Include Links",
+    accessor: "include_links",
+  },
+  {
+    Header: "Timezone",
+    accessor: "timezone",
+  },
+  {
+    Header: "Format",
+    accessor: "format",
+  },
+  {
+    Header: "Apply Vis",
+    accessor: "apply_vis",
+  },
+  {
+    Header: "Apply Formatting",
+    accessor: "apply_formatting",
+  },
+  {
+    Header: "Expand Tables",
+    accessor: "long_tables",
+  },
+  {
+    Header: "Paper Size",
+    accessor: "pdf_paper_size",
+  },
+  {
+    Header: "Landscape",
+    accessor: "pdf_landscape",
+  },
+];
+
+//////////////// FIELD LISTS  ////////////////
+
+export const READ_ONLY_FIELDS = ["details"];
+
+export const REQUIRED_FIELDS = ["owner_id", "name", "recipients"];
+
+export const REQUIRED_TRIGGER_FIELDS = ["crontab", "datagroup"];
+
+export const ADVANCED_FIELDS = [
+  "message",
+  "run_as_recipient",
+  "include_links",
+  "timezone",
+  "format",
+];
+
+export const FORMATTING_FIELDS = [
+  "apply_formatting",
+  "apply_vis",
+  "long_tables",
+  "pdf_landscape",
+  "pdf_paper_size",
+];
+
+export const KEY_FIELDS = [
+  ...READ_ONLY_FIELDS,
+  ...REQUIRED_FIELDS,
+  ...REQUIRED_TRIGGER_FIELDS,
+  ...ADVANCED_FIELDS,
+  ...FORMATTING_FIELDS,
+];
+
+//////////////// SELECT OPTIONS  ////////////////
+
 export const FORMAT = [
   { value: "wysiwyg_pdf", label: "PDF" },
   { value: "wysiwyg_png", label: "Visualization" },

@@ -25,15 +25,25 @@
 import React from "react";
 import {
   Box,
+  Button,
   ButtonOutline,
+  ButtonTransparent,
   Checkbox,
   ComboboxOptionObject,
   FieldCheckbox,
   Flex,
   FlexItem,
+  Heading,
+  Icon,
   InputText,
+  InputChips,
+  Paragraph,
+  Popover,
+  PopoverContent,
   Select,
   Space,
+  SpaceVertical,
+  Status,
   Table,
   TableBody,
   TableDataCell,
@@ -44,22 +54,22 @@ import {
 } from "@looker/components";
 import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
-import cronstrue from "cronstrue";
 import { Styles } from "./Styles";
+import { translateCron } from "./cronHelper";
+import { IScheduledPlanTable } from "./SchedulesPage";
 import {
-  READ_ONLY_FIELDS,
-  SELECT_FIELDS,
-  CHECKBOX_FIELDS,
-  FORMATTING_FIELDS,
-  TEXTAREA_FIELDS,
+  DEBUG,
   KEY_FIELDS,
-  IScheduledPlanTable,
-} from "./SchedulesPage";
-import { TIMEZONES, FORMAT, PDF_PAPER_SIZE } from "./selectOptions";
+  TABLE_HEADING,
+  TIMEZONES,
+  FORMAT,
+  PDF_PAPER_SIZE,
+} from "./constants";
 
 export interface QueryProps {
   results: IScheduledPlanTable;
   datagroups: ComboboxOptionObject[];
+  users: ComboboxOptionObject[];
   hiddenColumns: string[];
   checkboxStatus: any;
   handleVisible(hiddenColumns: string[], checkboxStatus: any): void;
@@ -71,21 +81,24 @@ export interface QueryProps {
   disableRow(rowIndex: number[], rows: any[]): void;
   enableRow(rowIndex: number[], rows: any[]): void;
   openExploreWindow(scheduledPlanID: number): void;
+  openDashboardWindow(rowIndex: number): void;
 }
 
 export interface EditableCellInterface {
-  value: any; // (string | boolean)
+  value: any; // (string | number | boolean)
   row: { index: number };
   column: { id: string };
   data: any;
   datagroups: ComboboxOptionObject[];
+  users: ComboboxOptionObject[];
   openExploreWindow(scheduledPlanID: number): void;
+  openDashboardWindow(rowIndex: number): void;
   syncData(rowIndex: number, columnId: string, value: string): any;
 }
 
 // returns {rowIndex3: scheduleId3, rowIndex2: scheduleId2, etc.}
 const zipRows = (selectedFlatRows: any, selectedRowIds: any) => {
-  const scheduleIds = selectedFlatRows.map((d: any) => d.original.id);
+  const scheduleIds = selectedFlatRows.map((d: any) => d.original.details.id);
   const rowIndex = Object.keys(selectedRowIds);
   const rows = [];
   for (let i = 0; i < scheduleIds.length; i++) {
@@ -117,16 +130,6 @@ const IndeterminateCheckbox = React.forwardRef(
   }
 );
 
-const translateCron = (cron: string): string => {
-  // console.log(cron);
-  try {
-    const expression = cronstrue.toString(cron);
-    return expression;
-  } catch (error) {
-    return "Not a valid cron expression";
-  }
-};
-
 const EditableCell = (ec: EditableCellInterface) => {
   const {
     value: initialValue,
@@ -134,23 +137,57 @@ const EditableCell = (ec: EditableCellInterface) => {
     column: { id },
     data,
     datagroups,
+    users,
     openExploreWindow,
+    openDashboardWindow,
     syncData,
   } = ec;
 
-  // We need to keep and update the state of the cell normally
   const [value, setValue] = React.useState(initialValue);
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // If the initialValue is changed external, sync it up with our state
+  React.useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  // only update the schedulesArrayBackup when the input is blurred
+  const onBlur = () => {
+    syncData(index, id, value);
+  };
+
+  const onChange = (e: any) => {
+    setValue(e.target.value);
+  };
+
+  const onSelectChange = (e: any) => {
+    setValue(e);
+  };
+
+  const handleSelectFilter = (term: string) => {
+    setSearchTerm(term);
+  };
 
   const DefaultSelect = (options: any, disabled: boolean): JSX.Element => {
+    const newOptions = React.useMemo(() => {
+      if (searchTerm === "") return options;
+      return options.filter((o: any) => {
+        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+      });
+    }, [searchTerm]);
+
     return (
       <Select
         width={1}
         value={value}
         title={value}
-        options={options}
+        options={newOptions}
         disabled={disabled}
         onChange={onSelectChange}
+        onFilter={handleSelectFilter}
         onBlur={onBlur}
+        isFilterable
+        isClearable
       />
     );
   };
@@ -183,6 +220,34 @@ const EditableCell = (ec: EditableCellInterface) => {
     );
   };
 
+  const CronInputText = (disabled: boolean): JSX.Element => {
+    const tooltip = translateCron(value);
+    let intent: "critical" | "positive";
+
+    if (tooltip === "Not a valid cron expression") {
+      intent = "critical";
+    } else {
+      intent = "positive";
+    }
+
+    return (
+      <Flex title={tooltip}>
+        <InputText
+          width={1}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          disabled={disabled}
+        />
+        {!disabled && value.length > 0 && (
+          <Box m="xsmall">
+            <Status intent={intent} />
+          </Box>
+        )}
+      </Flex>
+    );
+  };
+
   const DefaultTextArea = (): JSX.Element => {
     return (
       <TextArea
@@ -197,92 +262,196 @@ const EditableCell = (ec: EditableCellInterface) => {
     );
   };
 
-  // covering DefaultInputText with Box with link
-  const IdInputText = (): JSX.Element => {
+  const RecipientsInputChips = (): JSX.Element => {
+    const [invalidValue, setInvalidValue] = React.useState("");
+    const [duplicateValue, setDuplicateValue] = React.useState("");
+
+    const emailValidator = new RegExp(
+      /^(([^<>()\[\]\\.,:\s@"]+(\.[^<>()\[\]\\.,:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    );
+
+    function handleChange(newValues: string[]) {
+      setValue(newValues);
+      setInvalidValue("");
+      setDuplicateValue("");
+    }
+    function validate(valueToValidate: string) {
+      return emailValidator.test(valueToValidate);
+    }
+    function handleInvalid(invalidValue: string[]) {
+      setInvalidValue(invalidValue[0]);
+    }
+    function handleDuplicate(duplicateValue: string[]) {
+      setDuplicateValue(duplicateValue[0]);
+    }
+
     return (
       <>
-        <Box
-          onClick={() => {
-            openExploreWindow(value);
+        <InputChips
+          values={value}
+          validate={validate}
+          onChange={handleChange}
+          onValidationFail={handleInvalid}
+          onDuplicate={handleDuplicate}
+          onBlur={() => {
+            onBlur();
+            handleChange(value);
           }}
-          cursor="pointer"
-          title="Scheduler History in System Activity"
-          display="inline-block"
-          position="relative"
-        >
-          <DefaultInputText {...true} />
-          <Box position="absolute" left={0} right={0} top={0} bottom={0} />
-        </Box>
+        />
+        <Paragraph fontSize="small" variant="critical">
+          {invalidValue !== ""
+            ? `Invalid email: ${invalidValue}`
+            : duplicateValue !== ""
+            ? `${duplicateValue} has already been entered`
+            : ""}
+        </Paragraph>
       </>
     );
   };
 
-  const onChange = (e: any) => {
-    setValue(e.target.value);
+  // Popover with details of scheduled run history and link to system activity
+  const IdPopover = (): JSX.Element => {
+    let icon: any = {};
+
+    if (value.enabled) {
+      icon.name = "CheckProgress";
+      icon.color = "key";
+      icon.size = "small";
+    } else {
+      icon.name = "Block";
+      icon.color = "neutral";
+      icon.size = "xsmall";
+    }
+
+    return (
+      <>
+        <Popover
+          content={
+            <PopoverContent p="large">
+              <Heading as="h2">{data[index].name}</Heading>
+              <Paragraph fontSize="small">
+                Created at: {value.created_at}
+              </Paragraph>
+              <Paragraph fontSize="small">
+                Last updated at: {value.updated_at}
+              </Paragraph>
+              <Heading as="h3">Cron Details</Heading>
+              <Paragraph fontSize="small" maxWidth="350px">
+                {translateCron(data[index].crontab)}
+              </Paragraph>
+              <Paragraph fontSize="small">
+                Next Run at:{" "}
+                {value.enabled
+                  ? value.next_run_at
+                  : "Schedule Plan is disabled"}
+              </Paragraph>
+              <Paragraph fontSize="small">
+                Last Run at: {value.last_run_at}
+              </Paragraph>
+              <Flex width="100%" height="10px"></Flex>
+              <SpaceVertical gap="xsmall">
+                <Button
+                  // color={}
+                  onClick={() => {
+                    openExploreWindow(value.id);
+                  }}
+                  title="Scheduled Plan History in System Activity"
+                >
+                  Explore Schedule History
+                </Button>
+
+                <Button
+                  // color={}
+                  onClick={() => {
+                    openDashboardWindow(index);
+                  }}
+                  title="View Dashboard with Filters Applied"
+                >
+                  Dashboard With Filters
+                </Button>
+              </SpaceVertical>
+            </PopoverContent>
+          }
+        >
+          <ButtonTransparent
+            fullWidth
+            color={icon.color}
+            disabled={value == ""}
+          >
+            {value == "" ? "New" : value.id}
+            {value == "" ? (
+              ""
+            ) : (
+              <Icon m="xxsmall" size={icon.size} name={icon.name} />
+            )}
+          </ButtonTransparent>
+        </Popover>
+      </>
+    );
   };
 
-  const onSelectChange = (e: string) => {
-    setValue(e);
+  const isPDF = (): boolean => {
+    return ["wysiwyg_pdf", "assembled_pdf"].includes(data[index].format);
   };
 
-  // We'll only update the external data when the input is blurred
-  const onBlur = () => {
-    syncData(index, id, value);
+  const isCsv = (): boolean => {
+    return data[index].format === "csv_zip";
   };
 
-  // If the initialValue is changed external, sync it up with our state
-  React.useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
+  const isPaperSize = (): boolean => {
+    return data[index].pdf_paper_size !== "";
+  };
 
-  if (SELECT_FIELDS.includes(id)) {
-    if (id === "datagroup") {
+  switch (id) {
+    // SELECT_FIELDS //
+    case "datagroup":
       const isCrontab = data[index].crontab !== "";
       return DefaultSelect(datagroups, isCrontab);
-    } else if (id === "timezone") {
+    case "owner_id":
+      return DefaultSelect(users, false);
+    case "timezone":
       return DefaultSelect(TIMEZONES, false);
-    } else if (id === "format") {
+    case "format":
       return DefaultSelect(FORMAT, false);
-    } else if (id === "pdf_paper_size") {
-      const isPDF = ["wysiwyg_pdf", "assembled_pdf"].includes(
-        data[index].format
-      );
-      return DefaultSelect(PDF_PAPER_SIZE, !isPDF);
-    }
-  } else if (CHECKBOX_FIELDS.includes(id)) {
-    if (FORMATTING_FIELDS.includes(id)) {
-      const isPDF = ["wysiwyg_pdf", "assembled_pdf"].includes(
-        data[index].format
-      );
-      const isCsv = data[index].format === "csv_zip";
-      const isPaperSize = data[index].pdf_paper_size !== "";
-      if ((id === "apply_formatting" || id === "apply_vis") && !isCsv) {
-        return DefaultCheckbox(true);
-      } else if (id === "long_tables" && !isPDF) {
-        return DefaultCheckbox(true);
-      } else if (id === "pdf_landscape" && (!isPDF || !isPaperSize)) {
-        return DefaultCheckbox(true);
-      } else {
-        return DefaultCheckbox(false);
-      }
-    } else if (id === "enabled") {
-      return DefaultCheckbox(true);
-    } else {
-      return DefaultCheckbox(false); // include_links, run_as_recipient
-    }
-  } else if (READ_ONLY_FIELDS.includes(id)) {
-    if (id === "id") {
-      return IdInputText();
-    } else {
-      return DefaultInputText(true);
-    }
-  } else if (TEXTAREA_FIELDS.includes(id)) {
-    return DefaultTextArea();
-  } else if (id === "crontab") {
-    const isDatagroup = data[index].datagroup !== " ";
-    return DefaultInputText(isDatagroup);
-  } else {
-    return DefaultInputText(false);
+    case "pdf_paper_size":
+      return DefaultSelect(PDF_PAPER_SIZE, !isPDF());
+
+    // CHECKBOX_FIELDS //
+    case "include_links":
+      return DefaultCheckbox(false);
+    case "run_as_recipient":
+      return DefaultCheckbox(false);
+    case "apply_formatting":
+      return DefaultCheckbox(!isCsv());
+    case "apply_vis":
+      return DefaultCheckbox(!isCsv());
+    case "long_tables":
+      return DefaultCheckbox(!isPDF());
+    case "pdf_landscape":
+      return DefaultCheckbox(!isPDF() || !isPaperSize());
+
+    // READ_ONLY_FIELDS //
+    case "details":
+      return IdPopover();
+
+    // TEXTAREA_FIELDS //
+    case "message":
+      return DefaultTextArea();
+
+    // INPUTCHIPS FIELDS//
+    case "recipients":
+      return RecipientsInputChips();
+
+    // CRONTAB AND INPUT_TEXT FIELDS //
+    case "crontab":
+      const isDatagroup = data[index].datagroup !== "";
+      return CronInputText(isDatagroup);
+    case "name":
+      return DefaultInputText(false);
+
+    // Filters will be DefaultInputText //
+    default:
+      return DefaultInputText(false);
   }
 };
 
@@ -294,6 +463,7 @@ const ReactTable = ({
   columns,
   data,
   datagroups,
+  users,
   hiddenColumnsState,
   handleVisible,
   checkboxStatus,
@@ -305,6 +475,7 @@ const ReactTable = ({
   disableRow,
   enableRow,
   openExploreWindow,
+  openDashboardWindow,
 }: any): JSX.Element => {
   const {
     getTableProps,
@@ -324,9 +495,11 @@ const ReactTable = ({
       columns,
       data,
       datagroups,
+      users,
       syncData,
       defaultColumn,
       openExploreWindow,
+      openDashboardWindow,
     },
     useRowSelect,
     (hooks) => {
@@ -438,7 +611,7 @@ const ReactTable = ({
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
-              iconBefore="Close"
+              iconBefore="Block"
               title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
@@ -455,7 +628,7 @@ const ReactTable = ({
               disabled={!(Object.keys(selectedRowIds).length > 0)}
               size="xsmall"
               m="xsmall"
-              iconBefore="FolderOpen"
+              iconBefore="CheckProgress"
               title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
               onClick={() => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
@@ -486,7 +659,10 @@ const ReactTable = ({
                   if (newCheckboxStatus["Show All"]) {
                     newHiddenColumns = [];
                   } else {
-                    newHiddenColumns = Object.keys(data[0]);
+                    // always show details
+                    newHiddenColumns = Object.keys(data[0]).filter(
+                      (c: any) => c !== "details"
+                    );
                   }
                   handleVisible(newHiddenColumns, newCheckboxStatus);
                 }}
@@ -494,7 +670,10 @@ const ReactTable = ({
               />
 
               {headers.map((header: any) => {
-                if (header.originalId === "selection_placeholder") {
+                if (
+                  header.originalId === "selection_placeholder" ||
+                  header.originalId === " "
+                ) {
                   return;
                 }
                 return (
@@ -507,9 +686,11 @@ const ReactTable = ({
                       newCheckboxStatus[header.Header] = !newCheckboxStatus[
                         header.Header
                       ];
+
                       const headerColumns = header.columns.map(
                         (c: any) => c.id
                       );
+
                       let newHiddenColumns = [];
 
                       if (!e.target.checked) {
@@ -580,16 +761,6 @@ const ReactTable = ({
                 return (
                   <TableRow {...row.getRowProps()}>
                     {row.cells.map((cell) => {
-                      if (cell.column.Header === "Crontab") {
-                        return (
-                          <TableDataCell
-                            title={translateCron(cell.value)}
-                            {...cell.getCellProps()}
-                          >
-                            {cell.render("Cell")}
-                          </TableDataCell>
-                        );
-                      }
                       return (
                         <TableDataCell {...cell.getCellProps()}>
                           {cell.render("Cell")}
@@ -604,20 +775,22 @@ const ReactTable = ({
         </Box>
 
         {/* JSON output of rows selected */}
-        {/* <pre>
-          <code>
-            {JSON.stringify(
-              {
-                selectedRowIds: selectedRowIds,
-                "selectedFlatRows[].original": selectedFlatRows.map(
-                  (d) => d.original
-                ),
-              },
-              null,
-              2
-            )}
-          </code>
-        </pre> */}
+        {DEBUG && (
+          <pre>
+            <code>
+              {JSON.stringify(
+                {
+                  selectedRowIds: selectedRowIds,
+                  "selectedFlatRows[].original": selectedFlatRows.map(
+                    (d) => d.original
+                  ),
+                },
+                null,
+                2
+              )}
+            </code>
+          </pre>
+        )}
       </Styles>
     </>
   );
@@ -630,96 +803,21 @@ const headings = (results?: any): Array<Object> => {
     return [];
   }
 
-  const formattedHeadings: Object[] = Object.keys(results[0])
-    .filter((item) => !KEY_FIELDS.includes(item)) // move headers around
+  const filterHeadings: Object[] = Object.keys(results[0])
+    .filter((item) => !KEY_FIELDS.includes(item)) // remove all key fields and put them in order below
     .map((key) => ({
-      Header: key.charAt(0).toUpperCase() + key.slice(1),
+      Header: key.charAt(0).toUpperCase() + key.slice(1), // format filter columns
       accessor: key,
     }));
 
-  formattedHeadings.splice(
-    0,
-    0,
-    {
-      Header: "ID",
-      accessor: "id",
-    },
-    {
-      Header: "Enabled",
-      accessor: "enabled",
-    },
-    {
-      Header: "Owner",
-      accessor: "owner",
-    },
-    {
-      Header: "Owner ID",
-      accessor: "owner_id",
-    },
-    {
-      Header: "Name",
-      accessor: "name",
-    },
-    {
-      Header: "Crontab",
-      accessor: "crontab",
-    },
-    {
-      Header: "Datagroup",
-      accessor: "datagroup",
-    },
-    {
-      Header: "Recipients",
-      accessor: "recipients",
-    },
-    {
-      Header: "Message",
-      accessor: "message",
-    },
-    {
-      Header: "Run As Recipient",
-      accessor: "run_as_recipient",
-    },
-    {
-      Header: "Include Links",
-      accessor: "include_links",
-    },
-    {
-      Header: "Timezone",
-      accessor: "timezone",
-    },
-    {
-      Header: "Format",
-      accessor: "format",
-    },
-    {
-      Header: "Apply Vis",
-      accessor: "apply_vis",
-    },
-    {
-      Header: "Apply Formatting",
-      accessor: "apply_formatting",
-    },
-    {
-      Header: "Expand Tables",
-      accessor: "long_tables",
-    },
-    {
-      Header: "Paper Size",
-      accessor: "pdf_paper_size",
-    },
-    {
-      Header: "Landscape",
-      accessor: "pdf_landscape",
-    }
-  );
+  const formattedHeadings = [...TABLE_HEADING, ...filterHeadings];
 
   const groupedHeadings = [
-    { Header: "Read-Only", columns: formattedHeadings.slice(0, 3) },
-    { Header: "Required", columns: formattedHeadings.slice(3, 8) },
-    { Header: "Advanced", columns: formattedHeadings.slice(8, 13) },
-    { Header: "Formatting", columns: formattedHeadings.slice(13, 18) },
-    { Header: "Filters", columns: formattedHeadings.slice(18) },
+    { Header: " ", columns: formattedHeadings.slice(0, 1) },
+    { Header: "Required", columns: formattedHeadings.slice(1, 6) },
+    { Header: "Advanced", columns: formattedHeadings.slice(6, 11) },
+    { Header: "Formatting", columns: formattedHeadings.slice(11, 16) },
+    { Header: "Filters", columns: formattedHeadings.slice(16) },
   ];
   // console.log(groupedHeadings);
 
@@ -730,6 +828,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
   const {
     results,
     datagroups,
+    users,
     hiddenColumns,
     handleVisible,
     checkboxStatus,
@@ -741,6 +840,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
     disableRow,
     enableRow,
     openExploreWindow,
+    openDashboardWindow,
   } = qp;
 
   return (
@@ -750,6 +850,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
           columns={headings(results)}
           data={results}
           datagroups={datagroups}
+          users={users}
           hiddenColumnsState={hiddenColumns}
           handleVisible={handleVisible}
           checkboxStatus={checkboxStatus}
@@ -761,6 +862,7 @@ export const SchedulesTable = (qp: QueryProps): JSX.Element => {
           disableRow={disableRow}
           enableRow={enableRow}
           openExploreWindow={openExploreWindow}
+          openDashboardWindow={openDashboardWindow}
         />
       )}
     </Box>

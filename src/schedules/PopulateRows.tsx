@@ -28,22 +28,23 @@ import {
   Button,
   ButtonOutline,
   ButtonTransparent,
-  DrawerManager,
+  DialogContent,
+  DialogContext,
+  DialogFooter,
+  DialogHeader,
+  DialogManager,
   Fieldset,
   FieldText,
-  ModalContent,
-  ModalContext,
-  ModalFooter,
-  ModalHeader,
   SpaceVertical,
   Text,
 } from "@looker/components";
+import { validationTypeCron, translateCron } from "./cronHelper";
 
 export interface PopulateParams {
-  queryId?: number;
-  ownerId?: number;
-  scheduleName?: string;
-  cron?: string;
+  queryId: string; // displayed as number in FieldText
+  ownerId: string; // displayed as number in FieldText
+  scheduleName: string;
+  cron: string;
 }
 
 export interface PopulateRowProps {
@@ -71,20 +72,20 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
     handlePopSubmit,
   } = prp;
   return (
-    <DrawerManager
-      width="260px"
+    <DialogManager
+      maxWidth={["90vw", "60vw", "500px", "800px"]}
       content={
-        <>
-          <ModalHeader>Populate Rows</ModalHeader>
-          <ModalContent>
+        <DialogContent>
+          <DialogHeader>Populate Rows</DialogHeader>
+          <DialogContent>
             <SpaceVertical>
-              <Fieldset>
+              <Fieldset maxWidth="350px">
                 <FieldText
                   required={true}
                   label="Query ID"
                   type="number"
                   min="1"
-                  value={String(popParams.queryId)}
+                  value={popParams.queryId}
                   onChange={(e: any) => {
                     handlePopQueryId(e);
                   }}
@@ -93,7 +94,7 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                   label="Owner ID"
                   type="number"
                   min="1"
-                  value={String(popParams.ownerId)}
+                  value={popParams.ownerId}
                   onChange={(e: any) => {
                     handlePopOwnerId(e);
                   }}
@@ -113,14 +114,18 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                   onChange={(e: any) => {
                     handlePopCron(e);
                   }}
+                  validationMessage={{
+                    type: validationTypeCron(popParams.cron),
+                    message: translateCron(popParams.cron),
+                  }}
                 />
               </Fieldset>
               <Box
                 display="inline-block"
-                height="300px"
+                width="350px"
+                height="125px"
                 bg="palette.purple100"
                 p="small"
-                width="180px"
                 fontSize="small"
                 borderRadius="4px"
               >
@@ -134,14 +139,14 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                 <Text fontSize="small"> to populate Recipients.</Text>
               </Box>
             </SpaceVertical>
-          </ModalContent>
-          <ModalContext.Consumer>
+          </DialogContent>
+
+          <DialogContext.Consumer>
             {({ closeModal }) => (
-              <ModalFooter>
+              <DialogFooter>
                 <Button
                   disabled={!validPopParams()}
                   onClick={() => {
-                    console.log("submitting populate row parameters");
                     handlePopSubmit();
                     if (closeModal !== undefined) {
                       closeModal();
@@ -160,15 +165,13 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                 >
                   Cancel
                 </ButtonTransparent>
-              </ModalFooter>
+              </DialogFooter>
             )}
-          </ModalContext.Consumer>
-        </>
+          </DialogContext.Consumer>
+        </DialogContent>
       }
     >
-      {(onClick) => (
-        <ButtonOutline onClick={onClick}>Populate Rows</ButtonOutline>
-      )}
-    </DrawerManager>
+      <ButtonOutline>Populate Rows</ButtonOutline>
+    </DialogManager>
   );
 };
