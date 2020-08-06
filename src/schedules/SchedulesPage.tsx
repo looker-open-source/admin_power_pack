@@ -1276,7 +1276,7 @@ export class SchedulesPage extends React.Component<
       this.setState({
         runningUpdate: false,
         errorMessage: undefined,
-        notificationMessage: "Test(s) Sent",
+        notificationMessage: "Schedule(s) Sent",
       });
     } catch (error) {
       this.setState({

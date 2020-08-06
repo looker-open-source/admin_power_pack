@@ -30,6 +30,7 @@ import {
   ButtonTransparent,
   Checkbox,
   ComboboxOptionObject,
+  Confirm,
   FieldCheckbox,
   Flex,
   FlexItem,
@@ -556,88 +557,153 @@ const ReactTable = ({
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              color="critical"
-              iconBefore="Trash"
-              title="Delete row/schedule from table"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Delete"
+              buttonColor="critical"
+              title="Delete Rows"
+              message={`Are you sure you want to delete these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rows = zipRows(selectedFlatRows, selectedRowIds);
                 deleteRow(rows);
+                close();
               }}
             >
-              Delete
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  color="critical"
+                  iconBefore="Trash"
+                  title="Delete row/schedule from table"
+                  onClick={open}
+                >
+                  Delete
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="Update"
-              title="Create new schedule or update existing schedule"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Create and Update Rows"
+              message={`Are you sure you want to create / update these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 updateRow(rowIndex, rows);
+                close();
               }}
             >
-              Create/Update
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="Update"
+                  title="Create new schedule or update existing schedule"
+                  onClick={open}
+                >
+                  Create/Update
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="SendEmail"
-              title='Run the schedule now. This is the same as "Send Test" in the UI'
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Run Schedules Now"
+              message={`Are you sure you want to run these ${
+                Object.keys(selectedRowIds).length
+              } schedules now?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 testRow(rowIndex, rows);
+                close();
               }}
             >
-              Run Once
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="SendEmail"
+                  title='Run the schedule now. This is the same as "Send Test" in the UI'
+                  onClick={open}
+                >
+                  Run Once
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="Block"
-              title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Disable Schedules"
+              message={`Are you sure you want to disable these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 disableRow(rowIndex, rows);
+                close();
               }}
             >
-              Disable
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="Block"
+                  title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
+                  onClick={open}
+                >
+                  Disable
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="CheckProgress"
-              title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Enable Schedules"
+              message={`Are you sure you want to enable these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 enableRow(rowIndex, rows);
+                close();
               }}
             >
-              Enable
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="CheckProgress"
+                  title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
+                  onClick={open}
+                >
+                  Enable
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem p="small"></FlexItem>
