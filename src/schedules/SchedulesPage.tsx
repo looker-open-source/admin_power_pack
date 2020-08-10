@@ -34,6 +34,7 @@ import {
   IconButton,
   MessageBar,
   Select,
+  Spinner,
   Text,
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
@@ -152,9 +153,11 @@ export class SchedulesPage extends React.Component<
     });
 
     try {
-      const dashboards = await this.getAllDashboards();
-      const datagroups = await this.getDatagroups();
-      const users = await this.getAllUsers();
+      const [dashboards, datagroups, users] = await Promise.all([
+        this.getAllDashboards(),
+        this.getDatagroups(),
+        this.getAllUsers(),
+      ]);
 
       this.setState({
         dashboards: dashboards,
@@ -437,8 +440,9 @@ export class SchedulesPage extends React.Component<
 
   /////////////////////////////////////////////////////
 
-  //////////////// GLOBAL FIND REPLACE ////////////////
+  ///////////////// GLOBAL FUNCTIONS //////////////////
 
+  // Find and replace emails in all schedule plans based on email CSV mapping
   GlobalFindReplaceEmail = async (EmailMap: string) => {
     this.setState({
       runningUpdate: true,
@@ -531,6 +535,86 @@ export class SchedulesPage extends React.Component<
         notificationMessage: undefined,
       });
     }
+  };
+
+  // Validate all recent schedules jobs and returns any failures
+  GlobalValidateRecentSchedules = async (timeframe: string) => {
+    // get the max job ID for each schedule plan
+    const maxJobQuery = await this.context.core40SDK.ok(
+      this.context.core40SDK.create_query({
+        model: "system__activity",
+        view: "scheduled_plan",
+        fields: ["scheduled_plan.id", "scheduled_job.name", "max_job_id"],
+        filters: {
+          "scheduled_job.run_once": "No",
+          "scheduled_job.finalized_time": "NOT NULL",
+        },
+        sorts: ["max_job_id desc"],
+        limit: "5000",
+        dynamic_fields:
+          '[{"measure":"max_job_id","based_on":"scheduled_job.id","type":"max"}]',
+      })
+    );
+
+    const maxJobResults = await this.context.core40SDK.ok(
+      this.context.core40SDK.run_query({
+        query_id: Number(maxJobQuery.id),
+        result_format: "json",
+        cache: false,
+      })
+    );
+
+    const jobIds = JSON.parse(JSON.stringify(maxJobResults))
+      .map((row: any) => row.max_job_id)
+      .toString();
+
+    // get information on all recent failures filtered on job IDs, failure, in the past N timeframe
+    const latestFailuresQuery = await this.context.core40SDK.ok(
+      this.context.core40SDK.create_query({
+        model: "system__activity",
+        view: "scheduled_plan",
+        fields: [
+          "scheduled_plan.id",
+          "scheduled_job.name",
+          "scheduled_job.id",
+          "scheduled_job.finalized_time",
+          "user.name",
+          "scheduled_job.status_detail",
+          "scheduled_plan.content_type_id",
+          "scheduled_plan.destination_addresses",
+        ],
+        filters: {
+          "scheduled_job.id": jobIds,
+          "scheduled_job.status": "failure",
+          "scheduled_job.finalized_time": timeframe,
+        },
+        sorts: ["scheduled_job.id desc"],
+        limit: "5000",
+      })
+    );
+
+    const latestFailuresResults = await this.context.core40SDK.ok(
+      this.context.core40SDK.run_query({
+        query_id: Number(latestFailuresQuery.id),
+        result_format: "json",
+        cache: false,
+      })
+    );
+
+    if (DEBUG) {
+      console.log("Latest Scheduled Jobs Failures:");
+      console.log(latestFailuresResults);
+    }
+
+    return latestFailuresResults;
+  };
+
+  // Validate resends any failures
+  GlobalResendRecentFailures = async (failureData: JSON) => {
+    if (DEBUG) {
+      console.log("Resending Failed Jobs");
+    }
+    // WIP
   };
 
   /////////////////////////////////////////////////////////////////////
@@ -1533,6 +1617,12 @@ export class SchedulesPage extends React.Component<
                   <FlexItem mx="xxxsmall">
                     <GlobalActions
                       GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
+                      GlobalValidateRecentSchedules={
+                        this.GlobalValidateRecentSchedules
+                      }
+                      GlobalResendRecentFailures={
+                        this.GlobalResendRecentFailures
+                      }
                     />
                   </FlexItem>
                 </Flex>
@@ -1540,9 +1630,9 @@ export class SchedulesPage extends React.Component<
             </FlexItem>
           </Flex>
 
-          <Flex>
-            {this.state.currentDash && (
-              <>
+          {this.state.currentDash && (
+            <>
+              <Flex>
                 <Heading
                   as="h2"
                   fontWeight="semiBold"
@@ -1561,9 +1651,17 @@ export class SchedulesPage extends React.Component<
                     );
                   }}
                 />
-              </>
-            )}
-          </Flex>
+              </Flex>
+            </>
+          )}
+
+          {this.state.dashboards.length === 0 && (
+            <Flex justifyContent="center" height="500px">
+              <FlexItem alignSelf="center">
+                <Spinner color="black" />
+              </FlexItem>
+            </Flex>
+          )}
 
           <Flex width="100%">
             <SchedulesTable
