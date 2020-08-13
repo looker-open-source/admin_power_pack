@@ -44,8 +44,7 @@ import {
   Spinner,
   TextArea,
 } from "@looker/components";
-import { fail } from "assert";
-
+import { ACTION_LIST_FAIL_COLUMNS } from "./constants";
 export interface QueryProps {
   GlobalFindReplaceEmail(EmailMap: string): void;
   GlobalValidateRecentSchedules(timeframe: string): any;
@@ -59,58 +58,6 @@ const MonospaceTextArea = styled(TextArea)`
 `;
 
 const ActionListFailureResults = (data: any): JSX.Element => {
-  const columns = [
-    {
-      id: "scheduled_plan.id",
-      // type: 'number',
-      title: "Plan ID",
-      widthPercent: 5,
-    },
-    {
-      id: "scheduled_job.name",
-      // type: 'string',
-      title: "Name",
-      widthPercent: 10,
-    },
-    {
-      id: "scheduled_job.id",
-      // type: 'number',
-      primaryKey: true,
-      title: "Job ID",
-      widthPercent: 5,
-    },
-    {
-      id: "scheduled_job.finalized_time",
-      // type: 'string',
-      title: "Finalized Time",
-      widthPercent: 12,
-    },
-    {
-      id: "user.name",
-      // type: 'string',
-      title: "Owner",
-      widthPercent: 10,
-    },
-    {
-      id: "scheduled_job.status_detail",
-      // type: 'string',
-      title: "Status Detail",
-      widthPercent: 30,
-    },
-    {
-      id: "scheduled_plan.content_type_id",
-      // type: 'string',
-      title: "Content Type ID",
-      widthPercent: 10,
-    },
-    {
-      id: "scheduled_plan.destination_addresses",
-      // type: "string",
-      title: "Destination Addresses",
-      widthPercent: 18,
-    },
-  ];
-
   const items = data.map((row: any) => {
     return (
       <ActionListItem
@@ -137,7 +84,7 @@ const ActionListFailureResults = (data: any): JSX.Element => {
     );
   });
 
-  return <ActionList columns={columns}>{items}</ActionList>;
+  return <ActionList columns={ACTION_LIST_FAIL_COLUMNS}>{items}</ActionList>;
 };
 
 export const GlobalActions = (qp: QueryProps): JSX.Element => {
@@ -243,10 +190,10 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
             message={
               <>
                 <Paragraph mb="small">
-                  Use this feature to resend any failed schedules that have
-                  failed within the timeframe entered below. This will first run
-                  a System Activity query to find any recent failures. In the
-                  next step, you will have the option resend.
+                  Use this feature to resend any schedules that have failed on
+                  their most recent attempt, within the timeframe entered below.
+                  This will first run a System Activity query to find any recent
+                  failures. In the next step, you will have the option resend.
                 </Paragraph>
                 <Paragraph mb="small">
                   The timeframe will be used to filter the
@@ -310,8 +257,8 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
                 {runningQuery ? (
                   <>
                     <Paragraph mb="small">
-                      Gathering all recently failed scheduled job (this may take
-                      some time to run):
+                      Gathering all recently failed scheduled jobs (this may
+                      take some time to run):
                     </Paragraph>
                     <Flex justifyContent="center">
                       <FlexItem alignSelf="center">

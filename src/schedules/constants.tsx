@@ -93,6 +93,60 @@ export const TABLE_HEADING = [
   },
 ];
 
+//////////////// ACTION LIST FAILURE RESULTS COLUMNS  ////////////////
+
+export const ACTION_LIST_FAIL_COLUMNS = [
+  {
+    id: "scheduled_plan.id",
+    // type: 'number',
+    title: "Plan ID",
+    widthPercent: 5,
+  },
+  {
+    id: "scheduled_job.name",
+    // type: 'string',
+    title: "Name",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_job.id",
+    // type: 'number',
+    primaryKey: true,
+    title: "Job ID",
+    widthPercent: 5,
+  },
+  {
+    id: "scheduled_job.finalized_time",
+    // type: 'string',
+    title: "Finalized Time",
+    widthPercent: 12,
+  },
+  {
+    id: "user.name",
+    // type: 'string',
+    title: "Owner",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_job.status_detail",
+    // type: 'string',
+    title: "Status Detail",
+    widthPercent: 30,
+  },
+  {
+    id: "scheduled_plan.content_type_id",
+    // type: 'string',
+    title: "Content Type ID",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_plan.destination_addresses",
+    // type: "string",
+    title: "Destination Addresses",
+    widthPercent: 18,
+  },
+];
+
 //////////////// FIELD LISTS  ////////////////
 
 export const READ_ONLY_FIELDS = ["details"];

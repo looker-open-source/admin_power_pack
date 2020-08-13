@@ -609,12 +609,65 @@ export class SchedulesPage extends React.Component<
     return latestFailuresResults;
   };
 
-  // Validate resends any failures
-  GlobalResendRecentFailures = async (failureData: JSON) => {
-    if (DEBUG) {
-      console.log("Resending Failed Jobs");
+  // Resends any failures based on results from GlobalValidateRecentSchedules
+  GlobalResendRecentFailures = async (failureData: any) => {
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
+    try {
+      const schedulePlanIds = failureData.map(
+        (s: any) => s["scheduled_plan.id"]
+      );
+
+      const allSchedules = await this.context.core40SDK.ok(
+        this.context.core40SDK.all_scheduled_plans({
+          all_users: true,
+        })
+      );
+
+      const schedulesToSend = allSchedules.filter((s) =>
+        schedulePlanIds.includes(s.id)
+      );
+
+      if (DEBUG) {
+        console.log(
+          `Resending failed jobs for scheduled plans: ${schedulePlanIds}`
+        );
+        console.log(schedulesToSend);
+      }
+
+      // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
+      const delay = (i: number) => new Promise((r) => setTimeout(r, i));
+
+      for (let i = 0; i < schedulesToSend.length; i++) {
+        await delay(200);
+        const response = await this.context.core40SDK.ok(
+          this.context.core40SDK.scheduled_plan_run_once(schedulesToSend[i])
+        );
+
+        if (DEBUG) {
+          console.log(
+            `Run schedule once response for schedule ID ${schedulesToSend[i].id}`
+          );
+          console.log(JSON.stringify(response, null, 2));
+        }
+      }
+
+      this.setState({
+        runningUpdate: false,
+        errorMessage: undefined,
+        notificationMessage: "Schedules have been resent",
+      });
+    } catch (error) {
+      this.setState({
+        runningUpdate: false,
+        errorMessage: "Error resending schedules.",
+        notificationMessage: undefined,
+      });
     }
-    // WIP
   };
 
   /////////////////////////////////////////////////////////////////////
