@@ -610,7 +610,7 @@ export class SchedulesPage extends React.Component<
   };
 
   // Resends any failures based on results from GlobalValidateRecentSchedules
-  GlobalResendRecentFailures = async (failureData: any) => {
+  GlobalResendRecentFailures = async (selections: string[]) => {
     this.setState({
       runningUpdate: true,
       errorMessage: undefined,
@@ -618,9 +618,7 @@ export class SchedulesPage extends React.Component<
     });
 
     try {
-      const schedulePlanIds = failureData.map(
-        (s: any) => s["scheduled_plan.id"]
-      );
+      const schedulePlanIds = selections.map((s: string) => Number(s));
 
       const allSchedules = await this.context.core40SDK.ok(
         this.context.core40SDK.all_scheduled_plans({
@@ -629,7 +627,7 @@ export class SchedulesPage extends React.Component<
       );
 
       const schedulesToSend = allSchedules.filter((s) =>
-        schedulePlanIds.includes(s.id)
+        schedulePlanIds.includes(s.id!)
       );
 
       if (DEBUG) {

@@ -45,6 +45,7 @@ import {
   TextArea,
 } from "@looker/components";
 import { ACTION_LIST_FAIL_COLUMNS } from "./constants";
+
 export interface QueryProps {
   GlobalFindReplaceEmail(EmailMap: string): void;
   GlobalValidateRecentSchedules(timeframe: string): any;
@@ -57,12 +58,33 @@ const MonospaceTextArea = styled(TextArea)`
   }
 `;
 
-const ActionListFailureResults = (data: any): JSX.Element => {
+const ActionListFailureResults = (
+  data: any,
+  selections: any,
+  setSelections: any
+): JSX.Element => {
+  const onSelect = (selection: string) => {
+    const s = String(selection);
+    setSelections(
+      selections.includes(s)
+        ? selections.filter((item: string) => item !== s)
+        : [...selections, s]
+    );
+  };
+
+  const allSelectableItems = data.map((row: any) =>
+    String(row["scheduled_plan.id"])
+  );
+
+  const onSelectAll = () => {
+    setSelections(selections.length ? [] : allSelectableItems);
+  };
+
   const items = data.map((row: any) => {
     return (
       <ActionListItem
-        key={row["scheduled_job.id"]}
-        id={row["scheduled_job.id"]}
+        key={row["scheduled_plan.id"]}
+        id={String(row["scheduled_plan.id"])}
       >
         <ActionListItemColumn>{row["scheduled_plan.id"]}</ActionListItemColumn>
         <ActionListItemColumn>{row["scheduled_job.name"]}</ActionListItemColumn>
@@ -84,7 +106,17 @@ const ActionListFailureResults = (data: any): JSX.Element => {
     );
   });
 
-  return <ActionList columns={ACTION_LIST_FAIL_COLUMNS}>{items}</ActionList>;
+  return (
+    <ActionList
+      canSelect
+      onSelect={onSelect}
+      onSelectAll={onSelectAll}
+      itemsSelected={selections}
+      columns={ACTION_LIST_FAIL_COLUMNS}
+    >
+      {items}
+    </ActionList>
+  );
 };
 
 export const GlobalActions = (qp: QueryProps): JSX.Element => {
@@ -104,7 +136,9 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
   const ToggleRRF = () => setisToggledRRF((on) => !on);
 
   const [EmailMap, setEmailMap] = React.useState("");
+
   const [Timeframe, setTimeframe] = React.useState("");
+  const [selections, setSelections] = React.useState([]);
   const [FailuresData, setFailuresData] = React.useState([]);
 
   return (
@@ -246,6 +280,7 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
         onClose={() => {
           ToggleRRF();
           setFailuresData([]);
+          setSelections([]);
         }}
         maxWidth="90%"
       >
@@ -267,20 +302,26 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
                     </Flex>
                   </>
                 ) : (
-                  ActionListFailureResults(FailuresData)
+                  ActionListFailureResults(
+                    FailuresData,
+                    selections,
+                    setSelections
+                  )
                 )}
               </>
             }
             primaryButton={
               <Button
-                disabled={FailuresData.length === 0}
+                // disabled={FailuresData.length === 0}
+                disabled={selections.length === 0}
                 onClick={() => {
-                  GlobalResendRecentFailures(FailuresData);
+                  GlobalResendRecentFailures(selections);
                   ToggleRRF();
                   setFailuresData([]);
+                  setSelections([]);
                 }}
               >
-                Resend All
+                Resend
               </Button>
             }
             secondaryButton={
@@ -288,6 +329,7 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
                 onClick={() => {
                   ToggleRRF();
                   setFailuresData([]);
+                  setSelections([]);
                 }}
               >
                 Cancel
