@@ -169,26 +169,60 @@ const EditableCell = (ec: EditableCellInterface) => {
     setSearchTerm(term);
   };
 
-  const DefaultSelect = (options: any, disabled: boolean): JSX.Element => {
-    const newOptions = React.useMemo(() => {
-      if (searchTerm === "") return options;
-      return options.filter((o: any) => {
-        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
-      });
-    }, [searchTerm]);
+  // todo onBlur is called early and not closing select dropdown. need to fix.
 
+  // filter generic list - no options[]
+  const newOptions = (options: any) => {
+    if (searchTerm === "") return options;
+
+    return options.filter((o: any) => {
+      return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+    });
+  };
+
+  // filter timezones list while retain grouping from options[]
+  const newTzSelectOptions = (options: any) => {
+    if (searchTerm === "") return options;
+
+    let newOptions: any = [];
+
+    options.filter((group: any) => {
+      const foundTzPerGroup = group.options.filter((timezones: any) => {
+        return (
+          timezones.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
+        );
+      });
+
+      if (foundTzPerGroup.length > 0) {
+        newOptions.push({
+          label: group.label,
+          options: foundTzPerGroup,
+        });
+      }
+    });
+
+    return newOptions;
+  };
+
+  const DefaultSelect = (
+    options: any,
+    disabled: boolean,
+    isClearable: boolean
+  ): JSX.Element => {
     return (
       <Select
         width={1}
+        autoResize
         value={value}
         title={value}
-        options={newOptions}
+        listLayout={{ width: "auto" }}
+        options={options}
         disabled={disabled}
         onChange={onSelectChange}
         onFilter={handleSelectFilter}
         onBlur={onBlur}
         isFilterable
-        isClearable
+        isClearable={isClearable}
       />
     );
   };
@@ -209,14 +243,14 @@ const EditableCell = (ec: EditableCellInterface) => {
     );
   };
 
-  const DefaultInputText = (disabled: boolean): JSX.Element => {
+  const DefaultInputText = (): JSX.Element => {
     return (
       <InputText
         width={1}
+        minWidth={100}
         value={value}
         onChange={onChange}
         onBlur={onBlur}
-        disabled={disabled}
       />
     );
   };
@@ -235,6 +269,7 @@ const EditableCell = (ec: EditableCellInterface) => {
       <Flex title={tooltip}>
         <InputText
           width={1}
+          minWidth={100}
           value={value}
           onChange={onChange}
           onBlur={onBlur}
@@ -254,8 +289,9 @@ const EditableCell = (ec: EditableCellInterface) => {
       <TextArea
         value={value}
         key={id + index}
-        minHeight="36px"
-        height="36px"
+        minHeight={36}
+        height={36}
+        minWidth={100}
         onChange={onChange}
         onBlur={onBlur}
         resize
@@ -403,19 +439,22 @@ const EditableCell = (ec: EditableCellInterface) => {
     return data[index].pdf_paper_size !== "";
   };
 
+  const isCrontab = data[index].crontab !== "";
+
+  const isDatagroup = data[index].datagroup !== "";
+
   switch (id) {
     // SELECT_FIELDS //
     case "datagroup":
-      const isCrontab = data[index].crontab !== "";
-      return DefaultSelect(datagroups, isCrontab);
+      return DefaultSelect(newOptions(datagroups), isCrontab, true);
     case "owner_id":
-      return DefaultSelect(users, false);
+      return DefaultSelect(newOptions(users), false, true);
     case "timezone":
-      return DefaultSelect(TIMEZONES, false);
+      return DefaultSelect(newTzSelectOptions(TIMEZONES), !isCrontab, true);
     case "format":
-      return DefaultSelect(FORMAT, false);
+      return DefaultSelect(newOptions(FORMAT), false, false);
     case "pdf_paper_size":
-      return DefaultSelect(PDF_PAPER_SIZE, !isPDF());
+      return DefaultSelect(newOptions(PDF_PAPER_SIZE), !isPDF(), true);
 
     // CHECKBOX_FIELDS //
     case "include_links":
@@ -445,14 +484,13 @@ const EditableCell = (ec: EditableCellInterface) => {
 
     // CRONTAB AND INPUT_TEXT FIELDS //
     case "crontab":
-      const isDatagroup = data[index].datagroup !== "";
       return CronInputText(isDatagroup);
     case "name":
-      return DefaultInputText(false);
+      return DefaultInputText();
 
     // Filters will be DefaultInputText //
     default:
-      return DefaultInputText(false);
+      return DefaultInputText();
   }
 };
 

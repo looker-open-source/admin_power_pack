@@ -203,7 +203,10 @@ export const PDF_PAPER_SIZE = [
 ];
 
 export const TIMEZONES = [
-  { value: "UTC", label: "UTC" },
+  {
+    label: "UTC",
+    options: [{ value: "UTC", label: "UTC" }],
+  },
 
   {
     label: "United States Timezones",

@@ -227,12 +227,13 @@ export const GlobalActions = (qp: QueryProps): JSX.Element => {
                   Use this feature to resend any schedules that have failed on
                   their most recent attempt, within the timeframe entered below.
                   This will first run a System Activity query to find any recent
-                  failures. In the next step, you will have the option resend.
+                  failures. In the next step, you will have the option to filter
+                  the results and resend the selected schedule plans.
                 </Paragraph>
                 <Paragraph mb="small">
                   The timeframe will be used to filter the
-                  `scheduled_job.finalized_time` column. Any Looker datetime
-                  filter expression is valid.
+                  <strong> scheduled_job.finalized_time</strong> column. Any
+                  Looker datetime filter expression is valid.
                 </Paragraph>
                 <InputText
                   onChange={(e: any) => setTimeframe(e.target.value)}
