@@ -24,9 +24,7 @@
 
 import {
   Box,
-  Button,
   ButtonOutline,
-  ComboboxOptionObject,
   Confirm,
   Flex,
   FlexItem,
@@ -43,13 +41,7 @@ import Papa from "papaparse";
 import React from "react";
 import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
-import {
-  IDashboard,
-  IScheduledPlan,
-  IScheduledPlanDestination,
-  IUserPublic,
-  IWriteScheduledPlan,
-} from "@looker/sdk/dist/sdk/4.0/models";
+import { IDashboard } from "@looker/sdk/dist/sdk/4.0/models";
 import {
   DEBUG,
   ADVANCED_FIELDS,
@@ -57,53 +49,13 @@ import {
   KEY_FIELDS,
   REQUIRED_FIELDS,
   REQUIRED_TRIGGER_FIELDS,
-} from "./constants";
+  ExtensionState,
+  IWriteScheduledPlanNulls,
+  IScheduledPlanTable,
+} from "./constants"; // interfaces
 import { SchedulesTable } from "./SchedulesTable";
-import { PopulateParams, PopulateRows } from "./PopulateRows";
 import { GlobalActions } from "./GlobalActions";
-
-interface ExtensionState {
-  currentDash?: IDashboard;
-  selectedDashId: string;
-  dashSearchString: string;
-  dashboards: any[]; // array of dashboard and folder names/ids for Select
-  datagroups: ComboboxOptionObject[]; // array of datagroup string names
-  users: ComboboxOptionObject[]; // array of user ids and display names
-  schedulesArray: any; // IScheduledPlanTable[] - array of schedules (can be edited)
-  schedulesArrayBackup: any; // IScheduledPlanTable[] - array of schedules stored for reverting edits
-  runningQuery: boolean; // false shows 'getting data', true displays table
-  runningUpdate: boolean; // false shows 'getting data', true displays table
-  hiddenColumns: string[]; // state of column headers to control visibility
-  checkboxStatus: any;
-  errorMessage?: string;
-  notificationMessage?: string;
-  populateParams: PopulateParams;
-}
-
-// need this to supply null values (--strictNullChecks)
-interface IWriteScheduledPlanNulls extends IWriteScheduledPlan {
-  crontab?: any;
-  datagroup?: any;
-  run_as_recipient?: any;
-  include_links?: any;
-  long_tables?: any;
-  pdf_paper_size?: any;
-}
-
-// used to display specific fields for all schedules on a Dashboard
-export interface IScheduledPlanTable extends IScheduledPlan {
-  owner_id: string;
-  recipients: string[];
-  run_as_recipient?: any;
-  include_links?: any;
-  [key: string]: any; // needed to dynamically display filters
-  scheduled_plan_destination: IScheduledPlanDestination[]; // overriding to make this required
-  user: IUserPublicExtended; // overriding to make this required
-}
-
-export interface IUserPublicExtended extends IUserPublic {
-  id: number; // overriding to make this required
-}
+import { PopulateRows } from "./PopulateRows";
 
 export class SchedulesPage extends React.Component<
   RouteComponentProps,

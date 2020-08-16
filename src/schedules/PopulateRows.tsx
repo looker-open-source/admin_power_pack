@@ -39,24 +39,7 @@ import {
   Text,
 } from "@looker/components";
 import { validationTypeCron, translateCron } from "./cronHelper";
-
-export interface PopulateParams {
-  queryId: string; // displayed as number in FieldText
-  ownerId: string; // displayed as number in FieldText
-  scheduleName: string;
-  cron: string;
-}
-
-export interface PopulateRowProps {
-  popParams: PopulateParams;
-  resetPopParams(): void;
-  validPopParams(): boolean;
-  handlePopQueryId(e: any): void;
-  handlePopOwnerId(e: any): void;
-  handlePopName(e: any): void;
-  handlePopCron(e: any): void;
-  handlePopSubmit(): void;
-}
+import { PopulateRowProps } from "./constants";
 
 // drawer to populate rows with results of query
 // https://components.looker.com/components/modals/drawer/

@@ -44,13 +44,7 @@ import {
   Spinner,
   TextArea,
 } from "@looker/components";
-import { ACTION_LIST_FAIL_COLUMNS } from "./constants";
-
-export interface QueryProps {
-  GlobalFindReplaceEmail(EmailMap: string): void;
-  GlobalValidateRecentSchedules(timeframe: string): any;
-  GlobalResendRecentFailures(failureData: any): void;
-}
+import { ACTION_LIST_FAIL_COLUMNS, GlobalActionQueryProps } from "./constants";
 
 const MonospaceTextArea = styled(TextArea)`
   textarea {
@@ -119,7 +113,7 @@ const ActionListFailureResults = (
   );
 };
 
-export const GlobalActions = (qp: QueryProps): JSX.Element => {
+export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
   const {
     GlobalFindReplaceEmail,
     GlobalValidateRecentSchedules,

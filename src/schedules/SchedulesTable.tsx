@@ -29,7 +29,6 @@ import {
   ButtonOutline,
   ButtonTransparent,
   Checkbox,
-  ComboboxOptionObject,
   Confirm,
   FieldCheckbox,
   Flex,
@@ -57,7 +56,6 @@ import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
 import { Styles } from "./Styles";
 import { translateCron } from "./cronHelper";
-import { IScheduledPlanTable } from "./SchedulesPage";
 import {
   DEBUG,
   KEY_FIELDS,
@@ -65,37 +63,11 @@ import {
   TIMEZONES,
   FORMAT,
   PDF_PAPER_SIZE,
+  SelectOption,
+  GroupSelectOption,
+  SchedulesTableQueryProps,
+  EditableCellProps,
 } from "./constants";
-
-export interface QueryProps {
-  results: IScheduledPlanTable;
-  datagroups: ComboboxOptionObject[];
-  users: ComboboxOptionObject[];
-  hiddenColumns: string[];
-  checkboxStatus: any;
-  handleVisible(hiddenColumns: string[], checkboxStatus: any): void;
-  syncData(index: number, id: string, value: string): any;
-  addRow(): void;
-  deleteRow(rows: any[]): void;
-  updateRow(rowIndex: number[], rows: any[]): void;
-  testRow(rowIndex: number[], rows: any[]): void;
-  disableRow(rowIndex: number[], rows: any[]): void;
-  enableRow(rowIndex: number[], rows: any[]): void;
-  openExploreWindow(scheduledPlanID: number): void;
-  openDashboardWindow(rowIndex: number): void;
-}
-
-export interface EditableCellInterface {
-  value: any; // (string | number | boolean)
-  row: { index: number };
-  column: { id: string };
-  data: any;
-  datagroups: ComboboxOptionObject[];
-  users: ComboboxOptionObject[];
-  openExploreWindow(scheduledPlanID: number): void;
-  openDashboardWindow(rowIndex: number): void;
-  syncData(rowIndex: number, columnId: string, value: string): any;
-}
 
 // returns {rowIndex3: scheduleId3, rowIndex2: scheduleId2, etc.}
 const zipRows = (selectedFlatRows: any, selectedRowIds: any) => {
@@ -131,7 +103,7 @@ const IndeterminateCheckbox = React.forwardRef(
   }
 );
 
-const EditableCell = (ec: EditableCellInterface) => {
+const EditableCell = (ec: EditableCellProps) => {
   const {
     value: initialValue,
     row: { index },
@@ -163,6 +135,7 @@ const EditableCell = (ec: EditableCellInterface) => {
 
   const onSelectChange = (e: any) => {
     setValue(e);
+    syncData(index, id, e);
   };
 
   const handleSelectFilter = (term: string) => {
@@ -172,31 +145,29 @@ const EditableCell = (ec: EditableCellInterface) => {
   // todo onBlur is called early and not closing select dropdown. need to fix.
 
   // filter generic list - no options[]
-  const newOptions = (options: any) => {
+  const newOptions = (options: SelectOption[]) => {
     if (searchTerm === "") return options;
 
-    return options.filter((o: any) => {
+    return options.filter((o) => {
       return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
     });
   };
 
-  // filter timezones list while retain grouping from options[]
-  const newTzSelectOptions = (options: any) => {
+  // filter list with options[] while retain grouping
+  const newGroupOptions = (options: GroupSelectOption[]) => {
     if (searchTerm === "") return options;
 
     let newOptions: any = [];
 
-    options.filter((group: any) => {
-      const foundTzPerGroup = group.options.filter((timezones: any) => {
-        return (
-          timezones.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
-        );
+    options.filter((group) => {
+      const foundOptionsPerGroup = group.options.filter((o) => {
+        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
       });
 
-      if (foundTzPerGroup.length > 0) {
+      if (foundOptionsPerGroup.length > 0) {
         newOptions.push({
           label: group.label,
-          options: foundTzPerGroup,
+          options: foundOptionsPerGroup,
         });
       }
     });
@@ -218,9 +189,8 @@ const EditableCell = (ec: EditableCellInterface) => {
         listLayout={{ width: "auto" }}
         options={options}
         disabled={disabled}
-        onChange={onSelectChange}
+        onChange={onSelectChange} // handles syncData() no onBlur needed
         onFilter={handleSelectFilter}
-        onBlur={onBlur}
         isFilterable
         isClearable={isClearable}
       />
@@ -450,7 +420,7 @@ const EditableCell = (ec: EditableCellInterface) => {
     case "owner_id":
       return DefaultSelect(newOptions(users), false, true);
     case "timezone":
-      return DefaultSelect(newTzSelectOptions(TIMEZONES), !isCrontab, true);
+      return DefaultSelect(newGroupOptions(TIMEZONES), !isCrontab, true);
     case "format":
       return DefaultSelect(newOptions(FORMAT), false, false);
     case "pdf_paper_size":
@@ -928,7 +898,7 @@ const headings = (results?: any): Array<Object> => {
   return groupedHeadings;
 };
 
-export const SchedulesTable = (qp: QueryProps): JSX.Element => {
+export const SchedulesTable = (qp: SchedulesTableQueryProps): JSX.Element => {
   const {
     results,
     datagroups,
