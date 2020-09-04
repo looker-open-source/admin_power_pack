@@ -26,7 +26,7 @@ import React, { useState, useContext } from 'react'
 import { useMachine } from '@xstate/react' // workflow helper
 import Papa from 'papaparse' // csv parsing library
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { ACTION_INFO, WORKFLOW_MACHINE } from './constants'
+import { ACTION_INFO, WORKFLOW_MACHINE, SYSTEM_USER_ATTRIBUTES } from './constants'
 import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
 import {
@@ -53,6 +53,7 @@ export function ActionsBar(props) {
     const [selectByAttributeText, set_selectByAttributeText] = useState("")
     const [selectByQueryText, set_selectByQueryText] = useState("")
     const [emailMapText, set_emailMapText] = useState("")
+    const [emailCreateText, set_emailCreateText] = useState("")
     const [logMessages, set_logMessages] = useState([])
 
     /*
@@ -124,6 +125,10 @@ export function ActionsBar(props) {
     const openEmailMap = () => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailMap'})
     }
+
+    const openEmailCreate = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailCreate'})
+    }
     
     const openDelete = (type) => { 
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteCreds', deleteCredsType: type})
@@ -150,6 +155,10 @@ export function ActionsBar(props) {
 
     const onChangeEmailMapText = (e) => {
         set_emailMapText(e.currentTarget.value)
+    }
+
+    const onChangeEmailCreateText = (e) => {
+        set_emailCreateText(e.currentTarget.value)
     }
 
     /*
@@ -182,6 +191,13 @@ export function ActionsBar(props) {
                 makeMapEmailFunc(), 
                 "map email creds"
             ) 
+        )
+    }
+
+
+    const runEmailCreate = () => {
+        runInWorkflow(async () => 
+            makeCreateEmailFunc()
         )
     }
 
@@ -366,6 +382,64 @@ export function ActionsBar(props) {
         return mapFunc
     }
 
+    const makeCreateEmailFunc = async () => {
+        const allUserAttributes =  await asyncLookerCall('all_user_attributes',{fields: "id,name,type"});
+
+        const userData = Papa.parse(emailCreateText,
+            {
+                header: true,
+                transform: field => field.trim(),
+                transformHeader: header => header.trim(),
+                dynamicTyping: field => { 
+                    // validate UAs and set numeric type for number UAs 
+                    const ua = allUserAttributes.filter(ua => ua.name === field)[0];
+                    return (ua.type === 'number') ? true : false;
+                }
+            }).data
+
+        Promise.allSettled(
+            userData.map(async user => {
+                try { 
+                    const newUser = await asyncLookerCall('create_user', {first_name: user.first_name, last_name: user.last_name });
+                    log(`User ${newUser.id}: created for ${user.first_name} ${user.last_name}`);
+
+                    const newUserWithEmail = await asyncLookerCall('create_user_credentials_email', newUser.id, {email: user.email })
+                        .then(response => {
+                            log(`User ${newUser.id}: email credentials set to ${user.email}`);
+                        })
+                        .catch(error => {
+                            log(`ERROR: user ${newUser.id}: Unable to set email credentials to ${user.email}: ${error.message}. Most likely the email is already in use. See network tab.`);
+                        })
+
+                    const uaPromises = []
+                    for (const [key, value] of Object.entries(user)) {
+                        // skip system defaults and empty string values
+                        if (Boolean(value) && !SYSTEM_USER_ATTRIBUTES.includes(key)) {
+                            const uaID = allUserAttributes.filter(ua => ua.name === key)[0].id;
+                            const response = await asyncLookerCall('set_user_attribute_user_value', newUser.id, uaID, {value: value });
+                            uaPromises.push(response)
+                            log(`User ${newUser.id}: User Attribute ${key} set to: ${value}`);
+                        }
+                    }
+                    return [newUserWithEmail, ...uaPromises]
+                } catch (error) {
+                    log(`ERROR: user ${newUser.id}: unable to creating user / set UA for ${user.email} Message: '${error.message}'`)
+                }
+            })
+        ).then(values => {
+            log(`Action complete; refreshing user table`)
+            props.loadUsersAndStuff()
+        }).catch(error => {
+            log('FATAL: unhandled exception while creating users. The first promise rejection is:')
+            log(error)
+            log('Refreshing user table to avoid showing inconsistent state')
+            props.loadUsersAndStuff()
+        });
+
+        return
+    }
+
+
     const makeDeleteCredFunc = () => {
         const credType = deleteCredsType().toLowerCase()
         const propName = `credentials_${credType}`
@@ -485,6 +559,7 @@ export function ActionsBar(props) {
                 <MenuList placement="right-start">
                     <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
                     <MenuItem icon="VisTable" onClick={openEmailMap}>{ACTION_INFO.emailMap.menuTitle}</MenuItem>
+                    <MenuItem icon="UserAttributes" onClick={openEmailCreate}>{ACTION_INFO.emailCreate.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -551,6 +626,44 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button onClick={runEmailMap}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* EMAIL CREATE Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("emailCreate")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.emailCreate.dialogTitle}
+                message={
+                    <>
+                    <Paragraph mb="small">
+                        Paste a CSV of new users with any User Attributes (UA). There should 
+                        be one user per line. For UA values that have a comma, e.g. an advanced 
+                        data type leveraging Looker's filter expressions, ensure that the values
+                        are wrapped in double quotes (").
+                    </Paragraph>
+                    <Paragraph mb="small">
+                        The header must begin with email, first_name, last_name for the first 3 columns, 
+                        with the remaining columns containing any additional UAs (optional). All UA header 
+                        values must match the name stored in Looker or the import will not run.
+                    </Paragraph>
+                    <Paragraph mb="small">
+                        Note that duplicate email addresses are not allowed in Looker. If the email address 
+                        is already in use then the user will be skipped.
+                    </Paragraph>
+                    <MonospaceTextArea 
+                        resize 
+                        value={emailCreateText} 
+                        onChange={onChangeEmailCreateText} 
+                        placeholder={'email,first_name,last_name,house,castle\nthebastard@got.com,Jon,Snow,"Stark,Targaryen",Castle Black\nkingslayer@got.com,Jamie,Lannister,Lannister,Casterly Rock'}
+                    />
+                    </>
+                }
+                primaryButton={<Button onClick={runEmailCreate}>Run</Button>}
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>

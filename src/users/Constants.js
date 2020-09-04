@@ -35,6 +35,8 @@ export const CREDENTIALS_INFO = Object.freeze([
     { name: 'credentials_looker_openid', label: 'looker_openid', is_sso: false, id_prop: 'email' }
 ])
 
+export const SYSTEM_USER_ATTRIBUTES = ['email', 'first_name', 'last_name']
+
 export const USER_FIELDS = Object.freeze(
     CREDENTIALS_INFO.map(cred => cred['name']
     ).concat(
@@ -108,6 +110,10 @@ export const ACTION_INFO = Object.freeze({
     emailMap: {
         menuTitle: "Bulk update from mapping",
         dialogTitle: "Update Emails from Mapping"
+    },
+    emailCreate: {
+        menuTitle: "Bulk create from mapping",
+        dialogTitle: "Create Users from Mapping"
     },
     deleteCreds: {
         dialogTitle: "Delete Credentials"
