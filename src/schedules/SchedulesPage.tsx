@@ -41,7 +41,7 @@ import Papa from "papaparse";
 import React from "react";
 import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
-import { IDashboard } from "@looker/sdk/dist/sdk/4.0/models";
+import { IDashboard, IScheduledPlan } from "@looker/sdk/lib/sdk/4.0/models";
 import {
   DEBUG,
   ADVANCED_FIELDS,
@@ -52,6 +52,7 @@ import {
   ExtensionState,
   IWriteScheduledPlanNulls,
   IScheduledPlanTable,
+  SelectOption,
 } from "./constants"; // interfaces
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
@@ -214,9 +215,9 @@ export class SchedulesPage extends React.Component<
       return [];
     } else {
       const datagroupNames = datagroups
-        .map((d) => d.model_name + "::" + d.name)
+        .map((d: any) => d.model_name + "::" + d.name)
         .sort()
-        .map((d) => {
+        .map((d: SelectOption) => {
           return { value: d, label: d };
         });
 
@@ -426,13 +427,13 @@ export class SchedulesPage extends React.Component<
 
       const emailSchedules = allSchedules
         // filter on schedules that contain any matches to emailsToChange
-        .filter((s) => {
+        .filter((s: IScheduledPlan) => {
           const recipients = s.scheduled_plan_destination!.map((a: any) =>
             a.address.toLowerCase()
           );
           return recipients.some((email) => emailsToChange.includes(email));
         })
-        .map((s) => {
+        .map((s: IScheduledPlan) => {
           // update address with mappings value
           s.scheduled_plan_destination!.map((spd) => {
             const spdEmail = spd.address!.toLowerCase();
@@ -462,7 +463,7 @@ export class SchedulesPage extends React.Component<
 
       // TODO if run_as_recipiant is enabled and email is not a Looker account, will return 422
       await Promise.all(
-        emailSchedules.map(async (s) => {
+        emailSchedules.map(async (s: IScheduledPlan) => {
           const response = await this.context.core40SDK.ok(
             this.context.core40SDK.update_scheduled_plan(s.id!, s)
           );
@@ -472,7 +473,7 @@ export class SchedulesPage extends React.Component<
           }
         })
       ).then((values) => {
-        const scheduleIds = emailSchedules.map((s) => s.id);
+        const scheduleIds = emailSchedules.map((s: IScheduledPlan) => s.id);
 
         this.setState({
           runningUpdate: false,
@@ -578,7 +579,7 @@ export class SchedulesPage extends React.Component<
         })
       );
 
-      const schedulesToSend = allSchedules.filter((s) =>
+      const schedulesToSend = allSchedules.filter((s: IScheduledPlan) =>
         schedulePlanIds.includes(s.id!)
       );
 

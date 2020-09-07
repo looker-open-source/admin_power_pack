@@ -384,18 +384,27 @@ export function ActionsBar(props) {
 
     const makeCreateEmailFunc = async () => {
         const allUserAttributes =  await asyncLookerCall('all_user_attributes',{fields: "id,name,type"});
+        let rawData
 
-        const userData = Papa.parse(emailCreateText,
-            {
-                header: true,
-                transform: field => field.trim(),
-                transformHeader: header => header.trim(),
-                dynamicTyping: field => { 
-                    // validate UAs and set numeric type for number UAs 
-                    const ua = allUserAttributes.filter(ua => ua.name === field)[0];
-                    return (ua.type === 'number') ? true : false;
-                }
-            }).data
+        try {
+            rawData = Papa.parse(emailCreateText,
+                {
+                    header: true,
+                    transform: field => field.trim(),
+                    transformHeader: header => header.trim(),
+                    dynamicTyping: field => { 
+                        // validate UAs and set numeric type for number UAs 
+                        const ua = allUserAttributes.filter(ua => ua.name === field)[0];
+                        return (ua.type === 'number') ? true : false;
+                    }
+                }).data   
+        } catch (error) {
+            log(`FATAL: There was an error parsing CSV data: ${error}`)
+            log('No users were created.')
+            return
+        }
+
+        const userData = rawData.filter(u => u.email !== "")
 
         Promise.allSettled(
             userData.map(async user => {
@@ -428,11 +437,6 @@ export function ActionsBar(props) {
             })
         ).then(values => {
             log(`Action complete; refreshing user table`)
-            props.loadUsersAndStuff()
-        }).catch(error => {
-            log('FATAL: unhandled exception while creating users. The first promise rejection is:')
-            log(error)
-            log('Refreshing user table to avoid showing inconsistent state')
             props.loadUsersAndStuff()
         });
 
@@ -641,8 +645,8 @@ export function ActionsBar(props) {
                 message={
                     <>
                     <Paragraph mb="small">
-                        Paste a CSV of new users with any User Attributes (UA). There should 
-                        be one user per line. For UA values that have a comma, e.g. an advanced 
+                        Paste a CSV of new users with User Attributes (UA). There should be
+                        one user per line. For UA values that have a comma, e.g. an advanced 
                         data type leveraging Looker's filter expressions, ensure that the values
                         are wrapped in double quotes (").
                     </Paragraph>
@@ -653,7 +657,7 @@ export function ActionsBar(props) {
                     </Paragraph>
                     <Paragraph mb="small">
                         Note that duplicate email addresses are not allowed in Looker. If the email address 
-                        is already in use then the user will be skipped.
+                        is already in use then the email credentials will not be set.
                     </Paragraph>
                     <MonospaceTextArea 
                         resize 

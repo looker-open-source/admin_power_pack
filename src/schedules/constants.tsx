@@ -28,7 +28,7 @@ import {
   IScheduledPlanDestination,
   IUserPublic,
   IWriteScheduledPlan,
-} from "@looker/sdk/dist/sdk/4.0/models";
+} from "@looker/sdk/lib/sdk/4.0/models";
 
 export const DEBUG = process.env.NODE_ENV === "development";
 
