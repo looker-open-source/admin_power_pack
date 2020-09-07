@@ -215,9 +215,9 @@ export class SchedulesPage extends React.Component<
       return [];
     } else {
       const datagroupNames = datagroups
-        .map((d: any) => d.model_name + "::" + d.name)
+        .map((d) => d.model_name + "::" + d.name)
         .sort()
-        .map((d: SelectOption) => {
+        .map((d) => {
           return { value: d, label: d };
         });
 
