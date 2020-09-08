@@ -24,9 +24,7 @@
 
 import {
   Box,
-  Button,
   ButtonOutline,
-  ComboboxOptionObject,
   Confirm,
   Flex,
   FlexItem,
@@ -34,6 +32,7 @@ import {
   IconButton,
   MessageBar,
   Select,
+  Spinner,
   Text,
 } from "@looker/components";
 import { ExtensionContext } from "@looker/extension-sdk-react";
@@ -42,13 +41,7 @@ import Papa from "papaparse";
 import React from "react";
 import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
-import {
-  IDashboard,
-  IScheduledPlan,
-  IScheduledPlanDestination,
-  IUserPublic,
-  IWriteScheduledPlan,
-} from "@looker/sdk/dist/sdk/4.0/models";
+import { IDashboard } from "@looker/sdk/dist/sdk/4.0/models";
 import {
   DEBUG,
   ADVANCED_FIELDS,
@@ -56,53 +49,13 @@ import {
   KEY_FIELDS,
   REQUIRED_FIELDS,
   REQUIRED_TRIGGER_FIELDS,
-} from "./constants";
+  ExtensionState,
+  IWriteScheduledPlanNulls,
+  IScheduledPlanTable,
+} from "./constants"; // interfaces
 import { SchedulesTable } from "./SchedulesTable";
-import { PopulateParams, PopulateRows } from "./PopulateRows";
 import { GlobalActions } from "./GlobalActions";
-
-interface ExtensionState {
-  currentDash?: IDashboard;
-  selectedDashId: string;
-  dashSearchString: string;
-  dashboards: any[]; // array of dashboard and folder names/ids for Select
-  datagroups: ComboboxOptionObject[]; // array of datagroup string names
-  users: ComboboxOptionObject[]; // array of user ids and display names
-  schedulesArray: any; // IScheduledPlanTable[] - array of schedules (can be edited)
-  schedulesArrayBackup: any; // IScheduledPlanTable[] - array of schedules stored for reverting edits
-  runningQuery: boolean; // false shows 'getting data', true displays table
-  runningUpdate: boolean; // false shows 'getting data', true displays table
-  hiddenColumns: string[]; // state of column headers to control visibility
-  checkboxStatus: any;
-  errorMessage?: string;
-  notificationMessage?: string;
-  populateParams: PopulateParams;
-}
-
-// need this to supply null values (--strictNullChecks)
-interface IWriteScheduledPlanNulls extends IWriteScheduledPlan {
-  crontab?: any;
-  datagroup?: any;
-  run_as_recipient?: any;
-  include_links?: any;
-  long_tables?: any;
-  pdf_paper_size?: any;
-}
-
-// used to display specific fields for all schedules on a Dashboard
-export interface IScheduledPlanTable extends IScheduledPlan {
-  owner_id: string;
-  recipients: string[];
-  run_as_recipient?: any;
-  include_links?: any;
-  [key: string]: any; // needed to dynamically display filters
-  scheduled_plan_destination: IScheduledPlanDestination[]; // overriding to make this required
-  user: IUserPublicExtended; // overriding to make this required
-}
-
-export interface IUserPublicExtended extends IUserPublic {
-  id: number; // overriding to make this required
-}
+import { PopulateRows } from "./PopulateRows";
 
 export class SchedulesPage extends React.Component<
   RouteComponentProps,
@@ -152,9 +105,11 @@ export class SchedulesPage extends React.Component<
     });
 
     try {
-      const dashboards = await this.getAllDashboards();
-      const datagroups = await this.getDatagroups();
-      const users = await this.getAllUsers();
+      const [dashboards, datagroups, users] = await Promise.all([
+        this.getAllDashboards(),
+        this.getDatagroups(),
+        this.getAllUsers(),
+      ]);
 
       this.setState({
         dashboards: dashboards,
@@ -437,8 +392,9 @@ export class SchedulesPage extends React.Component<
 
   /////////////////////////////////////////////////////
 
-  //////////////// GLOBAL FIND REPLACE ////////////////
+  ///////////////// GLOBAL FUNCTIONS //////////////////
 
+  // Find and replace emails in all schedule plans based on email CSV mapping
   GlobalFindReplaceEmail = async (EmailMap: string) => {
     this.setState({
       runningUpdate: true,
@@ -528,6 +484,137 @@ export class SchedulesPage extends React.Component<
       this.setState({
         runningUpdate: false,
         errorMessage: "Error updating emails. See console for more details.",
+        notificationMessage: undefined,
+      });
+    }
+  };
+
+  // Validate all recent schedules jobs and returns any failures
+  GlobalValidateRecentSchedules = async (timeframe: string) => {
+    // get the max job ID for each schedule plan
+    const maxJobQuery = await this.context.core40SDK.ok(
+      this.context.core40SDK.create_query({
+        model: "system__activity",
+        view: "scheduled_plan",
+        fields: ["scheduled_plan.id", "scheduled_job.name", "max_job_id"],
+        filters: {
+          "scheduled_job.run_once": "No",
+          "scheduled_job.finalized_time": "NOT NULL",
+        },
+        sorts: ["max_job_id desc"],
+        limit: "5000",
+        dynamic_fields:
+          '[{"measure":"max_job_id","based_on":"scheduled_job.id","type":"max"}]',
+      })
+    );
+
+    const maxJobResults = await this.context.core40SDK.ok(
+      this.context.core40SDK.run_query({
+        query_id: Number(maxJobQuery.id),
+        result_format: "json",
+        cache: false,
+      })
+    );
+
+    const jobIds = JSON.parse(JSON.stringify(maxJobResults))
+      .map((row: any) => row.max_job_id)
+      .toString();
+
+    // get information on all recent failures filtered on job IDs, failure, in the past N timeframe
+    const latestFailuresQuery = await this.context.core40SDK.ok(
+      this.context.core40SDK.create_query({
+        model: "system__activity",
+        view: "scheduled_plan",
+        fields: [
+          "scheduled_plan.id",
+          "scheduled_job.name",
+          "scheduled_job.id",
+          "scheduled_job.finalized_time",
+          "user.name",
+          "scheduled_job.status_detail",
+          "scheduled_plan.content_type_id",
+          "scheduled_plan.destination_addresses",
+        ],
+        filters: {
+          "scheduled_job.id": jobIds,
+          "scheduled_job.status": "failure",
+          "scheduled_job.finalized_time": timeframe,
+        },
+        sorts: ["scheduled_job.id desc"],
+        limit: "5000",
+      })
+    );
+
+    const latestFailuresResults = await this.context.core40SDK.ok(
+      this.context.core40SDK.run_query({
+        query_id: Number(latestFailuresQuery.id),
+        result_format: "json",
+        cache: false,
+      })
+    );
+
+    if (DEBUG) {
+      console.log("Latest Scheduled Jobs Failures:");
+      console.log(latestFailuresResults);
+    }
+
+    return latestFailuresResults;
+  };
+
+  // Resends any failures based on results from GlobalValidateRecentSchedules
+  GlobalResendRecentFailures = async (selections: string[]) => {
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
+    try {
+      const schedulePlanIds = selections.map((s: string) => Number(s));
+
+      const allSchedules = await this.context.core40SDK.ok(
+        this.context.core40SDK.all_scheduled_plans({
+          all_users: true,
+        })
+      );
+
+      const schedulesToSend = allSchedules.filter((s) =>
+        schedulePlanIds.includes(s.id!)
+      );
+
+      if (DEBUG) {
+        console.log(
+          `Resending failed jobs for scheduled plans: ${schedulePlanIds}`
+        );
+        console.log(schedulesToSend);
+      }
+
+      // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
+      const delay = (i: number) => new Promise((r) => setTimeout(r, i));
+
+      for (let i = 0; i < schedulesToSend.length; i++) {
+        await delay(200);
+        const response = await this.context.core40SDK.ok(
+          this.context.core40SDK.scheduled_plan_run_once(schedulesToSend[i])
+        );
+
+        if (DEBUG) {
+          console.log(
+            `Run schedule once response for schedule ID ${schedulesToSend[i].id}`
+          );
+          console.log(JSON.stringify(response, null, 2));
+        }
+      }
+
+      this.setState({
+        runningUpdate: false,
+        errorMessage: undefined,
+        notificationMessage: "Schedules have been resent",
+      });
+    } catch (error) {
+      this.setState({
+        runningUpdate: false,
+        errorMessage: "Error resending schedules.",
         notificationMessage: undefined,
       });
     }
@@ -1276,7 +1363,7 @@ export class SchedulesPage extends React.Component<
       this.setState({
         runningUpdate: false,
         errorMessage: undefined,
-        notificationMessage: "Test(s) Sent",
+        notificationMessage: "Schedule(s) Sent",
       });
     } catch (error) {
       this.setState({
@@ -1533,6 +1620,12 @@ export class SchedulesPage extends React.Component<
                   <FlexItem mx="xxxsmall">
                     <GlobalActions
                       GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
+                      GlobalValidateRecentSchedules={
+                        this.GlobalValidateRecentSchedules
+                      }
+                      GlobalResendRecentFailures={
+                        this.GlobalResendRecentFailures
+                      }
                     />
                   </FlexItem>
                 </Flex>
@@ -1540,9 +1633,9 @@ export class SchedulesPage extends React.Component<
             </FlexItem>
           </Flex>
 
-          <Flex>
-            {this.state.currentDash && (
-              <>
+          {this.state.currentDash && (
+            <>
+              <Flex>
                 <Heading
                   as="h2"
                   fontWeight="semiBold"
@@ -1561,9 +1654,17 @@ export class SchedulesPage extends React.Component<
                     );
                   }}
                 />
-              </>
-            )}
-          </Flex>
+              </Flex>
+            </>
+          )}
+
+          {this.state.dashboards.length === 0 && (
+            <Flex justifyContent="center" height="500px">
+              <FlexItem alignSelf="center">
+                <Spinner color="black" />
+              </FlexItem>
+            </Flex>
+          )}
 
           <Flex width="100%">
             <SchedulesTable

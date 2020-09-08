@@ -29,7 +29,7 @@ import {
   ButtonOutline,
   ButtonTransparent,
   Checkbox,
-  ComboboxOptionObject,
+  Confirm,
   FieldCheckbox,
   Flex,
   FlexItem,
@@ -56,7 +56,6 @@ import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
 import { Styles } from "./Styles";
 import { translateCron } from "./cronHelper";
-import { IScheduledPlanTable } from "./SchedulesPage";
 import {
   DEBUG,
   KEY_FIELDS,
@@ -64,37 +63,11 @@ import {
   TIMEZONES,
   FORMAT,
   PDF_PAPER_SIZE,
+  SelectOption,
+  GroupSelectOption,
+  SchedulesTableQueryProps,
+  EditableCellProps,
 } from "./constants";
-
-export interface QueryProps {
-  results: IScheduledPlanTable;
-  datagroups: ComboboxOptionObject[];
-  users: ComboboxOptionObject[];
-  hiddenColumns: string[];
-  checkboxStatus: any;
-  handleVisible(hiddenColumns: string[], checkboxStatus: any): void;
-  syncData(index: number, id: string, value: string): any;
-  addRow(): void;
-  deleteRow(rows: any[]): void;
-  updateRow(rowIndex: number[], rows: any[]): void;
-  testRow(rowIndex: number[], rows: any[]): void;
-  disableRow(rowIndex: number[], rows: any[]): void;
-  enableRow(rowIndex: number[], rows: any[]): void;
-  openExploreWindow(scheduledPlanID: number): void;
-  openDashboardWindow(rowIndex: number): void;
-}
-
-export interface EditableCellInterface {
-  value: any; // (string | number | boolean)
-  row: { index: number };
-  column: { id: string };
-  data: any;
-  datagroups: ComboboxOptionObject[];
-  users: ComboboxOptionObject[];
-  openExploreWindow(scheduledPlanID: number): void;
-  openDashboardWindow(rowIndex: number): void;
-  syncData(rowIndex: number, columnId: string, value: string): any;
-}
 
 // returns {rowIndex3: scheduleId3, rowIndex2: scheduleId2, etc.}
 const zipRows = (selectedFlatRows: any, selectedRowIds: any) => {
@@ -130,7 +103,7 @@ const IndeterminateCheckbox = React.forwardRef(
   }
 );
 
-const EditableCell = (ec: EditableCellInterface) => {
+const EditableCell = (ec: EditableCellProps) => {
   const {
     value: initialValue,
     row: { index },
@@ -162,32 +135,64 @@ const EditableCell = (ec: EditableCellInterface) => {
 
   const onSelectChange = (e: any) => {
     setValue(e);
+    syncData(index, id, e);
   };
 
   const handleSelectFilter = (term: string) => {
     setSearchTerm(term);
   };
 
-  const DefaultSelect = (options: any, disabled: boolean): JSX.Element => {
-    const newOptions = React.useMemo(() => {
-      if (searchTerm === "") return options;
-      return options.filter((o: any) => {
+  // todo onBlur is called early and not closing select dropdown. need to fix.
+
+  // filter generic list - no options[]
+  const newOptions = (options: SelectOption[]) => {
+    if (searchTerm === "") return options;
+
+    return options.filter((o) => {
+      return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+    });
+  };
+
+  // filter list with options[] while retain grouping
+  const newGroupOptions = (options: GroupSelectOption[]) => {
+    if (searchTerm === "") return options;
+
+    let newOptions: any = [];
+
+    options.filter((group) => {
+      const foundOptionsPerGroup = group.options.filter((o) => {
         return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
       });
-    }, [searchTerm]);
 
+      if (foundOptionsPerGroup.length > 0) {
+        newOptions.push({
+          label: group.label,
+          options: foundOptionsPerGroup,
+        });
+      }
+    });
+
+    return newOptions;
+  };
+
+  const DefaultSelect = (
+    options: any,
+    disabled: boolean,
+    isClearable: boolean
+  ): JSX.Element => {
     return (
       <Select
         width={1}
+        autoResize
         value={value}
         title={value}
-        options={newOptions}
+        listLayout={{ width: "auto" }}
+        options={options}
         disabled={disabled}
-        onChange={onSelectChange}
+        onChange={onSelectChange} // handles syncData() no onBlur needed
         onFilter={handleSelectFilter}
-        onBlur={onBlur}
         isFilterable
-        isClearable
+        isClearable={isClearable}
       />
     );
   };
@@ -208,14 +213,14 @@ const EditableCell = (ec: EditableCellInterface) => {
     );
   };
 
-  const DefaultInputText = (disabled: boolean): JSX.Element => {
+  const DefaultInputText = (): JSX.Element => {
     return (
       <InputText
         width={1}
+        minWidth={100}
         value={value}
         onChange={onChange}
         onBlur={onBlur}
-        disabled={disabled}
       />
     );
   };
@@ -234,6 +239,7 @@ const EditableCell = (ec: EditableCellInterface) => {
       <Flex title={tooltip}>
         <InputText
           width={1}
+          minWidth={100}
           value={value}
           onChange={onChange}
           onBlur={onBlur}
@@ -253,8 +259,9 @@ const EditableCell = (ec: EditableCellInterface) => {
       <TextArea
         value={value}
         key={id + index}
-        minHeight="36px"
-        height="36px"
+        minHeight={36}
+        height={36}
+        minWidth={100}
         onChange={onChange}
         onBlur={onBlur}
         resize
@@ -402,19 +409,22 @@ const EditableCell = (ec: EditableCellInterface) => {
     return data[index].pdf_paper_size !== "";
   };
 
+  const isCrontab = data[index].crontab !== "";
+
+  const isDatagroup = data[index].datagroup !== "";
+
   switch (id) {
     // SELECT_FIELDS //
     case "datagroup":
-      const isCrontab = data[index].crontab !== "";
-      return DefaultSelect(datagroups, isCrontab);
+      return DefaultSelect(newOptions(datagroups), isCrontab, true);
     case "owner_id":
-      return DefaultSelect(users, false);
+      return DefaultSelect(newOptions(users), false, true);
     case "timezone":
-      return DefaultSelect(TIMEZONES, false);
+      return DefaultSelect(newGroupOptions(TIMEZONES), !isCrontab, true);
     case "format":
-      return DefaultSelect(FORMAT, false);
+      return DefaultSelect(newOptions(FORMAT), false, false);
     case "pdf_paper_size":
-      return DefaultSelect(PDF_PAPER_SIZE, !isPDF());
+      return DefaultSelect(newOptions(PDF_PAPER_SIZE), !isPDF(), true);
 
     // CHECKBOX_FIELDS //
     case "include_links":
@@ -444,14 +454,13 @@ const EditableCell = (ec: EditableCellInterface) => {
 
     // CRONTAB AND INPUT_TEXT FIELDS //
     case "crontab":
-      const isDatagroup = data[index].datagroup !== "";
       return CronInputText(isDatagroup);
     case "name":
-      return DefaultInputText(false);
+      return DefaultInputText();
 
     // Filters will be DefaultInputText //
     default:
-      return DefaultInputText(false);
+      return DefaultInputText();
   }
 };
 
@@ -556,88 +565,153 @@ const ReactTable = ({
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              color="critical"
-              iconBefore="Trash"
-              title="Delete row/schedule from table"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Delete"
+              buttonColor="critical"
+              title="Delete Rows"
+              message={`Are you sure you want to delete these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rows = zipRows(selectedFlatRows, selectedRowIds);
                 deleteRow(rows);
+                close();
               }}
             >
-              Delete
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  color="critical"
+                  iconBefore="Trash"
+                  title="Delete row/schedule from table"
+                  onClick={open}
+                >
+                  Delete
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="Update"
-              title="Create new schedule or update existing schedule"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Create and Update Rows"
+              message={`Are you sure you want to create / update these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 updateRow(rowIndex, rows);
+                close();
               }}
             >
-              Create/Update
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="Update"
+                  title="Create new schedule or update existing schedule"
+                  onClick={open}
+                >
+                  Create/Update
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="SendEmail"
-              title='Run the schedule now. This is the same as "Send Test" in the UI'
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Run Schedules Now"
+              message={`Are you sure you want to run these ${
+                Object.keys(selectedRowIds).length
+              } schedules now?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 testRow(rowIndex, rows);
+                close();
               }}
             >
-              Run Once
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="SendEmail"
+                  title='Run the schedule now. This is the same as "Send Test" in the UI'
+                  onClick={open}
+                >
+                  Run Once
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="Block"
-              title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Disable Schedules"
+              message={`Are you sure you want to disable these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 disableRow(rowIndex, rows);
+                close();
               }}
             >
-              Disable
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="Block"
+                  title="Disable the schedule and prevent the schedule from sending until it’s re-enabled"
+                  onClick={open}
+                >
+                  Disable
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem alignSelf="center">
-            <ButtonOutline
-              disabled={!(Object.keys(selectedRowIds).length > 0)}
-              size="xsmall"
-              m="xsmall"
-              iconBefore="CheckProgress"
-              title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
-              onClick={() => {
+            <Confirm
+              confirmLabel="Yes"
+              buttonColor="key"
+              title="Enable Schedules"
+              message={`Are you sure you want to enable these ${
+                Object.keys(selectedRowIds).length
+              } schedules?`}
+              onConfirm={(close) => {
                 const rowIndex = Object.keys(selectedRowIds).map(Number);
                 const rows = selectedFlatRows.map((d) => d.original);
                 enableRow(rowIndex, rows);
+                close();
               }}
             >
-              Enable
-            </ButtonOutline>
+              {(open) => (
+                <ButtonOutline
+                  disabled={!(Object.keys(selectedRowIds).length > 0)}
+                  size="xsmall"
+                  m="xsmall"
+                  iconBefore="CheckProgress"
+                  title="Enable the schedule. Re-enabling a schedule will send (maximum 1) schedule immediately, if, while it was disabled it should have run"
+                  onClick={open}
+                >
+                  Enable
+                </ButtonOutline>
+              )}
+            </Confirm>
           </FlexItem>
 
           <FlexItem p="small"></FlexItem>
@@ -824,7 +898,7 @@ const headings = (results?: any): Array<Object> => {
   return groupedHeadings;
 };
 
-export const SchedulesTable = (qp: QueryProps): JSX.Element => {
+export const SchedulesTable = (qp: SchedulesTableQueryProps): JSX.Element => {
   const {
     results,
     datagroups,

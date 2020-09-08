@@ -22,7 +22,132 @@
  * THE SOFTWARE.
  */
 
+import {
+  IDashboard,
+  IScheduledPlan,
+  IScheduledPlanDestination,
+  IUserPublic,
+  IWriteScheduledPlan,
+} from "@looker/sdk/dist/sdk/4.0/models";
+
 export const DEBUG = process.env.NODE_ENV === "development";
+
+////////////////////// Interfaces //////////////////////
+
+// ExtensionState for SchedulesPage
+export interface ExtensionState {
+  currentDash?: IDashboard;
+  selectedDashId: string;
+  dashSearchString: string;
+  dashboards: any[]; // array of dashboard and folder names/ids for Select
+  datagroups: SelectOption[]; // array of datagroup string names
+  users: SelectOption[]; // array of user ids and display names
+  schedulesArray: any; // IScheduledPlanTable[] - array of schedules (can be edited)
+  schedulesArrayBackup: any; // IScheduledPlanTable[] - array of schedules stored for reverting edits
+  runningQuery: boolean; // false shows 'getting data', true displays table
+  runningUpdate: boolean; // false shows 'getting data', true displays table
+  hiddenColumns: string[]; // state of column headers to control visibility
+  checkboxStatus: any;
+  errorMessage?: string;
+  notificationMessage?: string;
+  populateParams: PopulateParams;
+}
+
+// need this to supply null values (--strictNullChecks)
+export interface IWriteScheduledPlanNulls extends IWriteScheduledPlan {
+  crontab?: any;
+  datagroup?: any;
+  run_as_recipient?: any;
+  include_links?: any;
+  long_tables?: any;
+  pdf_paper_size?: any;
+}
+
+// used to display specific fields for all schedules on a Dashboard
+export interface IScheduledPlanTable extends IScheduledPlan {
+  owner_id: string;
+  recipients: string[];
+  run_as_recipient?: any;
+  include_links?: any;
+  [key: string]: any; // needed to dynamically display filters
+  scheduled_plan_destination: IScheduledPlanDestination[]; // overriding to make this required
+  user: IUserPublicExtended; // overriding to make this required
+}
+
+export interface IUserPublicExtended extends IUserPublic {
+  id: number; // overriding to make this required
+}
+
+// for Select Dropdown, generic list - no options[]
+export interface SelectOption {
+  label: string;
+  value: string;
+}
+
+// for Select Dropdown with grouping options[]
+export interface GroupSelectOption {
+  label: string;
+  options: SelectOption[];
+}
+
+// Schedules Table query props
+export interface SchedulesTableQueryProps {
+  results: IScheduledPlanTable;
+  datagroups: SelectOption[];
+  users: SelectOption[];
+  hiddenColumns: string[];
+  checkboxStatus: any;
+  handleVisible(hiddenColumns: string[], checkboxStatus: any): void;
+  syncData(index: number, id: string, value: string): any;
+  addRow(): void;
+  deleteRow(rows: any[]): void;
+  updateRow(rowIndex: number[], rows: any[]): void;
+  testRow(rowIndex: number[], rows: any[]): void;
+  disableRow(rowIndex: number[], rows: any[]): void;
+  enableRow(rowIndex: number[], rows: any[]): void;
+  openExploreWindow(scheduledPlanID: number): void;
+  openDashboardWindow(rowIndex: number): void;
+}
+
+// Editable Cell base for all cells in table
+export interface EditableCellProps {
+  value: any; // (string | number | boolean)
+  row: { index: number };
+  column: { id: string };
+  data: any;
+  datagroups: SelectOption[];
+  users: SelectOption[];
+  openExploreWindow(scheduledPlanID: number): void;
+  openDashboardWindow(rowIndex: number): void;
+  syncData(rowIndex: number, columnId: string, value: string): any;
+}
+
+// for PopulateRows function
+export interface PopulateParams {
+  queryId: string; // displayed as number in FieldText
+  ownerId: string; // displayed as number in FieldText
+  scheduleName: string;
+  cron: string;
+}
+
+// for PopulateRows function
+export interface PopulateRowProps {
+  popParams: PopulateParams;
+  resetPopParams(): void;
+  validPopParams(): boolean;
+  handlePopQueryId(e: any): void;
+  handlePopOwnerId(e: any): void;
+  handlePopName(e: any): void;
+  handlePopCron(e: any): void;
+  handlePopSubmit(): void;
+}
+
+// for Global Action functions
+export interface GlobalActionQueryProps {
+  GlobalFindReplaceEmail(EmailMap: string): void;
+  GlobalValidateRecentSchedules(timeframe: string): any;
+  GlobalResendRecentFailures(failureData: any): void;
+}
 
 //////////////// Order for table Headings ////////////////
 
@@ -93,6 +218,60 @@ export const TABLE_HEADING = [
   },
 ];
 
+//////////////// ACTION LIST FAILURE RESULTS COLUMNS  ////////////////
+
+export const ACTION_LIST_FAIL_COLUMNS = [
+  {
+    id: "scheduled_plan.id",
+    // type: 'number',
+    title: "Plan ID",
+    widthPercent: 5,
+  },
+  {
+    id: "scheduled_job.name",
+    // type: 'string',
+    title: "Name",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_job.id",
+    // type: 'number',
+    primaryKey: true,
+    title: "Job ID",
+    widthPercent: 5,
+  },
+  {
+    id: "scheduled_job.finalized_time",
+    // type: 'string',
+    title: "Finalized Time",
+    widthPercent: 12,
+  },
+  {
+    id: "user.name",
+    // type: 'string',
+    title: "Owner",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_job.status_detail",
+    // type: 'string',
+    title: "Status Detail",
+    widthPercent: 30,
+  },
+  {
+    id: "scheduled_plan.content_type_id",
+    // type: 'string',
+    title: "Content Type ID",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_plan.destination_addresses",
+    // type: "string",
+    title: "Destination Addresses",
+    widthPercent: 18,
+  },
+];
+
 //////////////// FIELD LISTS  ////////////////
 
 export const READ_ONLY_FIELDS = ["details"];
@@ -149,7 +328,10 @@ export const PDF_PAPER_SIZE = [
 ];
 
 export const TIMEZONES = [
-  { value: "UTC", label: "UTC" },
+  {
+    label: "UTC",
+    options: [{ value: "UTC", label: "UTC" }],
+  },
 
   {
     label: "United States Timezones",
