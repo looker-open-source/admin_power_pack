@@ -120,7 +120,7 @@ export class SchedulesPage extends React.Component<
       });
     } catch (error) {
       this.setState({
-        errorMessage: "Unable to load Dashboards.",
+        errorMessage: `Unable to load Dashboards: ${error}`,
         runningQuery: false,
         notificationMessage: undefined,
       });
@@ -383,7 +383,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error populating rows.",
+        errorMessage: `Error populating rows: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -484,7 +484,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error updating emails. See console for more details.",
+        errorMessage: `Error updating emails: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -615,7 +615,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error resending schedules.",
+        errorMessage: `Error resending schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -684,7 +684,7 @@ export class SchedulesPage extends React.Component<
       });
     } catch (error) {
       this.setState({
-        errorMessage: "Unable to load Dashboard.",
+        errorMessage: `Unable to load Dashboard: ${error}`,
         runningQuery: false,
       });
     }
@@ -1290,7 +1290,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error updating schedules.",
+        errorMessage: `Error updating schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1369,7 +1369,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error testing schedules.",
+        errorMessage: `Error testing schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1445,7 +1445,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error disabling schedules.",
+        errorMessage: `Error disabling schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1520,7 +1520,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error enabling schedules.",
+        errorMessage: `Error enabling schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1532,7 +1532,8 @@ export class SchedulesPage extends React.Component<
         {this.state.errorMessage && (
           <MessageBar
             intent="critical"
-            onPrimaryClick={() => {
+            canDismiss={true}
+            onDismiss={() => {
               this.setState({
                 errorMessage: undefined,
               });
@@ -1574,7 +1575,8 @@ export class SchedulesPage extends React.Component<
               {this.state.notificationMessage && (
                 <MessageBar
                   intent="positive"
-                  onPrimaryClick={() => {
+                  canDismiss={true}
+                  onDismiss={() => {
                     this.setState({
                       notificationMessage: undefined,
                     });

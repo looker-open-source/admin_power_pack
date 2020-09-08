@@ -115,6 +115,18 @@ export const ACTION_INFO = Object.freeze({
         menuTitle: "Bulk create from mapping",
         dialogTitle: "Create Users from Mapping"
     },
+    emailSend: {
+        menuTitle: "Bulk send email creds",
+        dialogTitle: "Send User Credentials to User Email"
+    },
+    setUserAtt: {
+        menuTitle: "Set User Attributes",
+        dialogTitle: "Set User Attributes for Users"
+    },
+    deleteUserAtt: {
+        menuTitle: "Delete User Attributes",
+        dialogTitle: "Delete User Attributes for Users"
+    },
     deleteCreds: {
         dialogTitle: "Delete Credentials"
     },

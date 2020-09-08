@@ -56,6 +56,7 @@ export class UsersPage extends React.Component {
             currentPage: 1,
             pageSize: 20,
             usersList: [],
+            userAtt: [],
             usersMap: new Map(),
             groupsMap: new Map(),
             rolesMap: new Map(),
@@ -100,19 +101,22 @@ export class UsersPage extends React.Component {
             //throw "test"
             //await new Promise(r => setTimeout(r, 5000))
 
-            const [userResult, groupsResult, rolesResult] = await Promise.all([
+            const [userResult, groupsResult, rolesResult, userAttResult] = await Promise.all([
                 //lookerRequest('search_users', {fields: USER_FIELDS}),
                 this.lookerRequest('all_users', {fields: USER_FIELDS}),
                 this.lookerRequest('all_groups', {}),
-                this.lookerRequest('all_roles', {})
+                this.lookerRequest('all_roles', {}),
+                this.lookerRequest('all_user_attributes', {}),
             ])
 
-            //console.log("~~~~~ All Users (count) ~~~~")
-            //console.log(userResult)
-            //console.log("~~~~~ All Groups ~~~~")
-            //console.log(groupsResult)
-            //console.log("~~~~~ All Roles ~~~~")
-            //console.log(rolesResult)
+            // console.log("~~~~~ All Users (count) ~~~~")
+            // console.log(userResult)
+            // console.log("~~~~~ All Groups ~~~~")
+            // console.log(groupsResult)
+            // console.log("~~~~~ All Roles ~~~~")
+            // console.log(rolesResult)
+            // console.log("~~~~~ All User Attributes ~~~~")
+            // console.log(userAttResult)
             
             const new_usersMap = new Map(userResult.map(u => [u.id, u]))
             const new_groupsMap = new Map(groupsResult.map(g => [g.id, g]))
@@ -128,6 +132,7 @@ export class UsersPage extends React.Component {
                 usersMap: new_usersMap,
                 groupsMap: new_groupsMap,
                 rolesMap: new_rolesMap,
+                userAtt: userAttResult,
                 isLoading: false,
             })
 
@@ -137,6 +142,7 @@ export class UsersPage extends React.Component {
                 usersMap: new Map(),
                 groupsMap: new Map(),
                 rolesMap: new Map(),
+                userAtt: [],
                 isLoading: false,
                 errorMessage: `Error loading users/groups/roles: "${error}"`
             })
@@ -372,6 +378,7 @@ export class UsersPage extends React.Component {
                 isLoading={this.state.isLoading}
                 selectedUserIds={this.state.selectedUserIds}
                 usersMap={this.state.usersMap}
+                userAtt={this.state.userAtt}
                 loadUsersAndStuff={this.loadUsersAndStuff}
                 setNewSelectedUserIds={this.setNewSelectedUserIds}
             />

@@ -35,8 +35,10 @@ import {
     Dialog, ConfirmLayout,
     List, ListItem,
     Text, Paragraph,
+    FieldCheckbox, FieldText,
     TextArea, InputText,
-    Link
+    Link,
+    SpaceVertical
   } from '@looker/components'
 
 const MonospaceTextArea = styled(TextArea)`
@@ -46,7 +48,7 @@ const MonospaceTextArea = styled(TextArea)`
 `
 export function ActionsBar(props) {
     const context = useContext(ExtensionContext) // provides the coreSDK object
-    const asyncLookerCall = makeLookerCaller(context.coreSDK)
+    const asyncLookerCall = makeLookerCaller(context.core40SDK)
 
     const [workflowMachine, sendWorkflowEvent] = useMachine(WORKFLOW_MACHINE)
 
@@ -54,6 +56,8 @@ export function ActionsBar(props) {
     const [selectByQueryText, set_selectByQueryText] = useState("")
     const [emailMapText, set_emailMapText] = useState("")
     const [emailCreateText, set_emailCreateText] = useState("")
+    const [userAttValueSet, set_userAttValueSet] = useState(new Map())
+    const [userAttValueDelete, set_userAttValueDelete] = useState(new Map())
     const [logMessages, set_logMessages] = useState([])
 
     /*
@@ -129,6 +133,10 @@ export function ActionsBar(props) {
     const openEmailCreate = () => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailCreate'})
     }
+
+    const openEmailSend = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailSend'})
+    }
     
     const openDelete = (type) => { 
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteCreds', deleteCredsType: type})
@@ -136,6 +144,14 @@ export function ActionsBar(props) {
 
     const openEnableDisable = (type) => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'enableDisable', enableDisableType: type})
+    }
+
+    const openSetUserAtt = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'setUserAtt'})
+    }
+
+    const openDeleteUserAtt = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteUserAtt'})
     }
 
     const openViewLog = () => {
@@ -159,6 +175,16 @@ export function ActionsBar(props) {
 
     const onChangeEmailCreateText = (e) => {
         set_emailCreateText(e.currentTarget.value)
+    }
+
+    const onChangeSetUserAttValues = (e) => {
+        //TODO can only edit 1 char at a time after re-rendering component? 
+        set_userAttValueSet(userAttValueSet.set(e.currentTarget.name, e.currentTarget.value))
+    }
+
+    const onChangeDeleteUserAttValues = (e) => {
+        //TODO cannot edit after re-rendering component? 
+        set_userAttValueDelete(userAttValueDelete.set(e.target.name, e.target.checked))
     }
 
     /*
@@ -201,6 +227,15 @@ export function ActionsBar(props) {
         )
     }
 
+    const runEmailSend = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                sendCredEmailReset, 
+                "send email reset"
+            )
+        )
+    }
+
     const runDeleteCreds = () => { 
         runInWorkflow(async () => 
             runOnSelectedUsers(
@@ -219,6 +254,23 @@ export function ActionsBar(props) {
         )
     }
 
+    const runSetUserAtt = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                setUserAttFunc, 
+                "set user attributes"
+            )
+        )
+    }
+
+    const runDeleteUserAtt = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                deleteUserAttFunc, 
+                "delete user attributes"
+            )
+        )
+    }
     /*
     ******************* ACTION FUNCTIONS *******************
     */
@@ -432,7 +484,7 @@ export function ActionsBar(props) {
                     }
                     return [newUserWithEmail, ...uaPromises]
                 } catch (error) {
-                    log(`ERROR: user ${newUser.id}: unable to creating user / set UA for ${user.email} Message: '${error.message}'`)
+                    log(`ERROR: user ${newUser.id}: unable to creating user / set User Attribute for ${user.email}: '${error.message}'`)
                 }
             })
         ).then(values => {
@@ -443,6 +495,23 @@ export function ActionsBar(props) {
         return
     }
 
+    const sendCredEmailReset = async (user) => {
+        if (!user.credentials_email) {
+            log(`Skip: user ${user.id}: no email credentials associated with: ${user.display_name}`);
+            return;
+        } 
+        if (user.is_disabled) {
+            log(`Skip: user ${user.id}: user is disabled`);
+            return;
+        }
+        try {
+            send_email = await asyncLookerCall('send_user_credentials_email_password_reset', user.id); //TODO - BUG INVESTIGATION
+            log(`User ${user.id}: credentials sent to user's email ${user.credentials_email.email}`);
+        } catch (error) {
+            log(`ERROR: user ${user.id}: unable to send user credentials email. Message: '${error.message}'`);
+        } 
+        return;
+    }
 
     const makeDeleteCredFunc = () => {
         const credType = deleteCredsType().toLowerCase()
@@ -485,6 +554,36 @@ export function ActionsBar(props) {
         return enableDisableFunc
     }
     
+    const setUserAttFunc = async (user) => {
+        for (const [key, value] of userAttValueSet) {
+            if (!value) continue;
+            try {
+                const thisUserAtt = props.userAtt.filter(ua => ua.name === key)[0];
+                let newValue = value;
+                if (thisUserAtt.type === 'number') newValue = Number(value);
+                const response = await asyncLookerCall('set_user_attribute_user_value', user.id, thisUserAtt.id, {value: value});
+                log(`User ${user.id}: User Attribute ${key} set to: ${value}`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to set User Attribute for ${key}: '${error.message}'`);
+            } 
+        }
+        return;
+    }
+
+    const deleteUserAttFunc = async (user) => {
+        for (const [key, value] of userAttValueDelete) {
+            if (!value) continue;
+            try {
+                const thisUserAttID = props.userAtt.filter(ua => ua.name === key)[0].id;
+                const response = await asyncLookerCall('delete_user_attribute_user_value', user.id, thisUserAttID);
+                log(`User ${user.id}: User Attribute ${key} deleted`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to delete User Attribute for ${key}: '${error.message}'`);
+            }
+        }
+        return;
+    }
+
     /*
     ******************* RENDERING *******************
     */
@@ -564,6 +663,7 @@ export function ActionsBar(props) {
                     <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
                     <MenuItem icon="VisTable" onClick={openEmailMap}>{ACTION_INFO.emailMap.menuTitle}</MenuItem>
                     <MenuItem icon="UserAttributes" onClick={openEmailCreate}>{ACTION_INFO.emailCreate.menuTitle}</MenuItem>
+                    <MenuItem icon="SendEmail" onClick={openEmailSend}>{ACTION_INFO.emailSend.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -657,7 +757,8 @@ export function ActionsBar(props) {
                     </Paragraph>
                     <Paragraph mb="small">
                         Note that duplicate email addresses are not allowed in Looker. If the email address 
-                        is already in use then the email credentials will not be set.
+                        is already in use then the email credentials will not be set. Later you can send
+                        setup emails to these new users via the Send Email Creds function.
                     </Paragraph>
                     <MonospaceTextArea 
                         resize 
@@ -668,6 +769,35 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button onClick={runEmailCreate}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* EMAIL SEND Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("emailSend")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.emailSend.dialogTitle}
+                message={
+                    <>
+                    This will send a password reset email for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users. 
+                    <List type="bullet">
+                        <ListItem>
+                            If a password reset token does not already exist for this user, it will create one and then send it.
+                        </ListItem> 
+                        <ListItem>
+                            If the user has not yet set up their account, it will send a setup email to the user.
+                        </ListItem>
+                        <ListItem>
+                            Password reset URLs will expire in 60 minutes.
+                        </ListItem>
+                    </List>
+                    </>
+                }
+                primaryButton={<Button onClick={runEmailSend}>Run</Button>}
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
@@ -724,16 +854,40 @@ export function ActionsBar(props) {
         )
     }
 
-    function renderDisable() {
+    function SetUserAttFields() {
+        const editableUserAtt = props.userAtt.filter(ua => !ua.is_system)
+        return (
+            <>
+                {editableUserAtt.map(ua => (
+                    <FieldText name={ua.name} label={ua.label} key={ua.id} value={userAttValueSet.get(ua.name)} onChange={onChangeSetUserAttValues} inline />
+                ))} 
+            </>
+        )
+    }
+
+    function DeleteUserAttFields() {
+        const editableUserAtt = props.userAtt.filter(ua => !ua.is_system)
+        return (
+            <>
+                {editableUserAtt.map(ua => (
+                    <FieldCheckbox name={ua.name} label={ua.label} key={ua.id} checked={userAttValueDelete.get(ua.name)} onChange={onChangeDeleteUserAttValues} inline />
+                ))} 
+            </>
+        )
+    }
+
+    function userActions() {
         return (
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Disable</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">User Actions</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Block" onClick={() => openEnableDisable("Disable")}>Disable</MenuItem>
-                    <MenuItem icon="Undo" onClick={() => openEnableDisable("Enable")}>Enable</MenuItem>
+                    <MenuItem icon="Block" onClick={() => openEnableDisable("Disable")}>Disable users</MenuItem>
+                    <MenuItem icon="Undo" onClick={() => openEnableDisable("Enable")}>Enable users</MenuItem>
+                    <MenuItem icon="CircleRemove" onClick={() => openDeleteUserAtt()}>{ACTION_INFO.deleteUserAtt.menuTitle}</MenuItem>                    
+                    <MenuItem icon="CircleAdd" onClick={() => openSetUserAtt()}>{ACTION_INFO.setUserAtt.menuTitle}</MenuItem>
                     {/* <MenuItem icon="Trash">Delete</MenuItem> */}
                 </MenuList>
             </Menu>
@@ -760,6 +914,56 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button onClick={runEnableDisable}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* SET USER ATTRIBUTES Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("setUserAtt")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.setUserAtt.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will set the following User Attributes for the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                            Per-user User Attribute values take precedence over Group or default values.
+                        </Paragraph>
+                        <SetUserAttFields/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runSetUserAtt}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* DELETE USER ATTRIBUTES Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("deleteUserAtt")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.deleteUserAtt.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will delete the following User Attributes for the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                            After the User Attribute value is deleted from the user's account settings, subsequent requests
+                            for the User Attribute value for this user will draw from the user's Groups or the default
+                            value of the User Attribute.
+                        </Paragraph>
+                        <DeleteUserAttFields/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runDeleteUserAtt}>Run</Button>}
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
@@ -802,7 +1006,7 @@ export function ActionsBar(props) {
         {renderSelectBy()}
         {renderManageEmailCreds()}
         {renderDeleteCreds()}
-        {renderDisable()}
+        {userActions()}
         {renderViewLog()}
         </>
     )
