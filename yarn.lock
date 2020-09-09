@@ -1481,20 +1481,20 @@
     polished "^3.6.5"
     styled-system "^5.1.5"
 
-"@looker/extension-sdk-react@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@looker/extension-sdk-react/-/extension-sdk-react-0.6.2.tgz#c447f7a2b2bb83ca831705b0e6637656fbc7605a"
-  integrity sha512-4FJbWdyBsY8tWp3cM7lh6PtZE6i41hxiXdW+bjr0Ln8BooWwO8J3DDIatO3s3LIxZhPWs2XfmB7mw7GP+ATYPw==
+"@looker/extension-sdk-react@^0.6.4":
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/@looker/extension-sdk-react/-/extension-sdk-react-0.6.4.tgz#617f4eb32257d87a7d13c908997421f93aaa714e"
+  integrity sha512-qVGYWHDCS6AWv8Kv4GFpRtaejvzvoR9Fou+BE0KM0a08bmN1fH8d6eOoHW0aJgsOSRZqAOnFvSKrfEOA+GwS7w==
   dependencies:
     ts-loader "^6.1.2"
 
-"@looker/extension-sdk@^0.11.0":
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/@looker/extension-sdk/-/extension-sdk-0.11.0.tgz#bb1f7d908180d97e6acf46824e67c82d6c00c132"
-  integrity sha512-KRgGFOl9kbge+QZIQTUhtVVZrP9EZBtRlS7if+KnlAJ+k8Xp4AEHlBmswAxZTGWra//Be8DZVESj2xT1olebIg==
+"@looker/extension-sdk@^0.11.2":
+  version "0.11.2"
+  resolved "https://registry.yarnpkg.com/@looker/extension-sdk/-/extension-sdk-0.11.2.tgz#fb1c402cbca4bf541de7d40c3a70ba66d2e68bd6"
+  integrity sha512-GeX7x1eQFU/envw6k+1/w+WhMzNP20FdmgpFXrLwWX66dr2Uisea0q1VNyvnELY0sh6HrnB/T1AJW+SvZ8PahQ==
   dependencies:
     "@looker/chatty" "^2.2.0"
-    "@looker/sdk" "0.3.0-beta.1"
+    "@looker/sdk" "^0.3.4-beta.2"
     deepmerge "^4.2.2"
     semver "^6.3.0"
 
@@ -1502,18 +1502,6 @@
   version "0.9.12"
   resolved "https://registry.yarnpkg.com/@looker/icons/-/icons-0.9.12.tgz#c232ce25d5af24518c498fffe2b5a8a4beb2c852"
   integrity sha512-igUBqwTqqxihwlbIX9u3O4beVt6j9xjpSNMbopd2u/Svv5Z6RkpJ7m3hmnliQNepa6kWpFHQYHZBhUYi0gnWvg==
-
-"@looker/sdk@0.3.0-beta.1":
-  version "0.3.0-beta.1"
-  resolved "https://registry.yarnpkg.com/@looker/sdk/-/sdk-0.3.0-beta.1.tgz#1426390ecc602046da8a6febdfb56eed40412ee1"
-  integrity sha512-2WPdBlRFu3XNJFgtIqRR0pXJzAPMiUpRO1C0fyhgv0KjWBSYj9ajRe+/607L0eDovmXvn5yBFR0E2aMW3gDZgA==
-  dependencies:
-    ini "^1.3.5"
-    readable-stream "^3.4.0"
-    request "^2.88.0"
-    request-promise-native "^1.0.8"
-    ts-node "^8.4.1"
-    typescript "^3.6.0"
 
 "@looker/sdk@^0.3.4-beta.2":
   version "0.3.4-beta.2"
@@ -7946,11 +7934,6 @@ typedarray@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
-
-typescript@^3.6.0:
-  version "3.8.3"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.8.3.tgz#409eb8544ea0335711205869ec458ab109ee1061"
-  integrity sha512-MYlEfn5VrLNsgudQTVJeNaQFUAI7DkhnOjdpAp4T+ku1TfQClewlbSuTVHiA+8skNBgaf02TL/kLOvig4y3G8w==
 
 typescript@^3.6.3:
   version "3.9.2"

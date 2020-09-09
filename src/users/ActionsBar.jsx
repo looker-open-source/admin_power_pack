@@ -435,7 +435,6 @@ export function ActionsBar(props) {
     }
 
     const makeCreateEmailFunc = async () => {
-        const allUserAttributes =  await asyncLookerCall('all_user_attributes',{fields: "id,name,type"});
         let rawData
 
         try {
@@ -446,8 +445,8 @@ export function ActionsBar(props) {
                     transformHeader: header => header.trim(),
                     dynamicTyping: field => { 
                         // validate UAs and set numeric type for number UAs 
-                        const ua = allUserAttributes.filter(ua => ua.name === field)[0];
-                        return (ua.type === 'number') ? true : false;
+                        const thisUserAtt = props.userAtt.filter(ua => ua.name === field)[0];                        
+                        return (thisUserAtt.type === 'number') ? true : false;
                     }
                 }).data   
         } catch (error) {
@@ -476,8 +475,8 @@ export function ActionsBar(props) {
                     for (const [key, value] of Object.entries(user)) {
                         // skip system defaults and empty string values
                         if (Boolean(value) && !SYSTEM_USER_ATTRIBUTES.includes(key)) {
-                            const uaID = allUserAttributes.filter(ua => ua.name === key)[0].id;
-                            const response = await asyncLookerCall('set_user_attribute_user_value', newUser.id, uaID, {value: value });
+                            const thisUserAtt = props.userAtt.filter(ua => ua.name === key)[0];  
+                            const response = await asyncLookerCall('set_user_attribute_user_value', newUser.id, thisUserAtt.id, {value: value });
                             uaPromises.push(response)
                             log(`User ${newUser.id}: User Attribute ${key} set to: ${value}`);
                         }
@@ -505,7 +504,7 @@ export function ActionsBar(props) {
             return;
         }
         try {
-            send_email = await asyncLookerCall('send_user_credentials_email_password_reset', user.id); //TODO - BUG INVESTIGATION
+            const send_email = await asyncLookerCall('send_user_credentials_email_password_reset', user.id);
             log(`User ${user.id}: credentials sent to user's email ${user.credentials_email.email}`);
         } catch (error) {
             log(`ERROR: user ${user.id}: unable to send user credentials email. Message: '${error.message}'`);
