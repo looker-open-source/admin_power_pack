@@ -1532,8 +1532,7 @@ export class SchedulesPage extends React.Component<
         {this.state.errorMessage && (
           <MessageBar
             intent="critical"
-            canDismiss={true}
-            onDismiss={() => {
+            onPrimaryClick={() => {
               this.setState({
                 errorMessage: undefined,
               });
@@ -1575,8 +1574,7 @@ export class SchedulesPage extends React.Component<
               {this.state.notificationMessage && (
                 <MessageBar
                   intent="positive"
-                  canDismiss={true}
-                  onDismiss={() => {
+                  onPrimaryClick={() => {
                     this.setState({
                       notificationMessage: undefined,
                     });

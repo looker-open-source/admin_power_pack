@@ -102,10 +102,13 @@ const ActionListFailureResults = (
 
   return (
     <ActionList
-      canSelect
-      onSelect={onSelect}
-      onSelectAll={onSelectAll}
-      itemsSelected={selections}
+      select={{
+        selectedItems: selections,
+        onClickRowSelect: true,
+        onSelect: onSelect,
+        onSelectAll: onSelectAll,
+        pageItems: allSelectableItems,
+      }}
       columns={ACTION_LIST_FAIL_COLUMNS}
     >
       {items}
