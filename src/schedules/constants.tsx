@@ -50,7 +50,6 @@ export interface ExtensionState {
   checkboxStatus: any;
   errorMessage?: string;
   notificationMessage?: string;
-  populateParams: PopulateParams;
 }
 
 // need this to supply null values (--strictNullChecks)
@@ -123,23 +122,13 @@ export interface EditableCellProps {
 }
 
 // for PopulateRows function
-export interface PopulateParams {
-  queryId: string; // displayed as number in FieldText
-  ownerId: string; // displayed as number in FieldText
-  scheduleName: string;
-  cron: string;
-}
-
-// for PopulateRows function
 export interface PopulateRowProps {
-  popParams: PopulateParams;
-  resetPopParams(): void;
-  validPopParams(): boolean;
-  handlePopQueryId(e: any): void;
-  handlePopOwnerId(e: any): void;
-  handlePopName(e: any): void;
-  handlePopCron(e: any): void;
-  handlePopSubmit(): void;
+  handlePopSubmit(
+    queryID: string,
+    ownerID: string,
+    scheduleName: string,
+    scheduleCron: string
+  ): void;
 }
 
 // for Global Action functions

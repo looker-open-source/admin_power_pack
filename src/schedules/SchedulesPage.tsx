@@ -52,7 +52,6 @@ import {
   ExtensionState,
   IWriteScheduledPlanNulls,
   IScheduledPlanTable,
-  SelectOption,
 } from "./constants"; // interfaces
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
@@ -80,17 +79,7 @@ export class SchedulesPage extends React.Component<
       runningUpdate: false,
       hiddenColumns: [],
       checkboxStatus: undefined,
-      populateParams: {
-        queryId: "",
-        ownerId: "",
-        scheduleName: "",
-        cron: "",
-      },
     };
-    this.handlePopQueryId = this.handlePopQueryId.bind(this);
-    this.handlePopOwnerId = this.handlePopOwnerId.bind(this);
-    this.handlePopName = this.handlePopName.bind(this);
-    this.handlePopCron = this.handlePopCron.bind(this);
   }
 
   //////////////// RUN ON PAGE LOAD ////////////////
@@ -263,72 +252,32 @@ export class SchedulesPage extends React.Component<
 
   //////////////// POPULATE ROWS ////////////////
 
-  handlePopQueryId = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.queryId = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  handlePopOwnerId = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.ownerId = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  handlePopName = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.scheduleName = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  handlePopCron = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.cron = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  resetPopParams = () => {
-    this.setState({
-      populateParams: {
-        queryId: "",
-        ownerId: "",
-        scheduleName: "",
-        cron: "",
-      },
-    });
-    return;
-  };
-
-  // ensure all queryId is filled out
-  validPopParams = (): boolean => {
-    return this.state.populateParams.queryId !== "";
-  };
-
   // populate rows from Looker Query ID
-  handlePopSubmit = async () => {
+  handlePopSubmit = async (
+    queryID: string,
+    ownerID: string,
+    scheduleName: string,
+    scheduleCron: string
+  ) => {
     this.setState({
       runningUpdate: true,
     });
 
-    const params = this.state.populateParams;
-
-    if (this.state.currentDash === undefined || params.queryId === "") {
-      this.setState({
-        runningUpdate: false,
-      });
-      return;
-    }
-
     try {
       if (DEBUG) {
         console.log("Params supplied from Populate Rows form:");
-        console.log(params);
+        console.log({
+          queryID: queryID,
+          ownerID: ownerID,
+          scheduleName: scheduleName,
+          scheduleCron: scheduleCron,
+        });
       }
 
       const results: any = await this.context.core40SDK.ok(
         this.context.core40SDK.run_query({
           result_format: "json_detail",
-          query_id: Number(params.queryId),
+          query_id: Number(queryID),
         })
       );
 
@@ -342,9 +291,9 @@ export class SchedulesPage extends React.Component<
       });
 
       if (DEBUG) {
-        console.log(`Query ${params.queryId} results:`);
+        console.log(`Query ${queryID} results:`);
         console.log(results.data);
-        console.log(`Field Mapper based on query: ${params.queryId}`);
+        console.log(`Field Mapper based on query: ${queryID}`);
         console.table(fieldMapper);
       }
 
@@ -361,9 +310,9 @@ export class SchedulesPage extends React.Component<
           }
         });
 
-        newRow.owner_id = params.ownerId;
-        newRow.name = params.scheduleName;
-        newRow.crontab = params.cron;
+        newRow.owner_id = ownerID;
+        newRow.name = scheduleName;
+        newRow.crontab = scheduleCron;
 
         if (fieldMapper["Email"] !== undefined) {
           newRow.recipients = [results.data[i][fieldMapper["Email"]].value];
@@ -371,8 +320,6 @@ export class SchedulesPage extends React.Component<
 
         newArray.push(newRow);
       }
-
-      this.resetPopParams();
 
       this.setState({
         schedulesArray: newArray,
@@ -627,14 +574,21 @@ export class SchedulesPage extends React.Component<
 
   runningMessage = (message: string): JSX.Element => {
     return (
-      <Text
-        color="palette.charcoal500"
-        fontWeight="semiBold"
-        mr="large"
-        textAlign="center"
-      >
-        {message}
-      </Text>
+      <Flex>
+        <FlexItem>
+          <Text
+            color="neutral"
+            fontWeight="semiBold"
+            mr="large"
+            textAlign="center"
+          >
+            {message}
+          </Text>
+        </FlexItem>
+        <FlexItem alignSelf="center">
+          <Spinner size={20} />
+        </FlexItem>
+      </Flex>
     );
   };
 
@@ -1589,16 +1543,7 @@ export class SchedulesPage extends React.Component<
               {this.state.schedulesArray.length > 0 && (
                 <Flex flexWrap="nowrap">
                   <FlexItem mx="xxxsmall">
-                    <PopulateRows
-                      popParams={this.state.populateParams}
-                      resetPopParams={this.resetPopParams}
-                      validPopParams={this.validPopParams}
-                      handlePopQueryId={this.handlePopQueryId}
-                      handlePopOwnerId={this.handlePopOwnerId}
-                      handlePopName={this.handlePopName}
-                      handlePopCron={this.handlePopCron}
-                      handlePopSubmit={this.handlePopSubmit}
-                    />
+                    <PopulateRows handlePopSubmit={this.handlePopSubmit} />
                   </FlexItem>
                   <FlexItem mx="xxxsmall">
                     <Confirm

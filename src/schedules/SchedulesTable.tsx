@@ -820,7 +820,7 @@ const ReactTable = ({
                     <TableHeaderCell
                       fontSize="small"
                       fontWeight="bold"
-                      color="palette.charcoal500"
+                      color="neutral"
                       {...column.getHeaderProps()}
                     >
                       {column.render("Header")}
