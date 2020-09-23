@@ -48,7 +48,7 @@ export class UsersTable extends React.Component {
     makeRowFormatter(user) {
         const args = {}
         if (user.is_disabled) {
-           args["color"] = "palette.charcoal400"
+           args["color"] = "neutral"
         }
         return (inner) => { return <Box {...args} >{inner}</Box> }
     }

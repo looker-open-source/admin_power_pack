@@ -378,6 +378,8 @@ export class UsersPage extends React.Component {
                 isLoading={this.state.isLoading}
                 selectedUserIds={this.state.selectedUserIds}
                 usersMap={this.state.usersMap}
+                groupsMap={this.state.groupsMap}
+                rolesMap={this.state.rolesMap}
                 userAtt={this.state.userAtt}
                 loadUsersAndStuff={this.loadUsersAndStuff}
                 setNewSelectedUserIds={this.setNewSelectedUserIds}

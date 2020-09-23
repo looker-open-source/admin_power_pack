@@ -31,7 +31,7 @@ import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
 import {
     Button, ButtonOutline, ButtonTransparent,
-    Menu, MenuDisclosure, MenuList, MenuItem,
+    Menu, MenuDisclosure, MenuList, MenuItem, MenuGroup,
     Dialog, ConfirmLayout,
     List, ListItem,
     Text, Paragraph,
@@ -58,6 +58,9 @@ export function ActionsBar(props) {
     const [emailCreateText, set_emailCreateText] = useState("")
     const [userAttValueSet, set_userAttValueSet] = useState(new Map())
     const [userAttValueDelete, set_userAttValueDelete] = useState(new Map())
+    const [addUsersGroups, set_addUsersGroups] = useState(new Map())
+    const [removeUsersGroups, set_removeUsersGroups] = useState(new Map())
+    const [setUsersRoles, set_setUsersRoles] = useState(new Map())
     const [logMessages, set_logMessages] = useState([])
 
     /*
@@ -104,6 +107,15 @@ export function ActionsBar(props) {
         if (!currentAction()) return ""
         
         return `${ACTION_INFO[currentAction()].dialogTitle} - ${workflowMachine.matches('running') ? 'In Progress' : 'Complete'}`
+    }
+
+    function closeResetState() {
+        set_userAttValueSet(new Map());
+        set_userAttValueDelete(new Map());
+        set_addUsersGroups(new Map());
+        set_removeUsersGroups(new Map());
+        set_setUsersRoles(new Map());
+        handleClose();
     }
 
     /*
@@ -154,6 +166,18 @@ export function ActionsBar(props) {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteUserAtt'})
     }
 
+    const openAddUsersGroups = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'addUsersGroups'})
+    }
+
+    const openRemoveUsersGroups = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'removeUsersGroups'})
+    }
+
+    const openSetUsersRoles = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'setUsersRoles'})
+    }
+
     const openViewLog = () => {
         sendWorkflowEvent('REVIEW')
     }
@@ -178,13 +202,23 @@ export function ActionsBar(props) {
     }
 
     const onChangeSetUserAttValues = (e) => {
-        //TODO can only edit 1 char at a time after re-rendering component? 
         set_userAttValueSet(userAttValueSet.set(e.currentTarget.name, e.currentTarget.value))
     }
 
     const onChangeDeleteUserAttValues = (e) => {
-        //TODO cannot edit after re-rendering component? 
         set_userAttValueDelete(userAttValueDelete.set(e.target.name, e.target.checked))
+    }
+
+    const onChangeAddUsersGroups = (e) => {
+        set_addUsersGroups(addUsersGroups.set(e.target.name, e.target.checked))
+    }
+
+    const onChangeRemoveUsersGroups = (e) => {
+        set_removeUsersGroups(removeUsersGroups.set(e.target.name, e.target.checked))
+    }
+
+    const onChangeSetUserRoles = (e) => {
+        set_setUsersRoles(setUsersRoles.set(e.target.name, e.target.checked))
     }
 
     /*
@@ -261,6 +295,7 @@ export function ActionsBar(props) {
                 "set user attributes"
             )
         )
+        closeResetState()
     }
 
     const runDeleteUserAtt = () => {
@@ -270,6 +305,37 @@ export function ActionsBar(props) {
                 "delete user attributes"
             )
         )
+        closeResetState()
+    }
+
+    const runAddUsersGroups = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                addUserGroupsFunc, 
+                "add users to groups"
+            )
+        )
+        closeResetState()
+    }
+
+    const runRemoveUsersGroups = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                removeUserGroupsFunc, 
+                "remove users from groups"
+            )
+        )
+        closeResetState()
+    }
+
+    const runSetUsersRoles = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                setUserRolesFunc, 
+                "set roles for users"
+            )
+        )
+        closeResetState()
     }
     /*
     ******************* ACTION FUNCTIONS *******************
@@ -583,6 +649,47 @@ export function ActionsBar(props) {
         return;
     }
 
+    const addUserGroupsFunc = async (user) => {
+        for (const [key, value] of addUsersGroups) {
+            if (!value) continue;
+            try {
+                const groupName = props.groupsMap.get(Number(key)).name
+                const response = await asyncLookerCall('add_group_user', key, {user_id: user.id});  // returns 200 regardless if user already in group or not
+                log(`User ${user.id}: Added to group ${key}: ${groupName}`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to add user to group ${key}: '${error.message}'`);
+            }
+        }
+        return;
+    }
+
+    const removeUserGroupsFunc = async (user) => {
+        for (const [key, value] of removeUsersGroups) {
+            if (!value) continue;
+            try {
+                const groupName = props.groupsMap.get(Number(key)).name
+                const response = await asyncLookerCall('delete_group_user', key, user.id);  // returns 204 regardless if user was in the group or not
+                log(`User ${user.id}: Removed from group ${key}: ${groupName}`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to remove user from group ${key}: '${error.message}'`);
+            }
+        }
+        return;
+    }
+
+    const setUserRolesFunc = async (user) => {
+        const roles = [...setUsersRoles]
+            .filter(([key, value]) => Boolean(value))
+            .map(([key, value]) => Number(key))
+        try {
+            const response = await asyncLookerCall('set_user_roles', user.id, roles);
+            log(`User ${user.id}: Roles set to: ${roles}`);
+        } catch (error) {
+            log(`ERROR: user ${user.id}: unable to set roles to ${roles}: '${error.message}'`);
+        }
+        return;
+    }
+
     /*
     ******************* RENDERING *******************
     */
@@ -875,6 +982,29 @@ export function ActionsBar(props) {
         )
     }
 
+    function GroupFields(groupSelectProps) { 
+        const groups = Array.from(props.groupsMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
+        const validGroups = groups.filter(g => g.label !== 'All Users')
+        return (
+            <>
+                {validGroups.map(g => (
+                    <FieldCheckbox name={g.value} label={g.label} key={g.value} checked={groupSelectProps.values.get(g.value)} onChange={groupSelectProps.handleChange} inline />
+                ))} 
+            </>
+        )
+    }
+    
+    function RoleFields() {
+        const roles = Array.from(props.rolesMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
+        return (
+            <>
+                {roles.map(r => (
+                    <FieldCheckbox name={r.value} label={r.label} key={r.value} checked={setUsersRoles.get(r.value)} onChange={onChangeSetUserRoles} inline />
+                ))} 
+            </>
+        )
+    }
+    
     function userActions() {
         return (
             <>
@@ -883,10 +1013,21 @@ export function ActionsBar(props) {
                     <ButtonOutline iconAfter="ArrowDown" mr="xsmall">User Actions</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Block" onClick={() => openEnableDisable("Disable")}>Disable users</MenuItem>
-                    <MenuItem icon="Undo" onClick={() => openEnableDisable("Enable")}>Enable users</MenuItem>
-                    <MenuItem icon="CircleRemove" onClick={() => openDeleteUserAtt()}>{ACTION_INFO.deleteUserAtt.menuTitle}</MenuItem>                    
-                    <MenuItem icon="CircleAdd" onClick={() => openSetUserAtt()}>{ACTION_INFO.setUserAtt.menuTitle}</MenuItem>
+                    <MenuGroup label="Users">
+                        <MenuItem icon="User" onClick={() => openEnableDisable("Enable")}> Enable users</MenuItem>
+                        <MenuItem icon="User" onClick={() => openEnableDisable("Disable")}> Disable users</MenuItem>
+                    </MenuGroup>
+                    <MenuGroup label="User Attributes">
+                        <MenuItem icon="UserAttributes" onClick={() => openSetUserAtt()}> {ACTION_INFO.setUserAtt.menuTitle}</MenuItem>
+                        <MenuItem icon="UserAttributes" onClick={() => openDeleteUserAtt()}> {ACTION_INFO.deleteUserAtt.menuTitle}</MenuItem>                    
+                    </MenuGroup>
+                    <MenuGroup label="Groups">
+                        <MenuItem icon="Group" onClick={() => openAddUsersGroups()}> {ACTION_INFO.addUsersGroups.menuTitle}</MenuItem>
+                        <MenuItem icon="Group" onClick={() => openRemoveUsersGroups()}> {ACTION_INFO.removeUsersGroups.menuTitle}</MenuItem>
+                    </MenuGroup>
+                    <MenuGroup label="Roles">
+                        <MenuItem icon="Tune" onClick={() => openSetUsersRoles()}>{ACTION_INFO.setUsersRoles.menuTitle}</MenuItem>
+                    </MenuGroup>
                     {/* <MenuItem icon="Trash">Delete</MenuItem> */}
                 </MenuList>
             </Menu>
@@ -921,7 +1062,7 @@ export function ActionsBar(props) {
             */}
             <Dialog
               isOpen={isDialogOpen("setUserAtt")}
-              onClose={handleClose}
+              onClose={closeResetState}
             >
               <ConfirmLayout
                 title={ACTION_INFO.setUserAtt.dialogTitle}
@@ -937,7 +1078,7 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button onClick={runSetUserAtt}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
               />
             </Dialog>
             {/*
@@ -945,7 +1086,7 @@ export function ActionsBar(props) {
             */}
             <Dialog
               isOpen={isDialogOpen("deleteUserAtt")}
-              onClose={handleClose}
+              onClose={closeResetState}
             >
               <ConfirmLayout
                 title={ACTION_INFO.deleteUserAtt.dialogTitle}
@@ -963,9 +1104,85 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button onClick={runDeleteUserAtt}>Run</Button>}
-                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
               />
             </Dialog>
+            {/*
+            ******************* ADD USERS TO GROUPS Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("addUsersGroups")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.addUsersGroups.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will add the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users
+                            to the selected Groups.
+                        </Paragraph>
+                        <GroupFields values={addUsersGroups} handleChange={onChangeAddUsersGroups}/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runAddUsersGroups}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* REMOVE USERS TO GROUPS Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("removeUsersGroups")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.removeUsersGroups.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will remove the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users
+                            from the selected Groups.
+                        </Paragraph>
+                        <GroupFields values={removeUsersGroups} handleChange={onChangeRemoveUsersGroups}/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runRemoveUsersGroups}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* SET USERS TO ROLES Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("setUsersRoles")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.setUsersRoles.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will set the selected Roles for the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected 
+                            users.
+                        </Paragraph>
+                        <Paragraph>
+                            It will overwrite any existing Roles set at a user level. Selecting no Roles will clear all Roles for each
+                            user. Users will still retain any Roles that are associated to the Groups the user belongs to.
+                        </Paragraph>
+                        <RoleFields/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runSetUsersRoles}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog> 
             </>
         )
     }

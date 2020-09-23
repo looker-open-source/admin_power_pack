@@ -133,7 +133,7 @@ export class SchedulesPage extends React.Component<
           folder: d.folder.name + " - " + d.folder.id,
         };
       })
-      .sortBy(["folder", "label"]) // TODO fix dash sort per folder!!
+      .sortBy(["folder", "label"]) // TODO fix dash sort per folder. currently case sensitive.
       .groupBy("folder")
       .map((value, key) => ({
         label: key,

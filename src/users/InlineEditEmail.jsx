@@ -90,16 +90,16 @@ export function InlineEditEmail(props) {
         let icon
         switch (status) {
             case "Editing":
-                icon = <Icon name="CircleAdd" color="palette.yellow500" />    
+                icon = <Icon name="CircleAdd" color="warn" />    
                 break
             case "Updating":
-                icon = <Icon name="Update" color="palette.charcoal500"/>
+                icon = <Icon name="Update" color="inform"/>
                 break
             case "Saved":
-                icon = <Icon name="CircleCheck" color="palette.green500"/>
+                icon = <Icon name="CircleCheck" color="positive"/>
                 break
             case "Error":
-                icon = <Icon name="CircleCancel" color="palette.red500"/>
+                icon = <Icon name="CircleCancel" color="critical"/>
                 break
         }
         return icon

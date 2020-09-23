@@ -127,6 +127,18 @@ export const ACTION_INFO = Object.freeze({
         menuTitle: "Delete User Attributes",
         dialogTitle: "Delete User Attributes for Users"
     },
+    addUsersGroups: {
+        menuTitle: "Add users to groups",
+        dialogTitle: "Add Users to Groups"
+    },
+    removeUsersGroups: {
+        menuTitle: "Remove users from groups",
+        dialogTitle: "Remove Users from Groups"
+    },
+    setUsersRoles: {
+        menuTitle: "Set roles for users",
+        dialogTitle: "Set Roles for Users"
+    },
     deleteCreds: {
         dialogTitle: "Delete Credentials"
     },

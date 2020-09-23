@@ -138,7 +138,7 @@ function AppInternal(props) {
 
     const extension = (
         <ExtensionProvider 
-            // loadingComponent={loadingComponent} // TODO fix error. Do we still need this?
+            // loadingComponent={loadingComponent} // TODO fix error.
             requiredLookerVersion='>=7.2.0'
             onRouteChange={onRouteChange}
         >
