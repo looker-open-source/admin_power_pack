@@ -28,6 +28,7 @@ import {
   ActionList,
   ActionListItem,
   ActionListItemColumn,
+  Box,
   Button,
   ButtonTransparent,
   ConfirmLayout,
@@ -41,7 +42,11 @@ import {
   MenuItem,
   MenuList,
   Paragraph,
+  Select,
+  SelectMulti,
+  Space,
   Spinner,
+  Text,
   TextArea,
 } from "@looker/components";
 import { ACTION_LIST_FAIL_COLUMNS, GlobalActionQueryProps } from "./constants";
@@ -118,22 +123,27 @@ const ActionListFailureResults = (
 
 export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
   const {
+    users,
+    GlobalReassignOwnership,
     GlobalFindReplaceEmail,
     GlobalValidateRecentSchedules,
     GlobalResendRecentFailures,
   } = qp;
 
+  const [isToggledGRO, setisToggledGRO] = React.useState(false);
   const [isToggledGFR, setisToggledGFR] = React.useState(false);
   const [isToggledVRS, setisToggledVRS] = React.useState(false);
   const [isToggledRRF, setisToggledRRF] = React.useState(false);
   const [runningQuery, setRunningQuery] = React.useState(false);
 
+  const ToggleGRO = () => setisToggledGRO((on) => !on);
   const ToggleGFR = () => setisToggledGFR((on) => !on);
   const ToggleVRS = () => setisToggledVRS((on) => !on);
   const ToggleRRF = () => setisToggledRRF((on) => !on);
 
+  const [UserMapFrom, setUserMapFrom] = React.useState([]);
+  const [UserMapTo, setUserMapTo] = React.useState([]);
   const [EmailMap, setEmailMap] = React.useState("");
-
   const [Timeframe, setTimeframe] = React.useState("");
   const [selections, setSelections] = React.useState([]);
   const [FailuresData, setFailuresData] = React.useState([]);
@@ -143,6 +153,77 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
       <MenuDisclosure>
         <Button>Global Actions</Button>
       </MenuDisclosure>
+
+      {/* GlobalReassignOwnership Dialog Start */}
+      <Dialog
+        isOpen={isToggledGRO}
+        onClose={() => {
+          ToggleGRO();
+          setUserMapFrom([]);
+          setUserMapTo([]);
+        }}
+      >
+        <DialogContent>
+          <ConfirmLayout
+            title="Reassign Schedule Ownership"
+            message={
+              <>
+                <Paragraph mb="small">
+                  This will reassign ownership of all schedule plans from the
+                  selected users to the new selected user.
+                </Paragraph>
+                <Flex justifyContent="space-around" mt="small" mb="small">
+                  <Box>
+                    <Text fontSize="medium">From</Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="medium">To</Text>
+                  </Box>
+                </Flex>
+                <Space>
+                  <SelectMulti
+                    onChange={(e: any) => setUserMapFrom(e)}
+                    options={users}
+                    flex={1}
+                  />
+                  <Select
+                    onChange={(e: any) => setUserMapTo(e)}
+                    options={users}
+                    flex={1}
+                    placeholder=" "
+                    isClearable
+                  />
+                </Space>
+              </>
+            }
+            primaryButton={
+              <Button
+                disabled={UserMapFrom.length === 0 || UserMapTo.length === 0}
+                onClick={() => {
+                  GlobalReassignOwnership(UserMapFrom, UserMapTo);
+                  ToggleGRO();
+                  setUserMapFrom([]);
+                  setUserMapTo([]);
+                }}
+              >
+                Run
+              </Button>
+            }
+            secondaryButton={
+              <ButtonTransparent
+                onClick={() => {
+                  ToggleGRO();
+                  setUserMapFrom([]);
+                  setUserMapTo([]);
+                }}
+              >
+                Cancel
+              </ButtonTransparent>
+            }
+          />
+        </DialogContent>
+      </Dialog>
+      {/* GlobalReassignOwnership Dialog End */}
 
       {/* GlobalFindReplace Dialog Start */}
       <Dialog
@@ -310,7 +391,6 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
             }
             primaryButton={
               <Button
-                // disabled={FailuresData.length === 0}
                 disabled={selections.length === 0}
                 onClick={() => {
                   GlobalResendRecentFailures(selections);
@@ -341,6 +421,9 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
       <MenuList>
         <MenuItem icon="Beaker" onClick={ToggleGFR}>
           Find & Replace Emails
+        </MenuItem>
+        <MenuItem icon="Beaker" onClick={ToggleGRO}>
+          Reassign Ownership
         </MenuItem>
         <MenuItem icon="Beaker" onClick={ToggleVRS}>
           Resend Failed Schedules

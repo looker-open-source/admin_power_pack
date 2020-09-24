@@ -231,14 +231,16 @@ export class SchedulesPage extends React.Component<
       })
     );
 
-    const usersSelect = allUsers
+    const usersSelect = chain(allUsers)
       .filter((u: any) => !u.is_disabled)
       .map((u: any) => {
         return {
           value: u.id.toString(),
           label: u.display_name.concat(" - ", u.id.toString()),
         };
-      });
+      })
+      .sortBy(["label"])
+      .value();
 
     if (DEBUG) {
       console.log("All users retrieved:");
@@ -342,6 +344,65 @@ export class SchedulesPage extends React.Component<
 
   ///////////////// GLOBAL FUNCTIONS //////////////////
 
+  // Change schedule ownership from list of users to new user
+  GlobalReassignOwnership = async (
+    UserMapFrom: string[],
+    UserMapTo: string[]
+  ) => {
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
+    try {
+      const UserMapFromNumber = UserMapFrom.map((u) => Number(u));
+
+      const allSchedules = await this.context.core40SDK.ok(
+        this.context.core40SDK.all_scheduled_plans({
+          all_users: true,
+        })
+      );
+      const schedulesToUpdate = allSchedules
+        .filter((s) => UserMapFromNumber.includes(s.user_id!))
+        .map((s) => {
+          s.user_id = Number(UserMapTo);
+          return s;
+        });
+
+      if (DEBUG) {
+        console.log(
+          `Schedules to update from users: ${UserMapFromNumber} to user: ${UserMapTo}`
+        );
+        console.log(schedulesToUpdate);
+      }
+
+      await Promise.all(
+        schedulesToUpdate.map(async (s: IScheduledPlan) => {
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.update_scheduled_plan(s.id!, s)
+          );
+          if (DEBUG) {
+            console.log(`Update schedule response for: ${response.id}`);
+            console.log(JSON.stringify(response, null, 2)); // todo return when 422
+          }
+        })
+      ).then((values) => {
+        const scheduleIds = schedulesToUpdate.map((s: IScheduledPlan) => s.id);
+
+        this.setState({
+          runningUpdate: false,
+          notificationMessage: `Schedules ${scheduleIds} reassigned to user ${UserMapTo}`,
+        });
+      });
+    } catch (error) {
+      this.setState({
+        runningUpdate: false,
+        errorMessage: `Error reassigning ownership for schedules: ${error}`,
+      });
+    }
+  };
+
   // Find and replace emails in all schedule plans based on email CSV mapping
   GlobalFindReplaceEmail = async (EmailMap: string) => {
     this.setState({
@@ -424,7 +485,6 @@ export class SchedulesPage extends React.Component<
 
         this.setState({
           runningUpdate: false,
-          errorMessage: undefined,
           notificationMessage: `Emails successfully updated for schedules: ${scheduleIds}`,
         });
       });
@@ -432,7 +492,6 @@ export class SchedulesPage extends React.Component<
       this.setState({
         runningUpdate: false,
         errorMessage: `Error updating emails: ${error}`,
-        notificationMessage: undefined,
       });
     }
   };
@@ -556,14 +615,12 @@ export class SchedulesPage extends React.Component<
 
       this.setState({
         runningUpdate: false,
-        errorMessage: undefined,
         notificationMessage: "Schedules have been resent",
       });
     } catch (error) {
       this.setState({
         runningUpdate: false,
         errorMessage: `Error resending schedules: ${error}`,
-        notificationMessage: undefined,
       });
     }
   };
@@ -1565,6 +1622,8 @@ export class SchedulesPage extends React.Component<
                   </FlexItem>
                   <FlexItem mx="xxxsmall">
                     <GlobalActions
+                      users={this.state.users}
+                      GlobalReassignOwnership={this.GlobalReassignOwnership}
                       GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
                       GlobalValidateRecentSchedules={
                         this.GlobalValidateRecentSchedules

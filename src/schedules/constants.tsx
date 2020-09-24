@@ -133,6 +133,8 @@ export interface PopulateRowProps {
 
 // for Global Action functions
 export interface GlobalActionQueryProps {
+  users: SelectOption[];
+  GlobalReassignOwnership(UserMapFrom: string[], UserMapTo: string[]): void;
   GlobalFindReplaceEmail(EmailMap: string): void;
   GlobalValidateRecentSchedules(timeframe: string): any;
   GlobalResendRecentFailures(failureData: any): void;
