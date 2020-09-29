@@ -54,7 +54,7 @@ export function EmbedPage(props) {
                     <Paragraph>
                         Therefore we have hosted this utility on Github Pages:
                     </Paragraph>
-                    <InputText readonly defaultValue="https://fabio-looker.github.io/looker_sso_tool/" />
+                    <InputText readOnly defaultValue="https://fabio-looker.github.io/looker_sso_tool/" />
                     <Paragraph>
                         Please copy and paste the link into your browser navigation bar. We recommend running the utility in a different browser application or browser profile. 
                         That way you can stay signed-in to your main Looker account while simultaneously testing the embed user creation.

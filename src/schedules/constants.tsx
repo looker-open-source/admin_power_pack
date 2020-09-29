@@ -28,7 +28,7 @@ import {
   IScheduledPlanDestination,
   IUserPublic,
   IWriteScheduledPlan,
-} from "@looker/sdk/dist/sdk/4.0/models";
+} from "@looker/sdk/lib/sdk/4.0/models";
 
 export const DEBUG = process.env.NODE_ENV === "development";
 
@@ -50,7 +50,6 @@ export interface ExtensionState {
   checkboxStatus: any;
   errorMessage?: string;
   notificationMessage?: string;
-  populateParams: PopulateParams;
 }
 
 // need this to supply null values (--strictNullChecks)
@@ -123,27 +122,19 @@ export interface EditableCellProps {
 }
 
 // for PopulateRows function
-export interface PopulateParams {
-  queryId: string; // displayed as number in FieldText
-  ownerId: string; // displayed as number in FieldText
-  scheduleName: string;
-  cron: string;
-}
-
-// for PopulateRows function
 export interface PopulateRowProps {
-  popParams: PopulateParams;
-  resetPopParams(): void;
-  validPopParams(): boolean;
-  handlePopQueryId(e: any): void;
-  handlePopOwnerId(e: any): void;
-  handlePopName(e: any): void;
-  handlePopCron(e: any): void;
-  handlePopSubmit(): void;
+  handlePopSubmit(
+    queryID: string,
+    ownerID: string,
+    scheduleName: string,
+    scheduleCron: string
+  ): void;
 }
 
 // for Global Action functions
 export interface GlobalActionQueryProps {
+  users: SelectOption[];
+  GlobalReassignOwnership(UserMapFrom: string[], UserMapTo: string[]): void;
   GlobalFindReplaceEmail(EmailMap: string): void;
   GlobalValidateRecentSchedules(timeframe: string): any;
   GlobalResendRecentFailures(failureData: any): void;

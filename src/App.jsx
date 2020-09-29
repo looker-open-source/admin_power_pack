@@ -29,6 +29,7 @@ import { Switch, Route } from "react-router-dom"
 import { ExtensionProvider } from "@looker/extension-sdk-react"
 import { ThemeProvider } from 'styled-components'
 import { ComponentsProvider, theme, Box, Flex, Spinner, Heading } from '@looker/components'
+import styled from "styled-components"
 
 import { InitializeChecker } from './shared/InitializeChecker'
 import { PermissionsChecker } from './shared/PermissionsChecker'
@@ -68,7 +69,7 @@ const PAGES = [
 
 function AppInternal(props) {
     const [activeRoute, set_activeRoute] = useState("")
-    const [routeState, set_routeState] = useState(")")
+    const [routeState, set_routeState] = useState("")
 
     const onRouteChange = (new_activeRoute, new_routeState) => {
         set_activeRoute(new_activeRoute)
@@ -76,18 +77,32 @@ function AppInternal(props) {
     }
 
     const loadingComponent = (
-        <Flex width='100%' height='90%' alignItems='center' justifyContent='center'>
-            <Spinner color='black' />
-        </Flex>
+        <ComponentsProvider>
+            <Flex width='100%' height='90%' alignItems='center' justifyContent='center'>
+                <Spinner color='black' />
+            </Flex>
+        </ComponentsProvider>
     )
 
+    const appTheme = {
+        ...theme,
+        background: '#f5f6f7', // palette.charcoal100
+        border: '#c1c6cb' // palette.charcoal300
+      }
+
+    const GreyBorderBox = styled(Box)`
+        border-color: ${(props) => props.theme.border};
+    `
+
+    const GreyBox = styled(GreyBorderBox)`
+        background-color: ${(props) => props.theme.background};
+    `
+
     const header = (
-        <Box 
+        <GreyBox 
             pl='small'
             py='xsmall'
-            bg='palette.charcoal100' 
             borderBottom='1px solid'
-            borderBottomColor='palette.charcoal300'
         >
             <Switch>
                 {PAGES.map((page, index) =>
@@ -96,19 +111,18 @@ function AppInternal(props) {
                     </Route>
                 )}
             </Switch>
-        </Box>
+        </GreyBox>
     )
 
     const navBar = (
-        <Box 
+        <GreyBorderBox 
             display="flex"
             flexDirection="column"
             width='8rem'
             borderRight='1px solid'
-            borderRightColor='palette.charcoal300'
         >
             <NavBar pages={PAGES} activeRoute={activeRoute} />
-        </Box>
+        </GreyBorderBox>
     )
 
     const pages = (
@@ -126,11 +140,11 @@ function AppInternal(props) {
 
     const extension = (
         <ExtensionProvider 
-            loadingComponent={loadingComponent} 
+            loadingComponent={loadingComponent}
             requiredLookerVersion='>=7.2.0'
             onRouteChange={onRouteChange}
         >
-            <ThemeProvider theme={theme}>
+            <ThemeProvider theme={appTheme}>
                 <ComponentsProvider>
                     <InitializeChecker>
                         <PermissionsChecker loadingComponent={loadingComponent}>

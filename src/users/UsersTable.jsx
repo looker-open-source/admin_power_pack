@@ -48,7 +48,7 @@ export class UsersTable extends React.Component {
     makeRowFormatter(user) {
         const args = {}
         if (user.is_disabled) {
-           args["color"] = "palette.charcoal400"
+           args["color"] = "neutral"
         }
         return (inner) => { return <Box {...args} >{inner}</Box> }
     }
@@ -64,14 +64,6 @@ export class UsersTable extends React.Component {
     /*
      ******************* RENDERING *******************
      */
-    renderUsers() {
-        return (
-            this.props.usersList
-                .filter( (u,index) => this.indexIsInCurrentPage(index) )
-                .map(u => this.renderUser(u))
-        )
-    }
-
     renderUser(user) {
         const formatIfDisabled = this.makeRowFormatter(user)
         const groups = user.group_ids.map(gid => this.props.groupsMap.get(gid) || {id: gid, name: `!! Error - unknown group id ${gid} !!`})
@@ -182,6 +174,13 @@ export class UsersTable extends React.Component {
     }
 
     render() {
+        const usersInPage = this.props.usersList.filter( (u,index) => this.indexIsInCurrentPage(index) )
+        
+        // We pass all user ids to pageItems because our onSelectAll method
+        // goes across pages. The select all checkbox state would not work correctly
+        // if we only pass the ids on the current page.
+        const allUserIds = this.props.usersList.map(u => u.id)
+          
         return (
             <Flex flexDirection="column" alignItems="center">
                 <Box width="100%" mb="small">
@@ -192,14 +191,17 @@ export class UsersTable extends React.Component {
                         <Box justifySelf="right">{this.renderPageSize()}</Box>
                     </Grid>
                     <ActionList
-                        canSelect
-                        onSelect={(user_id) => this.props.onSelectRow(user_id)}
-                        onSelectAll={() => this.props.onSelectAll()}
-                        itemsSelected={Array.from(this.props.selectedUserIds)}
+                        select={{
+                            selectedItems: Array.from(this.props.selectedUserIds),
+                            pageItems: allUserIds,
+                            onClickRowSelect: false,
+                            onSelect: (user_id) => this.props.onSelectRow(user_id),
+                            onSelectAll: () => this.props.onSelectAll()
+                        }}
                         onSort={this.props.onSort}
                         columns={this.props.tableColumns}
                     >
-                        {this.renderUsers()}
+                        {usersInPage.map(u => this.renderUser(u))}
                     </ActionList> 
                 </ActionListManager>
                 </Box>

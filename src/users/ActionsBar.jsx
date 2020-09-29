@@ -26,17 +26,19 @@ import React, { useState, useContext } from 'react'
 import { useMachine } from '@xstate/react' // workflow helper
 import Papa from 'papaparse' // csv parsing library
 import { ExtensionContext } from '@looker/extension-sdk-react'
-import { ACTION_INFO, WORKFLOW_MACHINE } from './constants'
+import { ACTION_INFO, WORKFLOW_MACHINE, SYSTEM_USER_ATTRIBUTES } from './constants'
 import { makeLookerCaller } from '../shared/utils'
 import styled from "styled-components"
 import {
     Button, ButtonOutline, ButtonTransparent,
-    Menu, MenuDisclosure, MenuList, MenuItem,
+    Menu, MenuDisclosure, MenuList, MenuItem, MenuGroup,
     Dialog, ConfirmLayout,
     List, ListItem,
     Text, Paragraph,
+    FieldCheckbox, FieldText,
     TextArea, InputText,
-    Link
+    Link,
+    SpaceVertical
   } from '@looker/components'
 
 const MonospaceTextArea = styled(TextArea)`
@@ -46,13 +48,19 @@ const MonospaceTextArea = styled(TextArea)`
 `
 export function ActionsBar(props) {
     const context = useContext(ExtensionContext) // provides the coreSDK object
-    const asyncLookerCall = makeLookerCaller(context.coreSDK)
+    const asyncLookerCall = makeLookerCaller(context.core40SDK)
 
     const [workflowMachine, sendWorkflowEvent] = useMachine(WORKFLOW_MACHINE)
 
     const [selectByAttributeText, set_selectByAttributeText] = useState("")
     const [selectByQueryText, set_selectByQueryText] = useState("")
     const [emailMapText, set_emailMapText] = useState("")
+    const [emailCreateText, set_emailCreateText] = useState("")
+    const [userAttValueSet, set_userAttValueSet] = useState(new Map())
+    const [userAttValueDelete, set_userAttValueDelete] = useState(new Map())
+    const [addUsersGroups, set_addUsersGroups] = useState(new Map())
+    const [removeUsersGroups, set_removeUsersGroups] = useState(new Map())
+    const [setUsersRoles, set_setUsersRoles] = useState(new Map())
     const [logMessages, set_logMessages] = useState([])
 
     /*
@@ -101,6 +109,15 @@ export function ActionsBar(props) {
         return `${ACTION_INFO[currentAction()].dialogTitle} - ${workflowMachine.matches('running') ? 'In Progress' : 'Complete'}`
     }
 
+    function closeResetState() {
+        set_userAttValueSet(new Map());
+        set_userAttValueDelete(new Map());
+        set_addUsersGroups(new Map());
+        set_removeUsersGroups(new Map());
+        set_setUsersRoles(new Map());
+        handleClose();
+    }
+
     /*
      ******************* DIALOG OPEN/CLOSE *******************
      */
@@ -124,6 +141,14 @@ export function ActionsBar(props) {
     const openEmailMap = () => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailMap'})
     }
+
+    const openEmailCreate = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailCreate'})
+    }
+
+    const openEmailSend = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailSend'})
+    }
     
     const openDelete = (type) => { 
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteCreds', deleteCredsType: type})
@@ -131,6 +156,26 @@ export function ActionsBar(props) {
 
     const openEnableDisable = (type) => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'enableDisable', enableDisableType: type})
+    }
+
+    const openSetUserAtt = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'setUserAtt'})
+    }
+
+    const openDeleteUserAtt = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteUserAtt'})
+    }
+
+    const openAddUsersGroups = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'addUsersGroups'})
+    }
+
+    const openRemoveUsersGroups = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'removeUsersGroups'})
+    }
+
+    const openSetUsersRoles = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'setUsersRoles'})
     }
 
     const openViewLog = () => {
@@ -150,6 +195,30 @@ export function ActionsBar(props) {
 
     const onChangeEmailMapText = (e) => {
         set_emailMapText(e.currentTarget.value)
+    }
+
+    const onChangeEmailCreateText = (e) => {
+        set_emailCreateText(e.currentTarget.value)
+    }
+
+    const onChangeSetUserAttValues = (e) => {
+        set_userAttValueSet(userAttValueSet.set(e.currentTarget.name, e.currentTarget.value))
+    }
+
+    const onChangeDeleteUserAttValues = (e) => {
+        set_userAttValueDelete(userAttValueDelete.set(e.target.name, e.target.checked))
+    }
+
+    const onChangeAddUsersGroups = (e) => {
+        set_addUsersGroups(addUsersGroups.set(e.target.name, e.target.checked))
+    }
+
+    const onChangeRemoveUsersGroups = (e) => {
+        set_removeUsersGroups(removeUsersGroups.set(e.target.name, e.target.checked))
+    }
+
+    const onChangeSetUserRoles = (e) => {
+        set_setUsersRoles(setUsersRoles.set(e.target.name, e.target.checked))
     }
 
     /*
@@ -185,6 +254,22 @@ export function ActionsBar(props) {
         )
     }
 
+
+    const runEmailCreate = () => {
+        runInWorkflow(async () => 
+            makeCreateEmailFunc()
+        )
+    }
+
+    const runEmailSend = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                sendCredEmailReset, 
+                "send email reset"
+            )
+        )
+    }
+
     const runDeleteCreds = () => { 
         runInWorkflow(async () => 
             runOnSelectedUsers(
@@ -203,6 +288,55 @@ export function ActionsBar(props) {
         )
     }
 
+    const runSetUserAtt = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                setUserAttFunc, 
+                "set user attributes"
+            )
+        )
+        closeResetState()
+    }
+
+    const runDeleteUserAtt = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                deleteUserAttFunc, 
+                "delete user attributes"
+            )
+        )
+        closeResetState()
+    }
+
+    const runAddUsersGroups = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                addUserGroupsFunc, 
+                "add users to groups"
+            )
+        )
+        closeResetState()
+    }
+
+    const runRemoveUsersGroups = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                removeUserGroupsFunc, 
+                "remove users from groups"
+            )
+        )
+        closeResetState()
+    }
+
+    const runSetUsersRoles = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                setUserRolesFunc, 
+                "set roles for users"
+            )
+        )
+        closeResetState()
+    }
     /*
     ******************* ACTION FUNCTIONS *******************
     */
@@ -366,6 +500,84 @@ export function ActionsBar(props) {
         return mapFunc
     }
 
+    const makeCreateEmailFunc = async () => {
+        let rawData
+
+        try {
+            rawData = Papa.parse(emailCreateText,
+                {
+                    header: true,
+                    transform: field => field.trim(),
+                    transformHeader: header => header.trim(),
+                    dynamicTyping: field => { 
+                        // validate UAs and set numeric type for number UAs 
+                        const thisUserAtt = props.userAtt.filter(ua => ua.name === field)[0];                        
+                        return (thisUserAtt.type === 'number') ? true : false;
+                    }
+                }).data   
+        } catch (error) {
+            log(`FATAL: There was an error parsing CSV data: ${error}`)
+            log('No users were created.')
+            return
+        }
+
+        const userData = rawData.filter(u => u.email !== "")
+
+        Promise.allSettled(
+            userData.map(async user => {
+                try { 
+                    const newUser = await asyncLookerCall('create_user', {first_name: user.first_name, last_name: user.last_name });
+                    log(`User ${newUser.id}: created for ${user.first_name} ${user.last_name}`);
+
+                    const newUserWithEmail = await asyncLookerCall('create_user_credentials_email', newUser.id, {email: user.email })
+                        .then(response => {
+                            log(`User ${newUser.id}: email credentials set to ${user.email}`);
+                        })
+                        .catch(error => {
+                            log(`ERROR: user ${newUser.id}: Unable to set email credentials to ${user.email}: ${error.message}. Most likely the email is already in use. See network tab.`);
+                        })
+
+                    const uaPromises = []
+                    for (const [key, value] of Object.entries(user)) {
+                        // skip system defaults and empty string values
+                        if (Boolean(value) && !SYSTEM_USER_ATTRIBUTES.includes(key)) {
+                            const thisUserAtt = props.userAtt.filter(ua => ua.name === key)[0];  
+                            const response = await asyncLookerCall('set_user_attribute_user_value', newUser.id, thisUserAtt.id, {value: value });
+                            uaPromises.push(response)
+                            log(`User ${newUser.id}: User Attribute ${key} set to: ${value}`);
+                        }
+                    }
+                    return [newUserWithEmail, ...uaPromises]
+                } catch (error) {
+                    log(`ERROR: user ${newUser.id}: unable to creating user / set User Attribute for ${user.email}: '${error.message}'`)
+                }
+            })
+        ).then(values => {
+            log(`Action complete; refreshing user table`)
+            props.loadUsersAndStuff()
+        });
+
+        return
+    }
+
+    const sendCredEmailReset = async (user) => {
+        if (!user.credentials_email) {
+            log(`Skip: user ${user.id}: no email credentials associated with: ${user.display_name}`);
+            return;
+        } 
+        if (user.is_disabled) {
+            log(`Skip: user ${user.id}: user is disabled`);
+            return;
+        }
+        try {
+            const send_email = await asyncLookerCall('send_user_credentials_email_password_reset', user.id);
+            log(`User ${user.id}: credentials sent to user's email ${user.credentials_email.email}`);
+        } catch (error) {
+            log(`ERROR: user ${user.id}: unable to send user credentials email. Message: '${error.message}'`);
+        } 
+        return;
+    }
+
     const makeDeleteCredFunc = () => {
         const credType = deleteCredsType().toLowerCase()
         const propName = `credentials_${credType}`
@@ -407,6 +619,77 @@ export function ActionsBar(props) {
         return enableDisableFunc
     }
     
+    const setUserAttFunc = async (user) => {
+        for (const [key, value] of userAttValueSet) {
+            if (!value) continue;
+            try {
+                const thisUserAtt = props.userAtt.filter(ua => ua.name === key)[0];
+                let newValue = value;
+                if (thisUserAtt.type === 'number') newValue = Number(value);
+                const response = await asyncLookerCall('set_user_attribute_user_value', user.id, thisUserAtt.id, {value: value});
+                log(`User ${user.id}: User Attribute ${key} set to: ${value}`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to set User Attribute for ${key}: '${error.message}'`);
+            } 
+        }
+        return;
+    }
+
+    const deleteUserAttFunc = async (user) => {
+        for (const [key, value] of userAttValueDelete) {
+            if (!value) continue;
+            try {
+                const thisUserAttID = props.userAtt.filter(ua => ua.name === key)[0].id;
+                const response = await asyncLookerCall('delete_user_attribute_user_value', user.id, thisUserAttID);
+                log(`User ${user.id}: User Attribute ${key} deleted`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to delete User Attribute for ${key}: '${error.message}'`);
+            }
+        }
+        return;
+    }
+
+    const addUserGroupsFunc = async (user) => {
+        for (const [key, value] of addUsersGroups) {
+            if (!value) continue;
+            try {
+                const groupName = props.groupsMap.get(Number(key)).name
+                const response = await asyncLookerCall('add_group_user', key, {user_id: user.id});  // returns 200 regardless if user already in group or not
+                log(`User ${user.id}: Added to group ${key}: ${groupName}`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to add user to group ${key}: '${error.message}'`);
+            }
+        }
+        return;
+    }
+
+    const removeUserGroupsFunc = async (user) => {
+        for (const [key, value] of removeUsersGroups) {
+            if (!value) continue;
+            try {
+                const groupName = props.groupsMap.get(Number(key)).name
+                const response = await asyncLookerCall('delete_group_user', key, user.id);  // returns 204 regardless if user was in the group or not
+                log(`User ${user.id}: Removed from group ${key}: ${groupName}`);
+            } catch (error) {
+                log(`ERROR: user ${user.id}: unable to remove user from group ${key}: '${error.message}'`);
+            }
+        }
+        return;
+    }
+
+    const setUserRolesFunc = async (user) => {
+        const roles = [...setUsersRoles]
+            .filter(([key, value]) => Boolean(value))
+            .map(([key, value]) => Number(key))
+        try {
+            const response = await asyncLookerCall('set_user_roles', user.id, roles);
+            log(`User ${user.id}: Roles set to: ${roles}`);
+        } catch (error) {
+            log(`ERROR: user ${user.id}: unable to set roles to ${roles}: '${error.message}'`);
+        }
+        return;
+    }
+
     /*
     ******************* RENDERING *******************
     */
@@ -485,6 +768,8 @@ export function ActionsBar(props) {
                 <MenuList placement="right-start">
                     <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
                     <MenuItem icon="VisTable" onClick={openEmailMap}>{ACTION_INFO.emailMap.menuTitle}</MenuItem>
+                    <MenuItem icon="UserAttributes" onClick={openEmailCreate}>{ACTION_INFO.emailCreate.menuTitle}</MenuItem>
+                    <MenuItem icon="SendEmail" onClick={openEmailSend}>{ACTION_INFO.emailSend.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -554,6 +839,74 @@ export function ActionsBar(props) {
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
+            {/*
+            ******************* EMAIL CREATE Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("emailCreate")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.emailCreate.dialogTitle}
+                message={
+                    <>
+                    <Paragraph mb="small">
+                        Paste a CSV of new users with User Attributes (UA). There should be
+                        one user per line. For UA values that have a comma, e.g. an advanced 
+                        data type leveraging Looker's filter expressions, ensure that the values
+                        are wrapped in double quotes (").
+                    </Paragraph>
+                    <Paragraph mb="small">
+                        The header must begin with email, first_name, last_name for the first 3 columns, 
+                        with the remaining columns containing any additional UAs (optional). All UA header 
+                        values must match the name stored in Looker or the import will not run.
+                    </Paragraph>
+                    <Paragraph mb="small">
+                        Note that duplicate email addresses are not allowed in Looker. If the email address 
+                        is already in use then the email credentials will not be set. Later you can send
+                        setup emails to these new users via the Send Email Creds function.
+                    </Paragraph>
+                    <MonospaceTextArea 
+                        resize 
+                        value={emailCreateText} 
+                        onChange={onChangeEmailCreateText} 
+                        placeholder={'email,first_name,last_name,house,castle\nthebastard@got.com,Jon,Snow,"Stark,Targaryen",Castle Black\nkingslayer@got.com,Jamie,Lannister,Lannister,Casterly Rock'}
+                    />
+                    </>
+                }
+                primaryButton={<Button onClick={runEmailCreate}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* EMAIL SEND Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("emailSend")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.emailSend.dialogTitle}
+                message={
+                    <>
+                    This will send a password reset email for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users. 
+                    <List type="bullet">
+                        <ListItem>
+                            If a password reset token does not already exist for this user, it will create one and then send it.
+                        </ListItem> 
+                        <ListItem>
+                            If the user has not yet set up their account, it will send a setup email to the user.
+                        </ListItem>
+                        <ListItem>
+                            Password reset URLs will expire in 60 minutes.
+                        </ListItem>
+                    </List>
+                    </>
+                }
+                primaryButton={<Button onClick={runEmailSend}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
             </>
         )
     }
@@ -607,16 +960,74 @@ export function ActionsBar(props) {
         )
     }
 
-    function renderDisable() {
+    function SetUserAttFields() {
+        const editableUserAtt = props.userAtt.filter(ua => !ua.is_system)
+        return (
+            <>
+                {editableUserAtt.map(ua => (
+                    <FieldText name={ua.name} label={ua.label} key={ua.id} value={userAttValueSet.get(ua.name)} onChange={onChangeSetUserAttValues} inline />
+                ))} 
+            </>
+        )
+    }
+
+    function DeleteUserAttFields() {
+        const editableUserAtt = props.userAtt.filter(ua => !ua.is_system)
+        return (
+            <>
+                {editableUserAtt.map(ua => (
+                    <FieldCheckbox name={ua.name} label={ua.label} key={ua.id} checked={userAttValueDelete.get(ua.name)} onChange={onChangeDeleteUserAttValues} inline />
+                ))} 
+            </>
+        )
+    }
+
+    function GroupFields(groupSelectProps) { 
+        const groups = Array.from(props.groupsMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
+        const validGroups = groups.filter(g => g.label !== 'All Users')
+        return (
+            <>
+                {validGroups.map(g => (
+                    <FieldCheckbox name={g.value} label={g.label} key={g.value} checked={groupSelectProps.values.get(g.value)} onChange={groupSelectProps.handleChange} inline />
+                ))} 
+            </>
+        )
+    }
+    
+    function RoleFields() {
+        const roles = Array.from(props.rolesMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
+        return (
+            <>
+                {roles.map(r => (
+                    <FieldCheckbox name={r.value} label={r.label} key={r.value} checked={setUsersRoles.get(r.value)} onChange={onChangeSetUserRoles} inline />
+                ))} 
+            </>
+        )
+    }
+    
+    function userActions() {
         return (
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Disable</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">User Actions</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Block" onClick={() => openEnableDisable("Disable")}>Disable</MenuItem>
-                    <MenuItem icon="Undo" onClick={() => openEnableDisable("Enable")}>Enable</MenuItem>
+                    <MenuGroup label="Users">
+                        <MenuItem icon="User" onClick={() => openEnableDisable("Enable")}> Enable users</MenuItem>
+                        <MenuItem icon="User" onClick={() => openEnableDisable("Disable")}> Disable users</MenuItem>
+                    </MenuGroup>
+                    <MenuGroup label="User Attributes">
+                        <MenuItem icon="UserAttributes" onClick={() => openSetUserAtt()}> {ACTION_INFO.setUserAtt.menuTitle}</MenuItem>
+                        <MenuItem icon="UserAttributes" onClick={() => openDeleteUserAtt()}> {ACTION_INFO.deleteUserAtt.menuTitle}</MenuItem>                    
+                    </MenuGroup>
+                    <MenuGroup label="Groups">
+                        <MenuItem icon="Group" onClick={() => openAddUsersGroups()}> {ACTION_INFO.addUsersGroups.menuTitle}</MenuItem>
+                        <MenuItem icon="Group" onClick={() => openRemoveUsersGroups()}> {ACTION_INFO.removeUsersGroups.menuTitle}</MenuItem>
+                    </MenuGroup>
+                    <MenuGroup label="Roles">
+                        <MenuItem icon="Tune" onClick={() => openSetUsersRoles()}>{ACTION_INFO.setUsersRoles.menuTitle}</MenuItem>
+                    </MenuGroup>
                     {/* <MenuItem icon="Trash">Delete</MenuItem> */}
                 </MenuList>
             </Menu>
@@ -646,6 +1057,132 @@ export function ActionsBar(props) {
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
+            {/*
+            ******************* SET USER ATTRIBUTES Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("setUserAtt")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.setUserAtt.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will set the following User Attributes for the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                            Per-user User Attribute values take precedence over Group or default values.
+                        </Paragraph>
+                        <SetUserAttFields/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runSetUserAtt}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* DELETE USER ATTRIBUTES Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("deleteUserAtt")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.deleteUserAtt.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will delete the following User Attributes for the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                            After the User Attribute value is deleted from the user's account settings, subsequent requests
+                            for the User Attribute value for this user will draw from the user's Groups or the default
+                            value of the User Attribute.
+                        </Paragraph>
+                        <DeleteUserAttFields/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runDeleteUserAtt}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* ADD USERS TO GROUPS Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("addUsersGroups")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.addUsersGroups.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will add the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users
+                            to the selected Groups.
+                        </Paragraph>
+                        <GroupFields values={addUsersGroups} handleChange={onChangeAddUsersGroups}/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runAddUsersGroups}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* REMOVE USERS TO GROUPS Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("removeUsersGroups")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.removeUsersGroups.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will remove the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users
+                            from the selected Groups.
+                        </Paragraph>
+                        <GroupFields values={removeUsersGroups} handleChange={onChangeRemoveUsersGroups}/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runRemoveUsersGroups}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* SET USERS TO ROLES Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("setUsersRoles")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.setUsersRoles.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will set the selected Roles for the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected 
+                            users.
+                        </Paragraph>
+                        <Paragraph>
+                            It will overwrite any existing Roles set at a user level. Selecting no Roles will clear all Roles for each
+                            user. Users will still retain any Roles that are associated to the Groups the user belongs to.
+                        </Paragraph>
+                        <RoleFields/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runSetUsersRoles}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog> 
             </>
         )
     }
@@ -685,7 +1222,7 @@ export function ActionsBar(props) {
         {renderSelectBy()}
         {renderManageEmailCreds()}
         {renderDeleteCreds()}
-        {renderDisable()}
+        {userActions()}
         {renderViewLog()}
         </>
     )

@@ -142,8 +142,6 @@ const EditableCell = (ec: EditableCellProps) => {
     setSearchTerm(term);
   };
 
-  // todo onBlur is called early and not closing select dropdown. need to fix.
-
   // filter generic list - no options[]
   const newOptions = (options: SelectOption[]) => {
     if (searchTerm === "") return options;
@@ -820,7 +818,7 @@ const ReactTable = ({
                     <TableHeaderCell
                       fontSize="small"
                       fontWeight="bold"
-                      color="palette.charcoal500"
+                      color="neutral"
                       {...column.getHeaderProps()}
                     >
                       {column.render("Header")}

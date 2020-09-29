@@ -26,17 +26,23 @@ import React from 'react'
 import { 
     Flex, Box, Text
 } from '@looker/components'
+import styled from "styled-components"
+
+
+const GreyFlex = styled(Flex)`
+border-color: ${(props) => props.theme.border};
+`
 
 function JustifiedSection(props) {
     return (
-        <Flex
+        <GreyFlex
           px='large' py='medium'
-          borderBottom='1px solid' borderColor='palette.charcoal300'
+          borderBottom='1px solid'
           justifyContent='space-between'
           alignItems='center'
         >
             {props.children}
-        </Flex>
+        </GreyFlex>
     )
 }
 

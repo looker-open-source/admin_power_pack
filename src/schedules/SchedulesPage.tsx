@@ -41,7 +41,7 @@ import Papa from "papaparse";
 import React from "react";
 import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
-import { IDashboard } from "@looker/sdk/dist/sdk/4.0/models";
+import { IDashboard, IScheduledPlan } from "@looker/sdk/lib/sdk/4.0/models";
 import {
   DEBUG,
   ADVANCED_FIELDS,
@@ -79,17 +79,7 @@ export class SchedulesPage extends React.Component<
       runningUpdate: false,
       hiddenColumns: [],
       checkboxStatus: undefined,
-      populateParams: {
-        queryId: "",
-        ownerId: "",
-        scheduleName: "",
-        cron: "",
-      },
     };
-    this.handlePopQueryId = this.handlePopQueryId.bind(this);
-    this.handlePopOwnerId = this.handlePopOwnerId.bind(this);
-    this.handlePopName = this.handlePopName.bind(this);
-    this.handlePopCron = this.handlePopCron.bind(this);
   }
 
   //////////////// RUN ON PAGE LOAD ////////////////
@@ -119,7 +109,7 @@ export class SchedulesPage extends React.Component<
       });
     } catch (error) {
       this.setState({
-        errorMessage: "Unable to load Dashboards.",
+        errorMessage: `Unable to load Dashboards: ${error}`,
         runningQuery: false,
         notificationMessage: undefined,
       });
@@ -143,7 +133,7 @@ export class SchedulesPage extends React.Component<
           folder: d.folder.name + " - " + d.folder.id,
         };
       })
-      .sortBy(["folder", "label"]) // TODO fix dash sort per folder!!
+      .sortBy(["folder", "label"]) // TODO fix dash sort per folder. currently case sensitive.
       .groupBy("folder")
       .map((value, key) => ({
         label: key,
@@ -241,14 +231,16 @@ export class SchedulesPage extends React.Component<
       })
     );
 
-    const usersSelect = allUsers
+    const usersSelect = chain(allUsers)
       .filter((u: any) => !u.is_disabled)
       .map((u: any) => {
         return {
           value: u.id.toString(),
           label: u.display_name.concat(" - ", u.id.toString()),
         };
-      });
+      })
+      .sortBy(["label"])
+      .value();
 
     if (DEBUG) {
       console.log("All users retrieved:");
@@ -262,72 +254,32 @@ export class SchedulesPage extends React.Component<
 
   //////////////// POPULATE ROWS ////////////////
 
-  handlePopQueryId = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.queryId = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  handlePopOwnerId = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.ownerId = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  handlePopName = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.scheduleName = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  handlePopCron = (event: any) => {
-    const lastState = this.state.populateParams;
-    lastState.cron = event.target.value;
-    this.setState({ populateParams: lastState });
-  };
-
-  resetPopParams = () => {
-    this.setState({
-      populateParams: {
-        queryId: "",
-        ownerId: "",
-        scheduleName: "",
-        cron: "",
-      },
-    });
-    return;
-  };
-
-  // ensure all queryId is filled out
-  validPopParams = (): boolean => {
-    return this.state.populateParams.queryId !== "";
-  };
-
   // populate rows from Looker Query ID
-  handlePopSubmit = async () => {
+  handlePopSubmit = async (
+    queryID: string,
+    ownerID: string,
+    scheduleName: string,
+    scheduleCron: string
+  ) => {
     this.setState({
       runningUpdate: true,
     });
 
-    const params = this.state.populateParams;
-
-    if (this.state.currentDash === undefined || params.queryId === "") {
-      this.setState({
-        runningUpdate: false,
-      });
-      return;
-    }
-
     try {
       if (DEBUG) {
         console.log("Params supplied from Populate Rows form:");
-        console.log(params);
+        console.log({
+          queryID: queryID,
+          ownerID: ownerID,
+          scheduleName: scheduleName,
+          scheduleCron: scheduleCron,
+        });
       }
 
       const results: any = await this.context.core40SDK.ok(
         this.context.core40SDK.run_query({
           result_format: "json_detail",
-          query_id: Number(params.queryId),
+          query_id: Number(queryID),
         })
       );
 
@@ -341,9 +293,9 @@ export class SchedulesPage extends React.Component<
       });
 
       if (DEBUG) {
-        console.log(`Query ${params.queryId} results:`);
+        console.log(`Query ${queryID} results:`);
         console.log(results.data);
-        console.log(`Field Mapper based on query: ${params.queryId}`);
+        console.log(`Field Mapper based on query: ${queryID}`);
         console.table(fieldMapper);
       }
 
@@ -360,9 +312,9 @@ export class SchedulesPage extends React.Component<
           }
         });
 
-        newRow.owner_id = params.ownerId;
-        newRow.name = params.scheduleName;
-        newRow.crontab = params.cron;
+        newRow.owner_id = ownerID;
+        newRow.name = scheduleName;
+        newRow.crontab = scheduleCron;
 
         if (fieldMapper["Email"] !== undefined) {
           newRow.recipients = [results.data[i][fieldMapper["Email"]].value];
@@ -370,8 +322,6 @@ export class SchedulesPage extends React.Component<
 
         newArray.push(newRow);
       }
-
-      this.resetPopParams();
 
       this.setState({
         schedulesArray: newArray,
@@ -382,7 +332,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error populating rows.",
+        errorMessage: `Error populating rows: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -393,6 +343,65 @@ export class SchedulesPage extends React.Component<
   /////////////////////////////////////////////////////
 
   ///////////////// GLOBAL FUNCTIONS //////////////////
+
+  // Change schedule ownership from list of users to new user
+  GlobalReassignOwnership = async (
+    UserMapFrom: string[],
+    UserMapTo: string[]
+  ) => {
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
+    try {
+      const UserMapFromNumber = UserMapFrom.map((u) => Number(u));
+
+      const allSchedules = await this.context.core40SDK.ok(
+        this.context.core40SDK.all_scheduled_plans({
+          all_users: true,
+        })
+      );
+      const schedulesToUpdate = allSchedules
+        .filter((s) => UserMapFromNumber.includes(s.user_id!))
+        .map((s) => {
+          s.user_id = Number(UserMapTo);
+          return s;
+        });
+
+      if (DEBUG) {
+        console.log(
+          `Schedules to update from users: ${UserMapFromNumber} to user: ${UserMapTo}`
+        );
+        console.log(schedulesToUpdate);
+      }
+
+      await Promise.all(
+        schedulesToUpdate.map(async (s: IScheduledPlan) => {
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.update_scheduled_plan(s.id!, s)
+          );
+          if (DEBUG) {
+            console.log(`Update schedule response for: ${response.id}`);
+            console.log(JSON.stringify(response, null, 2)); // todo return when 422
+          }
+        })
+      ).then((values) => {
+        const scheduleIds = schedulesToUpdate.map((s: IScheduledPlan) => s.id);
+
+        this.setState({
+          runningUpdate: false,
+          notificationMessage: `Schedules ${scheduleIds} reassigned to user ${UserMapTo}`,
+        });
+      });
+    } catch (error) {
+      this.setState({
+        runningUpdate: false,
+        errorMessage: `Error reassigning ownership for schedules: ${error}`,
+      });
+    }
+  };
 
   // Find and replace emails in all schedule plans based on email CSV mapping
   GlobalFindReplaceEmail = async (EmailMap: string) => {
@@ -426,13 +435,13 @@ export class SchedulesPage extends React.Component<
 
       const emailSchedules = allSchedules
         // filter on schedules that contain any matches to emailsToChange
-        .filter((s) => {
+        .filter((s: IScheduledPlan) => {
           const recipients = s.scheduled_plan_destination!.map((a: any) =>
             a.address.toLowerCase()
           );
           return recipients.some((email) => emailsToChange.includes(email));
         })
-        .map((s) => {
+        .map((s: IScheduledPlan) => {
           // update address with mappings value
           s.scheduled_plan_destination!.map((spd) => {
             const spdEmail = spd.address!.toLowerCase();
@@ -462,7 +471,7 @@ export class SchedulesPage extends React.Component<
 
       // TODO if run_as_recipiant is enabled and email is not a Looker account, will return 422
       await Promise.all(
-        emailSchedules.map(async (s) => {
+        emailSchedules.map(async (s: IScheduledPlan) => {
           const response = await this.context.core40SDK.ok(
             this.context.core40SDK.update_scheduled_plan(s.id!, s)
           );
@@ -472,19 +481,17 @@ export class SchedulesPage extends React.Component<
           }
         })
       ).then((values) => {
-        const scheduleIds = emailSchedules.map((s) => s.id);
+        const scheduleIds = emailSchedules.map((s: IScheduledPlan) => s.id);
 
         this.setState({
           runningUpdate: false,
-          errorMessage: undefined,
           notificationMessage: `Emails successfully updated for schedules: ${scheduleIds}`,
         });
       });
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error updating emails. See console for more details.",
-        notificationMessage: undefined,
+        errorMessage: `Error updating emails: ${error}`,
       });
     }
   };
@@ -578,7 +585,7 @@ export class SchedulesPage extends React.Component<
         })
       );
 
-      const schedulesToSend = allSchedules.filter((s) =>
+      const schedulesToSend = allSchedules.filter((s: IScheduledPlan) =>
         schedulePlanIds.includes(s.id!)
       );
 
@@ -608,14 +615,12 @@ export class SchedulesPage extends React.Component<
 
       this.setState({
         runningUpdate: false,
-        errorMessage: undefined,
         notificationMessage: "Schedules have been resent",
       });
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error resending schedules.",
-        notificationMessage: undefined,
+        errorMessage: `Error resending schedules: ${error}`,
       });
     }
   };
@@ -626,14 +631,21 @@ export class SchedulesPage extends React.Component<
 
   runningMessage = (message: string): JSX.Element => {
     return (
-      <Text
-        color="palette.charcoal500"
-        fontWeight="semiBold"
-        mr="large"
-        textAlign="center"
-      >
-        {message}
-      </Text>
+      <Flex>
+        <FlexItem>
+          <Text
+            color="neutral"
+            fontWeight="semiBold"
+            mr="large"
+            textAlign="center"
+          >
+            {message}
+          </Text>
+        </FlexItem>
+        <FlexItem alignSelf="center">
+          <Spinner size={20} />
+        </FlexItem>
+      </Flex>
     );
   };
 
@@ -683,7 +695,7 @@ export class SchedulesPage extends React.Component<
       });
     } catch (error) {
       this.setState({
-        errorMessage: "Unable to load Dashboard.",
+        errorMessage: `Unable to load Dashboard: ${error}`,
         runningQuery: false,
       });
     }
@@ -1289,7 +1301,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error updating schedules.",
+        errorMessage: `Error updating schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1368,7 +1380,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error testing schedules.",
+        errorMessage: `Error testing schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1444,7 +1456,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error disabling schedules.",
+        errorMessage: `Error disabling schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1519,7 +1531,7 @@ export class SchedulesPage extends React.Component<
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: "Error enabling schedules.",
+        errorMessage: `Error enabling schedules: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1588,16 +1600,7 @@ export class SchedulesPage extends React.Component<
               {this.state.schedulesArray.length > 0 && (
                 <Flex flexWrap="nowrap">
                   <FlexItem mx="xxxsmall">
-                    <PopulateRows
-                      popParams={this.state.populateParams}
-                      resetPopParams={this.resetPopParams}
-                      validPopParams={this.validPopParams}
-                      handlePopQueryId={this.handlePopQueryId}
-                      handlePopOwnerId={this.handlePopOwnerId}
-                      handlePopName={this.handlePopName}
-                      handlePopCron={this.handlePopCron}
-                      handlePopSubmit={this.handlePopSubmit}
-                    />
+                    <PopulateRows handlePopSubmit={this.handlePopSubmit} />
                   </FlexItem>
                   <FlexItem mx="xxxsmall">
                     <Confirm
@@ -1619,6 +1622,8 @@ export class SchedulesPage extends React.Component<
                   </FlexItem>
                   <FlexItem mx="xxxsmall">
                     <GlobalActions
+                      users={this.state.users}
+                      GlobalReassignOwnership={this.GlobalReassignOwnership}
                       GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
                       GlobalValidateRecentSchedules={
                         this.GlobalValidateRecentSchedules
