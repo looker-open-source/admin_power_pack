@@ -77,15 +77,17 @@ function AppInternal(props) {
     }
 
     const loadingComponent = (
-        <Flex width='100%' height='90%' alignItems='center' justifyContent='center'>
-            <Spinner color='black' />
-        </Flex>
+        <ComponentsProvider>
+            <Flex width='100%' height='90%' alignItems='center' justifyContent='center'>
+                <Spinner color='black' />
+            </Flex>
+        </ComponentsProvider>
     )
 
     const appTheme = {
         ...theme,
         background: '#f5f6f7', // palette.charcoal100
-        border: 'c1c6cb' // palette.charcoal300
+        border: '#c1c6cb' // palette.charcoal300
       }
 
     const GreyBorderBox = styled(Box)`
@@ -138,14 +140,14 @@ function AppInternal(props) {
 
     const extension = (
         <ExtensionProvider 
-            // loadingComponent={loadingComponent} // TODO fix error.
+            loadingComponent={loadingComponent}
             requiredLookerVersion='>=7.2.0'
             onRouteChange={onRouteChange}
         >
             <ThemeProvider theme={appTheme}>
                 <ComponentsProvider>
                     <InitializeChecker>
-                        {/* <PermissionsChecker loadingComponent={loadingComponent}> */}
+                        <PermissionsChecker loadingComponent={loadingComponent}>
                             <Box>
                                 {header}
                                 <Flex height='100vh'>
@@ -155,7 +157,7 @@ function AppInternal(props) {
                                     </Box>
                                 </Flex>
                             </Box>
-                        {/* </PermissionsChecker> */}
+                        </PermissionsChecker>
                     </InitializeChecker>
                 </ComponentsProvider>
             </ThemeProvider>
