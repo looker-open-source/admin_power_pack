@@ -25,6 +25,7 @@
 import React, { useState, useContext } from 'react'
 import { useMachine } from '@xstate/react' // workflow helper
 import Papa from 'papaparse' // csv parsing library
+import asyncPool from "tiny-async-pool"; // limit concurrency with Looker API
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { ACTION_INFO, WORKFLOW_MACHINE, SYSTEM_USER_ATTRIBUTES } from './constants'
 import { makeLookerCaller } from '../shared/utils'
@@ -367,11 +368,10 @@ export function ActionsBar(props) {
         }
 
         log(`${props.selectedUserIds.size} users selected to ${description}.`)
-
-        const promises = selectedUsers.map(funcToRun)
         
         try {
-            await Promise.all(promises) 
+             // need to batch create promises to avoid hitting timeout issues 
+            await asyncPool(15, selectedUsers, funcToRun);
             log(`Action complete; refreshing user table`)
         } catch (error) {
             log('FATAL: unhandled exception while running action on selected users. The first promise rejection is:')
@@ -523,35 +523,37 @@ export function ActionsBar(props) {
 
         const userData = rawData.filter(u => u.email !== "")
 
-        Promise.allSettled(
-            userData.map(async user => {
-                try { 
-                    const newUser = await asyncLookerCall('create_user', {first_name: user.first_name, last_name: user.last_name });
-                    log(`User ${newUser.id}: created for ${user.first_name} ${user.last_name}`);
+        const createUser = async (user) => {
+            try { 
+                const newUser = await asyncLookerCall('create_user', {first_name: user.first_name, last_name: user.last_name });
+                log(`User ${newUser.id}: created for ${user.first_name} ${user.last_name}`);
 
-                    const newUserWithEmail = await asyncLookerCall('create_user_credentials_email', newUser.id, {email: user.email })
-                        .then(response => {
-                            log(`User ${newUser.id}: email credentials set to ${user.email}`);
-                        })
-                        .catch(error => {
-                            log(`ERROR: user ${newUser.id}: Unable to set email credentials to ${user.email}: ${error.message}. Most likely the email is already in use. See network tab.`);
-                        })
+                const newUserWithEmail = await asyncLookerCall('create_user_credentials_email', newUser.id, {email: user.email })
+                    .then(response => {
+                        log(`User ${newUser.id}: email credentials set to ${user.email}`);
+                    })
+                    .catch(error => {
+                        log(`ERROR: user ${newUser.id}: Unable to set email credentials to ${user.email}: ${error.message}. Most likely the email is already in use. See network tab.`);
+                    })
 
-                    const uaPromises = []
-                    for (const [key, value] of Object.entries(user)) {
-                        // skip system defaults and empty string values
-                        if (Boolean(value) && !SYSTEM_USER_ATTRIBUTES.includes(key)) {
-                            const thisUserAtt = props.userAtt.filter(ua => ua.name === key)[0];  
-                            const response = await asyncLookerCall('set_user_attribute_user_value', newUser.id, thisUserAtt.id, {value: value });
-                            uaPromises.push(response)
-                            log(`User ${newUser.id}: User Attribute ${key} set to: ${value}`);
-                        }
+                const uaPromises = []
+                for (const [key, value] of Object.entries(user)) {
+                    // skip system defaults and empty string values
+                    if (Boolean(value) && !SYSTEM_USER_ATTRIBUTES.includes(key)) {
+                        const thisUserAtt = props.userAtt.filter(ua => ua.name === key)[0];  
+                        const response = await asyncLookerCall('set_user_attribute_user_value', newUser.id, thisUserAtt.id, {value: value });
+                        uaPromises.push(response)
+                        log(`User ${newUser.id}: User Attribute ${key} set to: ${value}`);
                     }
-                    return [newUserWithEmail, ...uaPromises]
-                } catch (error) {
-                    log(`ERROR: user ${newUser.id}: unable to creating user / set User Attribute for ${user.email}: '${error.message}'`)
                 }
-            })
+                return [newUserWithEmail, ...uaPromises]
+            } catch (error) {
+                log(`ERROR: user ${newUser.id}: unable to creating user / set User Attribute for ${user.email}: '${error.message}'`)
+            }
+        }
+
+        Promise.allSettled(
+            await asyncPool(15, userData, createUser)
         ).then(values => {
             log(`Action complete; refreshing user table`)
             props.loadUsersAndStuff()
@@ -570,6 +572,7 @@ export function ActionsBar(props) {
             return;
         }
         try {
+            // endpoint is currently rate limited to 5 every 5 minutes - see rate_limit.rb
             const send_email = await asyncLookerCall('send_user_credentials_email_password_reset', user.id);
             log(`User ${user.id}: credentials sent to user's email ${user.credentials_email.email}`);
         } catch (error) {
@@ -629,7 +632,7 @@ export function ActionsBar(props) {
                 const response = await asyncLookerCall('set_user_attribute_user_value', user.id, thisUserAtt.id, {value: value});
                 log(`User ${user.id}: User Attribute ${key} set to: ${value}`);
             } catch (error) {
-                log(`ERROR: user ${user.id}: unable to set User Attribute for ${key}: '${error.message}'`);
+                log(`ERROR: user ${user.id}: unable to set User Attribute for ${key} to ${value}. Message: '${error.message}'`);
             } 
         }
         return;
@@ -643,7 +646,7 @@ export function ActionsBar(props) {
                 const response = await asyncLookerCall('delete_user_attribute_user_value', user.id, thisUserAttID);
                 log(`User ${user.id}: User Attribute ${key} deleted`);
             } catch (error) {
-                log(`ERROR: user ${user.id}: unable to delete User Attribute for ${key}: '${error.message}'`);
+                log(`ERROR: user ${user.id}: unable to delete User Attribute for ${key}. Message: '${error.message}'`);
             }
         }
         return;
@@ -655,9 +658,9 @@ export function ActionsBar(props) {
             try {
                 const groupName = props.groupsMap.get(Number(key)).name
                 const response = await asyncLookerCall('add_group_user', key, {user_id: user.id});  // returns 200 regardless if user already in group or not
-                log(`User ${user.id}: Added to group ${key}: ${groupName}`);
+                log(`User ${user.id}: Added to group ${groupName}`);
             } catch (error) {
-                log(`ERROR: user ${user.id}: unable to add user to group ${key}: '${error.message}'`);
+                log(`ERROR: user ${user.id}: unable to add user to group ${groupName}. Message: '${error.message}'`);
             }
         }
         return;
@@ -669,9 +672,9 @@ export function ActionsBar(props) {
             try {
                 const groupName = props.groupsMap.get(Number(key)).name
                 const response = await asyncLookerCall('delete_group_user', key, user.id);  // returns 204 regardless if user was in the group or not
-                log(`User ${user.id}: Removed from group ${key}: ${groupName}`);
+                log(`User ${user.id}: Removed from group ${groupName}`);
             } catch (error) {
-                log(`ERROR: user ${user.id}: unable to remove user from group ${key}: '${error.message}'`);
+                log(`ERROR: user ${user.id}: unable to remove user from group ${groupName}. Message: '${error.message}'`);
             }
         }
         return;
@@ -681,11 +684,13 @@ export function ActionsBar(props) {
         const roles = [...setUsersRoles]
             .filter(([key, value]) => Boolean(value))
             .map(([key, value]) => Number(key))
+        const roleNames = roles.map(r =>  props.rolesMap.get(r).name ) 
+
         try {
             const response = await asyncLookerCall('set_user_roles', user.id, roles);
-            log(`User ${user.id}: Roles set to: ${roles}`);
+            log(`User ${user.id}: Roles set to: ${roleNames}`);
         } catch (error) {
-            log(`ERROR: user ${user.id}: unable to set roles to ${roles}: '${error.message}'`);
+            log(`ERROR: user ${user.id}: unable to set roles to ${roleNames}. Message: '${error.message}'`);
         }
         return;
     }

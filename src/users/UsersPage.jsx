@@ -349,9 +349,18 @@ export class UsersPage extends React.Component {
 
         if (columnId === undefined) columnId = this.state.sortColumn
         if (sortDirection === undefined) sortDirection = this.state.sortDirection
+        
+        let newArrayToSort = arrayToSort
+        if (columnId === 'display_name') {
+            newArrayToSort = arrayToSort.map(u => {
+                const cleanUser = u
+                cleanUser.display_name = u.display_name || ""  // to allow sorting on users with null names
+                return cleanUser
+            })
+        }
 
         // This thing looks like: `{columns: newColumnsObj, data: sortedDataArray}`
-        const resultObj = doDefaultActionListSort(arrayToSort, this.state.tableColumns, columnId, sortDirection)
+        const resultObj = doDefaultActionListSort(newArrayToSort, this.state.tableColumns, columnId, sortDirection)
         
         return resultObj
     }
