@@ -43,7 +43,7 @@ export function PermissionsChecker(props) {
                 let me
                 let myAdminRoles = []
                 try {
-                    const lookerRequest = makeLookerCaller(context.coreSDK)
+                    const lookerRequest = makeLookerCaller(context.core40SDK)
                     
                     me = await lookerRequest('me', ["id", "display_name", "role_ids"])
                     

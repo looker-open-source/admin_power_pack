@@ -1015,7 +1015,7 @@ export function ActionsBar(props) {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">User Actions</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Functions</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
                     <MenuGroup label="Users">

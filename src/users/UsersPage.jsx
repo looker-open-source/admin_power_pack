@@ -213,11 +213,23 @@ export class UsersPage extends React.Component {
     }
 
     onChangeActiveFilterButtons = (new_activeFilterButtons) => {
-        // Update the button state right away
-        this.setState({activeFilterButtons: new_activeFilterButtons})
+        let updated_activeFilterButtons = new_activeFilterButtons;
+        const lastFilter = new_activeFilterButtons.slice(-1)[0]
         
-        // Re-filter and re-sort. new_activeFilterButtons passed in to avoid race condition on state
-        const filteredUsers = this.makeFilteredUsersList(undefined, undefined, new_activeFilterButtons)
+        switch (lastFilter) {
+            case "disabled":
+                updated_activeFilterButtons = updated_activeFilterButtons.filter(f => f !== "notDisabled")
+                break
+            case "notDisabled":
+                updated_activeFilterButtons = updated_activeFilterButtons.filter(f => f !== "disabled")
+                break
+        }
+
+        // Update the button state right away
+        this.setState({activeFilterButtons: updated_activeFilterButtons})
+        
+        // Re-filter and re-sort. updated_activeFilterButtons passed in to avoid race condition on state
+        const filteredUsers = this.makeFilteredUsersList(undefined, undefined, updated_activeFilterButtons)
         const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
         
         // Persist
@@ -255,6 +267,8 @@ export class UsersPage extends React.Component {
 
         // Step 1: filter according to which type of users to show
         switch (activeShowWhoButton) {
+            case "all":
+                break
             case "regular":
                 filteredUsers = filteredUsers.filter(u => !u.verified_looker_employee && !u.credentials_embed.length)
                 break
@@ -275,6 +289,9 @@ export class UsersPage extends React.Component {
         }
         if (activeFilterButtons.includes("disabled")) {
             filteredUsers = filteredUsers.filter(u => u.is_disabled)
+        }
+        if (activeFilterButtons.includes("notDisabled")) {
+            filteredUsers = filteredUsers.filter(u => !u.is_disabled)
         }
         if (activeFilterButtons.includes("noSSO")) {
             const sso_cred_names = CREDENTIALS_INFO.filter(c => c.is_sso).map(c => c.name)
@@ -395,9 +412,12 @@ export class UsersPage extends React.Component {
             />
                                
         const showWhoToggle = 
-            <Select
+            <Select 
+                width={150}
                 onChange={this.onChangeActiveShowWhoButton}
+                defaultValue="regular"
                 options={[
+                { value: 'all', label: 'All Users' },
                   { value: 'regular', label: 'Regular Users' },
                   { value: 'embed', label: 'Embed Users' },
                   { value: 'lookerSupport', label: 'Looker Support' },
@@ -412,6 +432,7 @@ export class UsersPage extends React.Component {
                 <ButtonItem value="duplicateEmails">Duplicate Emails</ButtonItem>
                 <ButtonItem value="duplicateNames">Duplicate Names</ButtonItem>
                 <ButtonItem value="disabled">Disabled</ButtonItem>
+                <ButtonItem value="notDisabled">Not Disabled</ButtonItem>
             </ButtonGroup>
                   
         const searchInput = 

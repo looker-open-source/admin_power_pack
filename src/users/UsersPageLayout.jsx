@@ -56,16 +56,17 @@ export function UsersPageLayout(props) {
                     <Text variant="secondary" mr="small">Actions</Text>
                     {props.actionsBar}
                 </Box>
-                <Flex alignItems="center">
-                    <Text variant="secondary" mr="small">Show</Text>
-                    {props.showWhoToggle}
-                </Flex>
             </JustifiedSection>
             <JustifiedSection>
-                <Box>
+                <Flex justifyContent="flex-start" alignItems="center">
                     <Text variant="secondary" mr="small">Filters</Text>
-                    {props.quickFilterGroup}
-                </Box>
+                    <Box px="small" >
+                        {props.showWhoToggle}
+                    </Box>
+                    <Box>
+                        {props.quickFilterGroup}
+                    </Box>
+                </Flex>
                 {props.searchInput}
             </JustifiedSection>
             <Box px='large' py='xsmall'>
