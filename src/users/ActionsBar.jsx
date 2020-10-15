@@ -26,6 +26,7 @@ import React, { useState, useContext } from 'react'
 import { useMachine } from '@xstate/react' // workflow helper
 import Papa from 'papaparse' // csv parsing library
 import asyncPool from "tiny-async-pool"; // limit concurrency with Looker API
+import { chain, sortBy } from 'lodash'
 import { ExtensionContext } from '@looker/extension-sdk-react'
 import { ACTION_INFO, WORKFLOW_MACHINE, SYSTEM_USER_ATTRIBUTES } from './constants'
 import { makeLookerCaller } from '../shared/utils'
@@ -1000,7 +1001,9 @@ export function ActionsBar(props) {
     }
     
     function RoleFields() {
-        const roles = Array.from(props.rolesMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
+        const roles = chain(Array.from(props.rolesMap, ([key, value]) => {return {label: value.name, value: key.toString()}}))
+            .sortBy(["label"])
+            .value();
         return (
             <>
                 {roles.map(r => (

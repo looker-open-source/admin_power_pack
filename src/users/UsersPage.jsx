@@ -24,6 +24,7 @@
 
 import React from 'react'
 import { ExtensionContext } from '@looker/extension-sdk-react'
+import asyncPool from "tiny-async-pool"; // limit concurrency with Looker API
 import { UsersPageLayout } from './UsersPageLayout'
 import { ActionsBar } from './ActionsBar'
 import { UsersTable } from './UsersTable'
@@ -69,7 +70,7 @@ export class UsersPage extends React.Component {
     componentDidMount() {
         if (this.initializeError) { return }
 
-        this.lookerRequest = makeLookerCaller(this.context.coreSDK)
+        this.lookerRequest = makeLookerCaller(this.context.core40SDK)
 
         this.loadUsersAndStuff()
     }
@@ -92,6 +93,29 @@ export class UsersPage extends React.Component {
         })
     }
 
+    allUsersPaginated = async () => {
+        const pageSize = 1000 // bigger page sizes take longer to return. 1k users returns between 10-15s
+        let pagesAtTime = 6 // connections will stall if more than 6 sent at same time
+        let pages = Array.from(Array(pagesAtTime), (x, i) => i +1)
+        let keepGoing = true
+        let userResult = []
+
+        const getUsers = async (page) => {
+            return await this.lookerRequest('all_users', {fields: USER_FIELDS, page: page, per_page: pageSize});
+        }
+
+        while (keepGoing) {
+            let response = await asyncPool(pagesAtTime, pages, getUsers)
+            userResult = [...userResult, ...response.flat()];
+            pages = pages.map(i => i+=pagesAtTime);
+
+            if (response.flat().length < pageSize*pagesAtTime) {
+                keepGoing = false;
+                return userResult;
+            }
+        }
+    }
+
     /*
      ******************* Main data fetch *******************
      */
@@ -101,9 +125,24 @@ export class UsersPage extends React.Component {
             //throw "test"
             //await new Promise(r => setTimeout(r, 5000))
 
+            // Requests that take longer than 30s will hit the default chatty timeout limit, the all_users endpoint can hit this limit for >30k users
+            // We can split the all_users request with paginations, however this results in ~3x performance hit for smaller user counts
+            // Therefore we first obtain user count via System Activity query and only use pagination requests for instances with >20k users
+            // Not ideal, but this is the fastest way to function for instances of all sizes  
+            const userQuery = await this.lookerRequest('create_query', {model: 'system__activity', view: 'user', fields: ['user.count'], limit: '1'})
+            const userCount = await this.lookerRequest('run_query', {query_id: Number(userQuery.id), result_format: 'json', cache: false}).then(response => response[0]['user.count'])
+            let userGrabber
+
+            if (userCount > 20000) {
+                userGrabber = this.allUsersPaginated();
+            } else {
+                userGrabber = this.lookerRequest('all_users', {fields: USER_FIELDS});
+            }
+
             const [userResult, groupsResult, rolesResult, userAttResult] = await Promise.all([
-                //lookerRequest('search_users', {fields: USER_FIELDS}),
-                this.lookerRequest('all_users', {fields: USER_FIELDS}),
+                // this.lookerRequest('all_users', {fields: USER_FIELDS}),
+                // this.allUsersPaginated(),
+                userGrabber,
                 this.lookerRequest('all_groups', {}),
                 this.lookerRequest('all_roles', {}),
                 this.lookerRequest('all_user_attributes', {}),

@@ -34,7 +34,7 @@ import {
 
 export function InlineEditEmail(props) {
     const context = useContext(ExtensionContext)
-    const lookerRequest = makeLookerCaller(context.coreSDK)
+    const lookerRequest = makeLookerCaller(context.core40SDK)
 
     const originalValue = props.user?.credentials_email?.email || ""
     
