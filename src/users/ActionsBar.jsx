@@ -160,6 +160,10 @@ export function ActionsBar(props) {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'enableDisable', enableDisableType: type})
     }
 
+    const openDeleteUsers = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteUsers'})
+    }
+
     const openSetUserAtt = (type) => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'setUserAtt'})
     }
@@ -288,6 +292,15 @@ export function ActionsBar(props) {
                 enableDisableType().toLowerCase()
             )
         )
+    }
+
+    const runDeleteUsers = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                deleteUserFunc, 
+                'delete users'
+            )
+        ).then(props.setNewSelectedUserIds(new Set()))
     }
 
     const runSetUserAtt = () => {
@@ -621,6 +634,16 @@ export function ActionsBar(props) {
             return
         }
         return enableDisableFunc
+    }
+
+    const deleteUserFunc = async (user) => {
+        try {
+            await asyncLookerCall("delete_user", user.id)
+            log(`User ${user.id}: Deleted`)
+        } catch (error) {
+            log(`ERROR: user ${user.id}: unable to delete. Message: '${error.message}'`)
+        }
+        return;
     }
     
     const setUserAttFunc = async (user) => {
@@ -1024,6 +1047,7 @@ export function ActionsBar(props) {
                     <MenuGroup label="Users">
                         <MenuItem icon="User" onClick={() => openEnableDisable("Enable")}> Enable users</MenuItem>
                         <MenuItem icon="User" onClick={() => openEnableDisable("Disable")}> Disable users</MenuItem>
+                        <MenuItem icon="Trash" onClick={() => openDeleteUsers()}> {ACTION_INFO.deleteUsers.menuTitle}</MenuItem>
                     </MenuGroup>
                     <MenuGroup label="User Attributes">
                         <MenuItem icon="UserAttributes" onClick={() => openSetUserAtt()}> {ACTION_INFO.setUserAtt.menuTitle}</MenuItem>
@@ -1036,7 +1060,6 @@ export function ActionsBar(props) {
                     <MenuGroup label="Roles">
                         <MenuItem icon="Tune" onClick={() => openSetUsersRoles()}>{ACTION_INFO.setUsersRoles.menuTitle}</MenuItem>
                     </MenuGroup>
-                    {/* <MenuItem icon="Trash">Delete</MenuItem> */}
                 </MenuList>
             </Menu>
             {/*
@@ -1062,6 +1085,45 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button onClick={runEnableDisable}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* DELETE Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("deleteUsers")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.deleteUsers.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will permanently delete the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                        </Paragraph>
+                        <Paragraph>
+                            <Text fontWeight="bold">
+                                WARNING: Deleting a user is a irreversible action and will result in the loss of the user's content, 
+                                schedules, and historical usage.
+                            </Text>
+                        </Paragraph>
+                        <Paragraph>
+                            It is highly recommended to disable user accounts, as opposed to deleting them, as this
+                            will retain this data.
+                        </Paragraph> 
+                        <Paragraph>
+                            For details about what happens when you delete a user, and the differences to 
+                            disabling, see the documention for&nbsp;
+                            <Link onClick={() => context.extensionSDK.openBrowserWindow("https://docs.looker.com/admin-options/settings/users#removing_user_access", '_blank')}>
+                                Removing User Access
+                            </Link>.
+                        </Paragraph>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button color="critical" onClick={runDeleteUsers}>Run</Button>}
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>

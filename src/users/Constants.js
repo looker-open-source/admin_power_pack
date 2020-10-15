@@ -119,6 +119,10 @@ export const ACTION_INFO = Object.freeze({
         menuTitle: "Bulk send email creds",
         dialogTitle: "Send User Credentials to User Email"
     },
+    deleteUsers: {
+        menuTitle: "Delete users",
+        dialogTitle: "Permanently Delete Users"
+    },
     setUserAtt: {
         menuTitle: "Set User Attributes",
         dialogTitle: "Set User Attributes for Users"
