@@ -53,9 +53,10 @@ import {
   IWriteScheduledPlanNulls,
   IScheduledPlanTable,
 } from "./constants"; // interfaces
+import { newGroupOptions } from "./helper";
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
-import { PopulateRows } from "./PopulateRows";
+import { GeneratePlans } from "./GeneratePlans";
 
 export class SchedulesPage extends React.Component<
   RouteComponentProps,
@@ -159,41 +160,6 @@ export class SchedulesPage extends React.Component<
     this.setState({ dashSearchString: term });
   };
 
-  // filter dashboards list with search term. retains folder grouping
-  newDashSelectOptions = () => {
-    const searchTerm = this.state.dashSearchString;
-    const groupedDashboards = this.state.dashboards;
-
-    if (searchTerm === "") return groupedDashboards;
-
-    let newOptions: any = [];
-
-    groupedDashboards.filter((group: any) => {
-      const foundDashboardsPerFolder = group.options.filter(
-        (dashboards: any) => {
-          return (
-            dashboards.label.toLowerCase().indexOf(searchTerm.toLowerCase()) >
-            -1
-          );
-        }
-      );
-
-      if (foundDashboardsPerFolder.length > 0) {
-        newOptions.push({
-          label: group.label,
-          options: foundDashboardsPerFolder,
-        });
-      }
-    });
-
-    if (DEBUG) {
-      console.log("Dashboards search filters:");
-      console.log(newOptions);
-    }
-
-    return newOptions;
-  };
-
   // get all datagroups defined on instance to use as schedule option
   // todo filter deleted datagroups - not currently possible
   getDatagroups = async () => {
@@ -252,11 +218,11 @@ export class SchedulesPage extends React.Component<
 
   ///////////////////////////////////////////////
 
-  //////////////// POPULATE ROWS ////////////////
+  //////////////// GENERATE PLANS ////////////////
 
-  // populate rows from Looker Query ID
-  handlePopSubmit = async (
-    queryID: string,
+  // generate plans from Looker query slug
+  handleGeneratePlansSubmit = async (
+    querySlug: string,
     ownerID: string,
     scheduleName: string,
     scheduleCron: string
@@ -267,19 +233,23 @@ export class SchedulesPage extends React.Component<
 
     try {
       if (DEBUG) {
-        console.log("Params supplied from Populate Rows form:");
-        console.log({
-          queryID: queryID,
+        console.log("Params supplied from Generate Plans form:");
+        console.table({
+          querySlug: querySlug,
           ownerID: ownerID,
           scheduleName: scheduleName,
           scheduleCron: scheduleCron,
         });
       }
 
+      const query = await this.context.core40SDK.ok(
+        this.context.core40SDK.query_for_slug(querySlug)
+      );
+
       const results: any = await this.context.core40SDK.ok(
         this.context.core40SDK.run_query({
           result_format: "json_detail",
-          query_id: Number(queryID),
+          query_id: query.id!,
         })
       );
 
@@ -293,9 +263,9 @@ export class SchedulesPage extends React.Component<
       });
 
       if (DEBUG) {
-        console.log(`Query ${queryID} results:`);
-        console.log(results.data);
-        console.log(`Field Mapper based on query: ${queryID}`);
+        console.log(`Query ${querySlug} results:`);
+        console.table(results.data);
+        console.log(`Field Mapper based on query: ${querySlug}`);
         console.table(fieldMapper);
       }
 
@@ -327,12 +297,12 @@ export class SchedulesPage extends React.Component<
         schedulesArray: newArray,
         runningUpdate: false,
         errorMessage: undefined,
-        notificationMessage: "Rows successfully populated.",
+        notificationMessage: "Plans successfully generated.",
       });
     } catch (error) {
       this.setState({
         runningUpdate: false,
-        errorMessage: `Error populating rows: ${error}`,
+        errorMessage: `Error generating plans: ${error}`,
         notificationMessage: undefined,
       });
     }
@@ -1562,7 +1532,10 @@ export class SchedulesPage extends React.Component<
                 </FlexItem>
                 <FlexItem mx="medium">
                   <Select
-                    options={this.newDashSelectOptions()}
+                    options={newGroupOptions(
+                      this.state.dashSearchString,
+                      this.state.dashboards
+                    )}
                     onChange={this.onDashSelectChange}
                     onFilter={this.handleDashSelectFilter}
                     value={this.state.selectedDashId}
@@ -1600,7 +1573,10 @@ export class SchedulesPage extends React.Component<
               {this.state.schedulesArray.length > 0 && (
                 <Flex flexWrap="nowrap">
                   <FlexItem mx="xxxsmall">
-                    <PopulateRows handlePopSubmit={this.handlePopSubmit} />
+                    <GeneratePlans
+                      users={this.state.users}
+                      handleGeneratePlansSubmit={this.handleGeneratePlansSubmit}
+                    />
                   </FlexItem>
                   <FlexItem mx="xxxsmall">
                     <Confirm

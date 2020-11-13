@@ -34,32 +34,38 @@ import {
   DialogHeader,
   DialogManager,
   Fieldset,
+  FieldSelect,
   FieldText,
   Paragraph,
   SpaceVertical,
 } from "@looker/components";
-import { validationTypeCron, translateCron } from "./cronHelper";
-import { PopulateRowProps } from "./constants";
+import { validationTypeCron, translateCron, newOptions } from "./helper";
+import { GeneratePlansProps, SelectOption } from "./constants";
 
-// drawer to populate rows with results of query
-export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
-  const { handlePopSubmit } = prp;
+// drawer to generate plans with results of query
+export const GeneratePlans = (prp: GeneratePlansProps): JSX.Element => {
+  const { users, handleGeneratePlansSubmit } = prp;
 
-  const [queryID, set_queryID] = React.useState("");
+  const [querySlug, set_querySlug] = React.useState("");
   const [ownerID, set_ownerID] = React.useState("");
   const [scheduleName, set_scheduleName] = React.useState("");
   const [scheduleCron, set_scheduleCron] = React.useState("");
+  const [searchTerm, setSearchTerm] = React.useState(""); // user lookup
 
   const resetState = (): void => {
-    set_queryID("");
+    set_querySlug("");
     set_ownerID("");
     set_scheduleName("");
     set_scheduleCron("");
   };
 
+  const handleSelectFilter = (term: string) => {
+    setSearchTerm(term);
+  };
+
   // ensure all required fields are filled out
   const validParams = (): boolean => {
-    return queryID !== "";
+    return querySlug !== "";
   };
 
   return (
@@ -67,10 +73,13 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
       maxWidth={["90vw", "60vw", "500px", "800px"]}
       content={
         <DialogContent>
-          <DialogHeader>Populate Rows</DialogHeader>
+          <DialogHeader>Generate Plans</DialogHeader>
           <DialogContent>
             <SpaceVertical>
-              <Box display="inline-block" width="350px" height="120px">
+              <Box display="inline-block" width="400px" height="150px">
+                <Paragraph mb="small">
+                  Enter a query slug (qid) from the URL of any explore.
+                </Paragraph>
                 <Paragraph mb="small">
                   This will generate a new schedule plan for each row in the
                   results of a Looker query. Filter values will be populated if
@@ -78,21 +87,26 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                   Ensure there is a field "Email" to populate Recipients.
                 </Paragraph>
               </Box>
-              <Fieldset maxWidth="350px">
+              <Fieldset maxWidth="400px">
                 <FieldText
                   required={true}
                   label="Query ID"
-                  type="number"
-                  min="1"
-                  value={queryID}
-                  onChange={(e: any) => set_queryID(e.target.value)}
+                  type="text"
+                  value={querySlug}
+                  onChange={(e: any) => set_querySlug(e.target.value)}
                 />
-                <FieldText
+                <FieldSelect
                   label="Owner ID"
-                  type="number"
-                  min="1"
+                  width={1}
+                  autoResize
                   value={ownerID}
-                  onChange={(e: any) => set_ownerID(e.target.value)}
+                  title="Owner ID"
+                  listLayout={{ width: "auto" }}
+                  options={newOptions(searchTerm, users)}
+                  onChange={(e: any) => set_ownerID(e)}
+                  onFilter={handleSelectFilter}
+                  isFilterable
+                  isClearable={true}
                 />
                 <FieldText
                   label="Name of Schedule"
@@ -120,8 +134,8 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
                 <Button
                   disabled={!validParams()}
                   onClick={() => {
-                    handlePopSubmit(
-                      queryID,
+                    handleGeneratePlansSubmit(
+                      querySlug,
                       ownerID,
                       scheduleName,
                       scheduleCron
@@ -146,7 +160,7 @@ export const PopulateRows = (prp: PopulateRowProps): JSX.Element => {
         </DialogContent>
       }
     >
-      <ButtonOutline>Populate Rows</ButtonOutline>
+      <ButtonOutline>Generate Plans</ButtonOutline>
     </DialogManager>
   );
 };

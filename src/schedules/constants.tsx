@@ -121,10 +121,11 @@ export interface EditableCellProps {
   syncData(rowIndex: number, columnId: string, value: string): any;
 }
 
-// for PopulateRows function
-export interface PopulateRowProps {
-  handlePopSubmit(
-    queryID: string,
+// for handleGenPlansSubmit function
+export interface GeneratePlansProps {
+  users: SelectOption[];
+  handleGeneratePlansSubmit(
+    querySlug: string,
     ownerID: string,
     scheduleName: string,
     scheduleCron: string

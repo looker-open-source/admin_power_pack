@@ -23,6 +23,7 @@
  */
 
 import cronstrue from "cronstrue";
+import { SelectOption, GroupSelectOption } from "./constants";
 
 export const translateCron = (cron: string): string => {
   // console.log(cron);
@@ -53,4 +54,38 @@ export const validationTypeCron = (cron: string): "error" | undefined => {
     return "error";
   }
   return undefined;
+};
+
+// filter generic list - no options[]
+export const newOptions = (searchTerm: string, options: SelectOption[]) => {
+  if (searchTerm === "") return options;
+
+  return options.filter((o) => {
+    return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+  });
+};
+
+// filter list with options[] while retain grouping
+export const newGroupOptions = (
+  searchTerm: string,
+  options: GroupSelectOption[]
+) => {
+  if (searchTerm === "") return options;
+
+  let newOptions: any = [];
+
+  options.filter((group) => {
+    const foundOptionsPerGroup = group.options.filter((o) => {
+      return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
+    });
+
+    if (foundOptionsPerGroup.length > 0) {
+      newOptions.push({
+        label: group.label,
+        options: foundOptionsPerGroup,
+      });
+    }
+  });
+
+  return newOptions;
 };

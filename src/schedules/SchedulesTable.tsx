@@ -55,7 +55,7 @@ import {
 import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
 import { Styles } from "./Styles";
-import { translateCron } from "./cronHelper";
+import { translateCron, newOptions, newGroupOptions } from "./helper";
 import {
   DEBUG,
   KEY_FIELDS,
@@ -140,37 +140,6 @@ const EditableCell = (ec: EditableCellProps) => {
 
   const handleSelectFilter = (term: string) => {
     setSearchTerm(term);
-  };
-
-  // filter generic list - no options[]
-  const newOptions = (options: SelectOption[]) => {
-    if (searchTerm === "") return options;
-
-    return options.filter((o) => {
-      return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
-    });
-  };
-
-  // filter list with options[] while retain grouping
-  const newGroupOptions = (options: GroupSelectOption[]) => {
-    if (searchTerm === "") return options;
-
-    let newOptions: any = [];
-
-    options.filter((group) => {
-      const foundOptionsPerGroup = group.options.filter((o) => {
-        return o.label.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1;
-      });
-
-      if (foundOptionsPerGroup.length > 0) {
-        newOptions.push({
-          label: group.label,
-          options: foundOptionsPerGroup,
-        });
-      }
-    });
-
-    return newOptions;
   };
 
   const DefaultSelect = (
@@ -414,15 +383,23 @@ const EditableCell = (ec: EditableCellProps) => {
   switch (id) {
     // SELECT_FIELDS //
     case "datagroup":
-      return DefaultSelect(newOptions(datagroups), isCrontab, true);
+      return DefaultSelect(newOptions(searchTerm, datagroups), isCrontab, true);
     case "owner_id":
-      return DefaultSelect(newOptions(users), false, true);
+      return DefaultSelect(newOptions(searchTerm, users), false, true);
     case "timezone":
-      return DefaultSelect(newGroupOptions(TIMEZONES), !isCrontab, true);
+      return DefaultSelect(
+        newGroupOptions(searchTerm, TIMEZONES),
+        !isCrontab,
+        true
+      );
     case "format":
-      return DefaultSelect(newOptions(FORMAT), false, false);
+      return DefaultSelect(newOptions(searchTerm, FORMAT), false, false);
     case "pdf_paper_size":
-      return DefaultSelect(newOptions(PDF_PAPER_SIZE), !isPDF(), true);
+      return DefaultSelect(
+        newOptions(searchTerm, PDF_PAPER_SIZE),
+        !isPDF(),
+        true
+      );
 
     // CHECKBOX_FIELDS //
     case "include_links":
