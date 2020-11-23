@@ -53,7 +53,7 @@ import {
   IWriteScheduledPlanNulls,
   IScheduledPlanTable,
 } from "./constants"; // interfaces
-import { newGroupOptions } from "./helper";
+import { validationTypeCron, translateCron, newGroupOptions } from "./helper";
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
 import { GeneratePlans } from "./GeneratePlans";
@@ -595,6 +595,157 @@ export class SchedulesPage extends React.Component<
     }
   };
 
+  // Get scheduled plans by System Activity Query ID
+  GlobalSelectByQuery = async (querySlug: string) => {
+    this.setState({
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
+    let saResults: any;
+    try {
+      const saQuery = await this.context.core40SDK.ok(
+        this.context.core40SDK.query_for_slug(querySlug)
+      );
+
+      saResults = await this.context.core40SDK.ok(
+        this.context.core40SDK.run_query({
+          result_format: "json",
+          query_id: saQuery.id!,
+        })
+      );
+    } catch (error) {
+      this.setState({
+        errorMessage: `Error with query slug: ${error}`,
+      });
+      return [];
+    }
+
+    const planIds = JSON.parse(JSON.stringify(saResults))
+      .map((row: any) => row["scheduled_plan.id"])
+      .toString();
+
+    if (!/\d/.test(planIds)) {
+      this.setState({
+        errorMessage: `Error retrieving schedule plan IDs from query. Plan IDs: ${planIds}`,
+      });
+      return [];
+    }
+
+    // get metadata on scheduled plans
+    const scheduledPlansQuery = await this.context.core40SDK.ok(
+      this.context.core40SDK.create_query({
+        model: "system__activity",
+        view: "scheduled_plan",
+        fields: [
+          "scheduled_plan.id",
+          "scheduled_plan.name",
+          "scheduled_plan.enabled",
+          "scheduled_plan.run_once",
+          "scheduled_times",
+          "summary",
+          "user.name",
+          "scheduled_plan.content_type_id",
+          "scheduled_plan.destination_addresses",
+        ],
+        filters: {
+          "scheduled_plan.id": planIds, // supplying dup IDs in filter is OK
+        },
+        sorts: ["scheduled_plan.name asc"],
+        limit: "5000",
+        dynamic_fields:
+          '[{"dimension":"scheduled_times","expression":"if(is_null(${scheduled_plan.cron_schedule}),${scheduled_plan.datagroup},${scheduled_plan.cron_schedule})"}, {"dimension":"summary","expression":"concat(${scheduled_plan_destination.format},\\" via \\",${scheduled_plan_destination.type})"}]',
+      })
+    );
+
+    const scheduledPlansResults = await this.context.core40SDK.ok(
+      this.context.core40SDK.run_query({
+        query_id: Number(scheduledPlansQuery.id),
+        result_format: "json",
+        cache: false,
+      })
+    );
+
+    const cleanResults = JSON.parse(JSON.stringify(scheduledPlansResults)).map(
+      (row: any) => {
+        row["scheduled_times"] =
+          validationTypeCron(row["scheduled_times"]) == "error"
+            ? row["scheduled_times"]
+            : translateCron(row["scheduled_times"]);
+        return row;
+      }
+    );
+
+    if (DEBUG) {
+      console.log("Scheduled Plans Results:");
+      console.table(cleanResults);
+    }
+
+    return cleanResults;
+  };
+
+  GlobalSelectByQueryRun = async (
+    scheduledPlansData: string[],
+    action: string
+  ) => {
+    console.table(scheduledPlansData);
+    console.log(action);
+
+    switch (action) {
+      case "enable":
+      case "disable":
+        for (let i = 0; i < scheduledPlansData.length; i++) {
+          const planID = Number(scheduledPlansData[i]);
+
+          const plan = await this.context.core40SDK.ok(
+            this.context.core40SDK.scheduled_plan(planID)
+          );
+
+          action === "enable" ? (plan.enabled = true) : (plan.enabled = false);
+
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.update_scheduled_plan(planID, plan)
+          );
+          if (DEBUG) {
+            console.log(`${action}d schedule plan: ${planID}`);
+          }
+        }
+        break;
+
+      case "run once":
+        const delay = (i: number) => new Promise((r) => setTimeout(r, i)); // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
+
+        for (let i = 0; i < scheduledPlansData.length; i++) {
+          const planID = Number(scheduledPlansData[i]);
+
+          await delay(200);
+
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.scheduled_plan_run_once_by_id(planID)
+          );
+          if (DEBUG) {
+            console.log(`schedule plan ${action}: ${planID}`);
+          }
+        }
+        break;
+
+      case "delete":
+        for (let i = 0; i < scheduledPlansData.length; i++) {
+          const planID = Number(scheduledPlansData[i]);
+
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.delete_scheduled_plan(planID)
+          );
+          if (DEBUG) {
+            console.log(`${action}d schedule plan: ${planID}`);
+          }
+        }
+        break;
+    }
+
+    return;
+  };
+
   /////////////////////////////////////////////////////////////////////
 
   ///////////////// DASHBOARD SEARCH AND PREP FOR TABLE ////////////////
@@ -833,9 +984,17 @@ export class SchedulesPage extends React.Component<
   };
 
   // open window to System Activity Explore for history of schedule plan
-  openExploreWindow = (scheduledPlanID: number): void => {
+  openExploreDrillWindow = (scheduledPlanID: number): void => {
     const url = `/explore/system__activity/scheduled_plan?fields=scheduled_job.created_time,scheduled_job.finalized_time,scheduled_job.name,dashboard.title,user.name,scheduled_job.status,scheduled_job.status_detail,scheduled_plan.destination_addresses,scheduled_plan_destination.type,scheduled_plan_destination.format&f[scheduled_plan.id]=${scheduledPlanID}&sorts=scheduled_job.finalized_time+desc&limit=500`;
     this.context.extensionSDK.openBrowserWindow(url, "_blank");
+  };
+
+  // open window to Scheduled Plan System Activity Explore
+  openExploreWindow = (): void => {
+    this.context.extensionSDK.openBrowserWindow(
+      "/explore/system__activity/scheduled_plan",
+      "_blank"
+    );
   };
 
   // parse string for commas and create array of destiations
@@ -1569,48 +1728,54 @@ export class SchedulesPage extends React.Component<
               )}
             </FlexItem>
 
-            <FlexItem flexBasis="410px">
-              {this.state.schedulesArray.length > 0 && (
-                <Flex flexWrap="nowrap">
-                  <FlexItem mx="xxxsmall">
-                    <GeneratePlans
-                      users={this.state.users}
-                      handleGeneratePlansSubmit={this.handleGeneratePlansSubmit}
-                    />
-                  </FlexItem>
-                  <FlexItem mx="xxxsmall">
-                    <Confirm
-                      confirmLabel="Revert"
-                      buttonColor="critical"
-                      title="Revert Changes"
-                      message="Are you sure you want to revert all changes?"
-                      onConfirm={(close) => {
-                        this.resetData();
-                        close();
-                      }}
-                    >
-                      {(open) => (
-                        <ButtonOutline color="critical" onClick={open}>
-                          Revert
-                        </ButtonOutline>
-                      )}
-                    </Confirm>
-                  </FlexItem>
-                  <FlexItem mx="xxxsmall">
-                    <GlobalActions
-                      users={this.state.users}
-                      GlobalReassignOwnership={this.GlobalReassignOwnership}
-                      GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
-                      GlobalValidateRecentSchedules={
-                        this.GlobalValidateRecentSchedules
-                      }
-                      GlobalResendRecentFailures={
-                        this.GlobalResendRecentFailures
-                      }
-                    />
-                  </FlexItem>
-                </Flex>
-              )}
+            <FlexItem>
+              <Flex flexWrap="nowrap">
+                {this.state.schedulesArray.length > 0 && (
+                  <>
+                    <FlexItem mx="xxxsmall">
+                      <GeneratePlans
+                        users={this.state.users}
+                        handleGeneratePlansSubmit={
+                          this.handleGeneratePlansSubmit
+                        }
+                      />
+                    </FlexItem>
+                    <FlexItem mx="xxxsmall">
+                      <Confirm
+                        confirmLabel="Revert"
+                        buttonColor="critical"
+                        title="Revert Changes"
+                        message="Are you sure you want to revert all changes?"
+                        onConfirm={(close) => {
+                          this.resetData();
+                          close();
+                        }}
+                      >
+                        {(open) => (
+                          <ButtonOutline color="critical" onClick={open}>
+                            Revert
+                          </ButtonOutline>
+                        )}
+                      </Confirm>
+                    </FlexItem>
+                  </>
+                )}
+
+                <FlexItem mx="xxxsmall">
+                  <GlobalActions
+                    users={this.state.users}
+                    openExploreWindow={this.openExploreWindow}
+                    GlobalReassignOwnership={this.GlobalReassignOwnership}
+                    GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
+                    GlobalValidateRecentSchedules={
+                      this.GlobalValidateRecentSchedules
+                    }
+                    GlobalResendRecentFailures={this.GlobalResendRecentFailures}
+                    GlobalSelectByQuery={this.GlobalSelectByQuery}
+                    GlobalSelectByQueryRun={this.GlobalSelectByQueryRun}
+                  />
+                </FlexItem>
+              </Flex>
             </FlexItem>
           </Flex>
 
@@ -1662,7 +1827,7 @@ export class SchedulesPage extends React.Component<
               testRow={this.testRow}
               disableRow={this.disableRow}
               enableRow={this.enableRow}
-              openExploreWindow={this.openExploreWindow}
+              openExploreDrillWindow={this.openExploreDrillWindow}
               openDashboardWindow={this.openDashboardWindow}
             />
           </Flex>

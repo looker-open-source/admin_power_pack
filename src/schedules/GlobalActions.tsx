@@ -37,11 +37,15 @@ import {
   Flex,
   FlexItem,
   InputText,
+  Link,
+  List,
+  ListItem,
   Menu,
   MenuDisclosure,
   MenuItem,
   MenuList,
   Paragraph,
+  RadioGroup,
   Select,
   SelectMulti,
   Space,
@@ -49,7 +53,11 @@ import {
   Text,
   TextArea,
 } from "@looker/components";
-import { ACTION_LIST_FAIL_COLUMNS, GlobalActionQueryProps } from "./constants";
+import {
+  ACTION_LIST_FAIL_COLUMNS,
+  ACTION_LIST_SELECT_BY_QUERY_COLUMNS,
+  GlobalActionQueryProps,
+} from "./constants";
 
 const MonospaceTextArea = styled(TextArea)`
   textarea {
@@ -57,10 +65,13 @@ const MonospaceTextArea = styled(TextArea)`
   }
 `;
 
-const ActionListFailureResults = (
+// used for GlobalValidateRecentSchedules and GlobalSelectByQueryRun action list tables
+const ActionListDataTable = (
   data: any,
   selections: any,
-  setSelections: any
+  setSelections: any,
+  columns: any,
+  tableType: string
 ): JSX.Element => {
   const onSelect = (selection: string) => {
     const s = String(selection);
@@ -79,34 +90,81 @@ const ActionListFailureResults = (
     setSelections(selections.length ? [] : allSelectableItems);
   };
 
-  const items = data.map((row: any) => {
-    return (
-      <ActionListItem
-        key={row["scheduled_plan.id"]}
-        id={String(row["scheduled_plan.id"])}
-      >
-        <ActionListItemColumn>{row["scheduled_plan.id"]}</ActionListItemColumn>
-        <ActionListItemColumn>{row["scheduled_job.name"]}</ActionListItemColumn>
-        <ActionListItemColumn>{row["scheduled_job.id"]}</ActionListItemColumn>
-        <ActionListItemColumn>
-          {row["scheduled_job.finalized_time"]}
-        </ActionListItemColumn>
-        <ActionListItemColumn>{row["user.name"]}</ActionListItemColumn>
-        <ActionListItemColumn>
-          {row["scheduled_job.status_detail"]}
-        </ActionListItemColumn>
-        <ActionListItemColumn>
-          {row["scheduled_plan.content_type_id"]}
-        </ActionListItemColumn>
-        <ActionListItemColumn>
-          {row["scheduled_plan.destination_addresses"]}
-        </ActionListItemColumn>
-      </ActionListItem>
-    );
-  });
+  let items;
+
+  switch (tableType) {
+    case "Failures":
+      items = data.map((row: any) => {
+        return (
+          <ActionListItem
+            key={row["scheduled_plan.id"]}
+            id={String(row["scheduled_plan.id"])}
+          >
+            <ActionListItemColumn>
+              {row["scheduled_plan.id"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_job.name"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_job.id"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_job.finalized_time"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>{row["user.name"]}</ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_job.status_detail"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.content_type_id"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.destination_addresses"]}
+            </ActionListItemColumn>
+          </ActionListItem>
+        );
+      });
+      break;
+
+    case "SelectByQuery":
+      items = data.map((row: any) => {
+        return (
+          <ActionListItem
+            key={row["scheduled_plan.id"]}
+            id={String(row["scheduled_plan.id"])}
+          >
+            <ActionListItemColumn>
+              {row["scheduled_plan.id"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.name"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.enabled"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.run_once"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_times"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>{row["user.name"]}</ActionListItemColumn>
+            <ActionListItemColumn>{row["summary"]}</ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.content_type_id"]}
+            </ActionListItemColumn>
+            <ActionListItemColumn>
+              {row["scheduled_plan.destination_addresses"]}
+            </ActionListItemColumn>
+          </ActionListItem>
+        );
+      });
+  }
 
   return (
     <ActionList
+      key="action_list"
       select={{
         selectedItems: selections,
         onClickRowSelect: true,
@@ -114,7 +172,7 @@ const ActionListFailureResults = (
         onSelectAll: onSelectAll,
         pageItems: allSelectableItems,
       }}
-      columns={ACTION_LIST_FAIL_COLUMNS}
+      columns={columns}
     >
       {items}
     </ActionList>
@@ -124,29 +182,39 @@ const ActionListFailureResults = (
 export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
   const {
     users,
+    openExploreWindow,
     GlobalReassignOwnership,
     GlobalFindReplaceEmail,
     GlobalValidateRecentSchedules,
     GlobalResendRecentFailures,
+    GlobalSelectByQuery,
+    GlobalSelectByQueryRun,
   } = qp;
 
-  const [isToggledGRO, setisToggledGRO] = React.useState(false);
-  const [isToggledGFR, setisToggledGFR] = React.useState(false);
-  const [isToggledVRS, setisToggledVRS] = React.useState(false);
-  const [isToggledRRF, setisToggledRRF] = React.useState(false);
-  const [runningQuery, setRunningQuery] = React.useState(false);
+  const [isToggledGRO, setisToggledGRO] = React.useState(false); // GlobalReassignOwnership
+  const [isToggledGFR, setisToggledGFR] = React.useState(false); // GlobalFindReplaceEmail
+  const [isToggledVRS, setisToggledVRS] = React.useState(false); // GlobalValidateRecentSchedules
+  const [isToggledRRF, setisToggledRRF] = React.useState(false); // GlobalResendRecentFailures
+  const [isToggledSBQ, setisToggledSBQ] = React.useState(false); // GlobalSelectByQuery
+  const [isToggledSBQR, setisToggledSBQR] = React.useState(false); // GlobalSelectByQueryRun
+  const [runningQuery, setRunningQuery] = React.useState(false); // used for VRS and SBQ for running SA query
 
   const ToggleGRO = () => setisToggledGRO((on) => !on);
   const ToggleGFR = () => setisToggledGFR((on) => !on);
   const ToggleVRS = () => setisToggledVRS((on) => !on);
   const ToggleRRF = () => setisToggledRRF((on) => !on);
+  const ToggleSBQ = () => setisToggledSBQ((on) => !on);
+  const ToggleSBQR = () => setisToggledSBQR((on) => !on);
 
   const [UserMapFrom, setUserMapFrom] = React.useState([]);
   const [UserMapTo, setUserMapTo] = React.useState([]);
   const [EmailMap, setEmailMap] = React.useState("");
   const [Timeframe, setTimeframe] = React.useState("");
-  const [selections, setSelections] = React.useState([]);
+  const [Selections, setSelections] = React.useState([]);
   const [FailuresData, setFailuresData] = React.useState([]);
+  const [QuerySlug, setQuerySlug] = React.useState("");
+  const [BulkAction, setBulkAction] = React.useState("");
+  const [ScheduledPlansData, setScheduledPlansData] = React.useState([]);
 
   return (
     <Menu>
@@ -381,19 +449,21 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
                     </Flex>
                   </>
                 ) : (
-                  ActionListFailureResults(
+                  ActionListDataTable(
                     FailuresData,
-                    selections,
-                    setSelections
+                    Selections,
+                    setSelections,
+                    ACTION_LIST_FAIL_COLUMNS,
+                    "Failures"
                   )
                 )}
               </>
             }
             primaryButton={
               <Button
-                disabled={selections.length === 0}
+                disabled={Selections.length === 0}
                 onClick={() => {
-                  GlobalResendRecentFailures(selections);
+                  GlobalResendRecentFailures(Selections);
                   ToggleRRF();
                   setFailuresData([]);
                   setSelections([]);
@@ -418,6 +488,176 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
       </Dialog>
       {/* Validate Recent Schedule Jobs Dialog End (STEP 2) */}
 
+      {/* Select By Query ID Dialog Start (STEP 1) */}
+      <Dialog
+        isOpen={isToggledSBQ}
+        onClose={() => {
+          ToggleSBQ();
+          setQuerySlug("");
+        }}
+      >
+        <DialogContent>
+          <ConfirmLayout
+            title="Select Schedule Plans By Query ID"
+            message={
+              <>
+                <Paragraph mb="small">
+                  Enter a query slug (qid) from the URL of a{" "}
+                  <Link onClick={() => openExploreWindow()}>
+                    Scheduled Plan
+                  </Link>
+                  &nbsp;System Activity explore. The query must have a
+                  "scheduled_plan.id" column which will be used to select
+                  scheduled plans.
+                </Paragraph>
+
+                <Paragraph mb="small">
+                  In the next step, you will have the option to further filter
+                  the results and choose one of the following functions to run
+                  of the selections:
+                </Paragraph>
+
+                <List type="bullet">
+                  <ListItem>Enable</ListItem>
+                  <ListItem>Disable</ListItem>
+                  <ListItem>Delete</ListItem>
+                  <ListItem>Run Once</ListItem>
+                </List>
+
+                <InputText
+                  onChange={(e: any) => setQuerySlug(e.target.value)}
+                />
+              </>
+            }
+            primaryButton={
+              <Button
+                disabled={QuerySlug === ""}
+                onClick={async () => {
+                  setRunningQuery(true);
+                  ToggleSBQ();
+                  ToggleSBQR();
+                  await GlobalSelectByQuery(QuerySlug).then((results: any) => {
+                    setScheduledPlansData(results);
+                    setRunningQuery(false);
+                    setQuerySlug("");
+                  });
+                }}
+              >
+                Run
+              </Button>
+            }
+            secondaryButton={
+              <ButtonTransparent
+                onClick={() => {
+                  ToggleSBQ();
+                  setQuerySlug("");
+                }}
+              >
+                Cancel
+              </ButtonTransparent>
+            }
+          />
+        </DialogContent>
+      </Dialog>
+      {/* Select By Query ID Dialog End (STEP 1) */}
+
+      {/* Select By Query ID Dialog Start (STEP 2) */}
+      <Dialog
+        isOpen={isToggledSBQR}
+        onClose={() => {
+          ToggleSBQR();
+          setScheduledPlansData([]);
+          setSelections([]);
+          setBulkAction("");
+        }}
+        maxWidth="90%"
+      >
+        <DialogContent>
+          <ConfirmLayout
+            title="Select Schedule Plans By Query ID"
+            message={
+              <>
+                {runningQuery ? (
+                  <>
+                    <Paragraph mb="small">
+                      Gathering scheduled plans (this may take some time to
+                      run):
+                    </Paragraph>
+                    <Flex justifyContent="center">
+                      <FlexItem alignSelf="center">
+                        <Spinner color="black" />
+                      </FlexItem>
+                    </Flex>
+                  </>
+                ) : (
+                  [
+                    ActionListDataTable(
+                      ScheduledPlansData,
+                      Selections,
+                      setSelections,
+                      ACTION_LIST_SELECT_BY_QUERY_COLUMNS,
+                      "SelectByQuery"
+                    ),
+                    <Box key="box" m="small" />,
+                    <RadioGroup
+                      key="radio_group"
+                      inline
+                      value={BulkAction}
+                      onChange={setBulkAction}
+                      options={[
+                        {
+                          value: "enable",
+                          label: "Enable",
+                        },
+                        {
+                          value: "disable",
+                          label: "Disable",
+                        },
+                        {
+                          value: "delete",
+                          label: "Delete",
+                        },
+                        {
+                          value: "run once",
+                          label: "Run Once",
+                        },
+                      ]}
+                    />,
+                  ]
+                )}
+              </>
+            }
+            primaryButton={
+              <Button
+                disabled={Selections.length === 0 || BulkAction === ""}
+                onClick={() => {
+                  GlobalSelectByQueryRun(Selections, BulkAction);
+                  ToggleSBQR();
+                  setScheduledPlansData([]);
+                  setSelections([]);
+                  setBulkAction("");
+                }}
+              >
+                Execute
+              </Button>
+            }
+            secondaryButton={
+              <ButtonTransparent
+                onClick={() => {
+                  ToggleSBQR();
+                  setScheduledPlansData([]);
+                  setSelections([]);
+                  setBulkAction("");
+                }}
+              >
+                Cancel
+              </ButtonTransparent>
+            }
+          />
+        </DialogContent>
+      </Dialog>
+      {/* Select By Query ID Dialog End (STEP 2) */}
+
       <MenuList>
         <MenuItem icon="Beaker" onClick={ToggleGFR}>
           Find & Replace Emails
@@ -427,6 +667,9 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
         </MenuItem>
         <MenuItem icon="Beaker" onClick={ToggleVRS}>
           Resend Failed Schedules
+        </MenuItem>
+        <MenuItem icon="Beaker" onClick={ToggleSBQ}>
+          Select By Query
         </MenuItem>
       </MenuList>
     </Menu>

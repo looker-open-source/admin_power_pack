@@ -104,7 +104,7 @@ export interface SchedulesTableQueryProps {
   testRow(rowIndex: number[], rows: any[]): void;
   disableRow(rowIndex: number[], rows: any[]): void;
   enableRow(rowIndex: number[], rows: any[]): void;
-  openExploreWindow(scheduledPlanID: number): void;
+  openExploreDrillWindow(scheduledPlanID: number): void;
   openDashboardWindow(rowIndex: number): void;
 }
 
@@ -116,7 +116,7 @@ export interface EditableCellProps {
   data: any;
   datagroups: SelectOption[];
   users: SelectOption[];
-  openExploreWindow(scheduledPlanID: number): void;
+  openExploreDrillWindow(scheduledPlanID: number): void;
   openDashboardWindow(rowIndex: number): void;
   syncData(rowIndex: number, columnId: string, value: string): any;
 }
@@ -135,10 +135,13 @@ export interface GeneratePlansProps {
 // for Global Action functions
 export interface GlobalActionQueryProps {
   users: SelectOption[];
+  openExploreWindow(): void;
   GlobalReassignOwnership(UserMapFrom: string[], UserMapTo: string[]): void;
   GlobalFindReplaceEmail(EmailMap: string): void;
   GlobalValidateRecentSchedules(timeframe: string): any;
   GlobalResendRecentFailures(failureData: any): void;
+  GlobalSelectByQuery(querySlug: string): any;
+  GlobalSelectByQueryRun(scheduledPlansData: any, action: string): void;
 }
 
 //////////////// Order for table Headings ////////////////
@@ -261,6 +264,66 @@ export const ACTION_LIST_FAIL_COLUMNS = [
     // type: "string",
     title: "Destination Addresses",
     widthPercent: 18,
+  },
+];
+
+//////////////// ACTION LIST SELECT BY QUERY COLUMNS  ////////////////
+
+export const ACTION_LIST_SELECT_BY_QUERY_COLUMNS = [
+  {
+    id: "scheduled_plan.id",
+    // type: 'number',
+    primaryKey: true,
+    title: "Plan ID",
+    widthPercent: 5,
+  },
+  {
+    id: "scheduled_plan.name",
+    // type: 'string',
+    title: "Name",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_plan.enabled",
+    // type: 'string',
+    title: "Enabled",
+    widthPercent: 6,
+  },
+  {
+    id: "scheduled_plan.run_once",
+    // type: 'string',
+    title: "Run Once",
+    widthPercent: 7,
+  },
+  {
+    id: "scheduled_times",
+    // type: 'string',
+    title: "Scheduled Times",
+    widthPercent: 20,
+  },
+  {
+    id: "user.name",
+    // type: 'string',
+    title: "Owner",
+    widthPercent: 10,
+  },
+  {
+    id: "summary",
+    // type: 'string',
+    title: "Summary",
+    widthPercent: 12,
+  },
+  {
+    id: "scheduled_plan.content_type_id",
+    // type: 'string',
+    title: "Content Type ID",
+    widthPercent: 10,
+  },
+  {
+    id: "scheduled_plan.destination_addresses",
+    // type: "string",
+    title: "Destination Addresses",
+    widthPercent: 20,
   },
 ];
 

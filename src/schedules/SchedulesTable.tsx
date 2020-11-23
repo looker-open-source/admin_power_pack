@@ -111,7 +111,7 @@ const EditableCell = (ec: EditableCellProps) => {
     data,
     datagroups,
     users,
-    openExploreWindow,
+    openExploreDrillWindow,
     openDashboardWindow,
     syncData,
   } = ec;
@@ -327,7 +327,7 @@ const EditableCell = (ec: EditableCellProps) => {
                 <Button
                   // color={}
                   onClick={() => {
-                    openExploreWindow(value.id);
+                    openExploreDrillWindow(value.id);
                   }}
                   title="Scheduled Plan History in System Activity"
                 >
@@ -458,7 +458,7 @@ const ReactTable = ({
   testRow,
   disableRow,
   enableRow,
-  openExploreWindow,
+  openExploreDrillWindow,
   openDashboardWindow,
 }: any): JSX.Element => {
   const {
@@ -482,7 +482,7 @@ const ReactTable = ({
       users,
       syncData,
       defaultColumn,
-      openExploreWindow,
+      openExploreDrillWindow,
       openDashboardWindow,
     },
     useRowSelect,
@@ -888,7 +888,7 @@ export const SchedulesTable = (qp: SchedulesTableQueryProps): JSX.Element => {
     testRow,
     disableRow,
     enableRow,
-    openExploreWindow,
+    openExploreDrillWindow,
     openDashboardWindow,
   } = qp;
 
@@ -910,7 +910,7 @@ export const SchedulesTable = (qp: SchedulesTableQueryProps): JSX.Element => {
           testRow={testRow}
           disableRow={disableRow}
           enableRow={enableRow}
-          openExploreWindow={openExploreWindow}
+          openExploreDrillWindow={openExploreDrillWindow}
           openDashboardWindow={openDashboardWindow}
         />
       )}
