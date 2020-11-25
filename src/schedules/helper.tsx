@@ -23,7 +23,15 @@
  */
 
 import cronstrue from "cronstrue";
+import styled from "styled-components";
+import { TextArea } from "@looker/components";
 import { SelectOption, GroupSelectOption } from "./constants";
+
+export const MonospaceTextArea = styled(TextArea)`
+  textarea {
+    font-family: monospace;
+  }
+`;
 
 export const translateCron = (cron: string): string => {
   // console.log(cron);

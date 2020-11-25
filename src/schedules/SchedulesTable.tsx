@@ -460,6 +460,7 @@ const ReactTable = ({
   enableRow,
   openExploreDrillWindow,
   openDashboardWindow,
+  toggleLog,
 }: any): JSX.Element => {
   const {
     getTableProps,
@@ -551,6 +552,7 @@ const ReactTable = ({
                 const rows = zipRows(selectedFlatRows, selectedRowIds);
                 deleteRow(rows);
                 close();
+                toggleLog();
               }}
             >
               {(open) => (
@@ -582,6 +584,7 @@ const ReactTable = ({
                 const rows = selectedFlatRows.map((d) => d.original);
                 updateRow(rowIndex, rows);
                 close();
+                toggleLog();
               }}
             >
               {(open) => (
@@ -612,6 +615,7 @@ const ReactTable = ({
                 const rows = selectedFlatRows.map((d) => d.original);
                 testRow(rowIndex, rows);
                 close();
+                toggleLog();
               }}
             >
               {(open) => (
@@ -642,6 +646,7 @@ const ReactTable = ({
                 const rows = selectedFlatRows.map((d) => d.original);
                 disableRow(rowIndex, rows);
                 close();
+                toggleLog();
               }}
             >
               {(open) => (
@@ -672,6 +677,7 @@ const ReactTable = ({
                 const rows = selectedFlatRows.map((d) => d.original);
                 enableRow(rowIndex, rows);
                 close();
+                toggleLog();
               }}
             >
               {(open) => (
@@ -890,6 +896,7 @@ export const SchedulesTable = (qp: SchedulesTableQueryProps): JSX.Element => {
     enableRow,
     openExploreDrillWindow,
     openDashboardWindow,
+    toggleLog,
   } = qp;
 
   return (
@@ -912,6 +919,7 @@ export const SchedulesTable = (qp: SchedulesTableQueryProps): JSX.Element => {
           enableRow={enableRow}
           openExploreDrillWindow={openExploreDrillWindow}
           openDashboardWindow={openDashboardWindow}
+          toggleLog={toggleLog}
         />
       )}
     </Box>

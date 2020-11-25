@@ -23,7 +23,6 @@
  */
 
 import React from "react";
-import styled from "styled-components";
 import {
   ActionList,
   ActionListItem,
@@ -51,19 +50,13 @@ import {
   Space,
   Spinner,
   Text,
-  TextArea,
 } from "@looker/components";
 import {
   ACTION_LIST_FAIL_COLUMNS,
   ACTION_LIST_SELECT_BY_QUERY_COLUMNS,
   GlobalActionQueryProps,
 } from "./constants";
-
-const MonospaceTextArea = styled(TextArea)`
-  textarea {
-    font-family: monospace;
-  }
-`;
+import { MonospaceTextArea } from "./helper";
 
 // used for GlobalValidateRecentSchedules and GlobalSelectByQueryRun action list tables
 const ActionListDataTable = (
@@ -182,6 +175,7 @@ const ActionListDataTable = (
 export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
   const {
     users,
+    toggleLog,
     openExploreWindow,
     GlobalReassignOwnership,
     GlobalFindReplaceEmail,
@@ -272,6 +266,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
                   ToggleGRO();
                   setUserMapFrom([]);
                   setUserMapTo([]);
+                  toggleLog();
                 }}
               >
                 Run
@@ -336,6 +331,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
                   GlobalFindReplaceEmail(EmailMap);
                   ToggleGFR();
                   setEmailMap("");
+                  toggleLog();
                 }}
               >
                 Run
@@ -467,6 +463,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
                   ToggleRRF();
                   setFailuresData([]);
                   setSelections([]);
+                  toggleLog();
                 }}
               >
                 Resend
@@ -636,6 +633,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
                   setScheduledPlansData([]);
                   setSelections([]);
                   setBulkAction("");
+                  toggleLog();
                 }}
               >
                 Execute

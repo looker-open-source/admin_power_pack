@@ -44,7 +44,7 @@ import { GeneratePlansProps, SelectOption } from "./constants";
 
 // drawer to generate plans with results of query
 export const GeneratePlans = (prp: GeneratePlansProps): JSX.Element => {
-  const { users, handleGeneratePlansSubmit } = prp;
+  const { users, toggleLog, handleGeneratePlansSubmit } = prp;
 
   const [querySlug, set_querySlug] = React.useState("");
   const [ownerID, set_ownerID] = React.useState("");
@@ -142,6 +142,7 @@ export const GeneratePlans = (prp: GeneratePlansProps): JSX.Element => {
                     );
                     resetState();
                     closeModal();
+                    toggleLog();
                   }}
                 >
                   Submit

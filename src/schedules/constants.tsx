@@ -50,6 +50,8 @@ export interface ExtensionState {
   checkboxStatus: any;
   errorMessage?: string;
   notificationMessage?: string;
+  toggleLog: boolean; // log output dialog
+  logMessages: string[]; // log output array of strings
 }
 
 // need this to supply null values (--strictNullChecks)
@@ -70,11 +72,7 @@ export interface IScheduledPlanTable extends IScheduledPlan {
   include_links?: any;
   [key: string]: any; // needed to dynamically display filters
   scheduled_plan_destination: IScheduledPlanDestination[]; // overriding to make this required
-  user: IUserPublicExtended; // overriding to make this required
-}
-
-export interface IUserPublicExtended extends IUserPublic {
-  id: number; // overriding to make this required
+  user: IUserPublic;
 }
 
 // for Select Dropdown, generic list - no options[]
@@ -106,6 +104,7 @@ export interface SchedulesTableQueryProps {
   enableRow(rowIndex: number[], rows: any[]): void;
   openExploreDrillWindow(scheduledPlanID: number): void;
   openDashboardWindow(rowIndex: number): void;
+  toggleLog(): void;
 }
 
 // Editable Cell base for all cells in table
@@ -124,6 +123,7 @@ export interface EditableCellProps {
 // for handleGenPlansSubmit function
 export interface GeneratePlansProps {
   users: SelectOption[];
+  toggleLog(): void;
   handleGeneratePlansSubmit(
     querySlug: string,
     ownerID: string,
@@ -135,6 +135,7 @@ export interface GeneratePlansProps {
 // for Global Action functions
 export interface GlobalActionQueryProps {
   users: SelectOption[];
+  toggleLog(): void;
   openExploreWindow(): void;
   GlobalReassignOwnership(UserMapFrom: string[], UserMapTo: string[]): void;
   GlobalFindReplaceEmail(EmailMap: string): void;

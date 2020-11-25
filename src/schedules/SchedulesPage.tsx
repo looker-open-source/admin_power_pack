@@ -24,13 +24,17 @@
 
 import {
   Box,
+  Button,
   ButtonOutline,
   Confirm,
+  ConfirmLayout,
+  Dialog,
   Flex,
   FlexItem,
   Heading,
   IconButton,
   MessageBar,
+  Paragraph,
   Select,
   Spinner,
   Text,
@@ -53,7 +57,12 @@ import {
   IWriteScheduledPlanNulls,
   IScheduledPlanTable,
 } from "./constants"; // interfaces
-import { validationTypeCron, translateCron, newGroupOptions } from "./helper";
+import {
+  validationTypeCron,
+  translateCron,
+  newGroupOptions,
+  MonospaceTextArea,
+} from "./helper";
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
 import { GeneratePlans } from "./GeneratePlans";
@@ -80,6 +89,8 @@ export class SchedulesPage extends React.Component<
       runningUpdate: false,
       hiddenColumns: [],
       checkboxStatus: undefined,
+      toggleLog: false,
+      logMessages: [],
     };
   }
 
@@ -216,6 +227,39 @@ export class SchedulesPage extends React.Component<
     return usersSelect;
   };
 
+  /////////////////////////////////////////////////////
+
+  ////////////////////// LOGGER ///////////////////////
+
+  toggleLog = () => {
+    this.setState({ toggleLog: !this.state.toggleLog });
+  };
+
+  // toggleLog = async () => {
+  //   return new Promise((resolve) => {
+  //     this.setState({ toggleLog: !this.state.toggleLog }, resolve);
+  //   });
+  // };
+
+  clearLog = () => {
+    this.setState({ logMessages: [] });
+  };
+
+  // use await if logging right after setting state
+  log = async (entry: string) => {
+    return new Promise((resolve) => {
+      this.setState(
+        { logMessages: this.state.logMessages.concat(entry) },
+        resolve
+      );
+    });
+  };
+
+  logWidth = () => {
+    const lineLengths = this.state.logMessages.map((line) => line.length);
+    return Math.max(...lineLengths);
+  };
+
   ///////////////////////////////////////////////
 
   //////////////// GENERATE PLANS ////////////////
@@ -229,18 +273,20 @@ export class SchedulesPage extends React.Component<
   ) => {
     this.setState({
       runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
     });
 
     try {
-      if (DEBUG) {
-        console.log("Params supplied from Generate Plans form:");
-        console.table({
+      await this.log("Params supplied from Generate Plans form:");
+      await this.log(
+        JSON.stringify({
           querySlug: querySlug,
           ownerID: ownerID,
           scheduleName: scheduleName,
           scheduleCron: scheduleCron,
-        });
-      }
+        })
+      );
 
       const query = await this.context.core40SDK.ok(
         this.context.core40SDK.query_for_slug(querySlug)
@@ -265,9 +311,10 @@ export class SchedulesPage extends React.Component<
       if (DEBUG) {
         console.log(`Query ${querySlug} results:`);
         console.table(results.data);
-        console.log(`Field Mapper based on query: ${querySlug}`);
-        console.table(fieldMapper);
       }
+
+      await this.log(`Field Mapper based on query: ${querySlug}`);
+      await this.log(JSON.stringify(fieldMapper));
 
       const newArray = cloneDeep(this.state.schedulesArray);
 
@@ -290,20 +337,29 @@ export class SchedulesPage extends React.Component<
           newRow.recipients = [results.data[i][fieldMapper["Email"]].value];
         }
 
+        const filtersAdded = Object.fromEntries(
+          Object.entries(newRow).filter(([k, v]) => !KEY_FIELDS.includes(k))
+        );
+
+        await this.log(
+          `Plan generated to destination ${
+            newRow.recipients
+          } with filters: ${JSON.stringify(filtersAdded)}`
+        );
+
         newArray.push(newRow);
       }
 
+      await this.log("Action Complete");
       this.setState({
         schedulesArray: newArray,
         runningUpdate: false,
-        errorMessage: undefined,
         notificationMessage: "Plans successfully generated.",
       });
     } catch (error) {
       this.setState({
         runningUpdate: false,
         errorMessage: `Error generating plans: ${error}`,
-        notificationMessage: undefined,
       });
     }
 
@@ -340,29 +396,42 @@ export class SchedulesPage extends React.Component<
           return s;
         });
 
-      if (DEBUG) {
-        console.log(
-          `Schedules to update from users: ${UserMapFromNumber} to user: ${UserMapTo}`
-        );
-        console.log(schedulesToUpdate);
+      const scheduleIds = String(schedulesToUpdate.map((s) => s.id));
+      await this.log(
+        `Schedules to update from users: ${UserMapFromNumber} to user: ${UserMapTo}`
+      );
+      await this.log(`Schedule Plans to update: ${scheduleIds}`);
+
+      if (scheduleIds.length === 0) {
+        this.setState({
+          runningUpdate: false,
+          notificationMessage: `No update. User ${UserMapFrom} has no schedules to reassign.`,
+        });
+        await this.log("Action Complete");
+        return;
       }
 
       await Promise.all(
         schedulesToUpdate.map(async (s: IScheduledPlan) => {
-          const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.update_scheduled_plan(s.id!, s)
-          );
-          if (DEBUG) {
-            console.log(`Update schedule response for: ${response.id}`);
-            console.log(JSON.stringify(response, null, 2)); // todo return when 422
+          try {
+            const response = await this.context.core40SDK.ok(
+              this.context.core40SDK.update_scheduled_plan(s.id!, s)
+            );
+            await this.log(
+              `Schedule reassigned to user ${UserMapTo} for schedule plan: ${response.id}`
+            );
+          } catch (error) {
+            // generally this is because run_as_recipiant is enabled and email is not a Looker account, will return 422
+            await this.log(
+              `ERROR: schedule ${s.id}: Unable to reassign to user ${UserMapTo}. Message: '${error.message}'`
+            );
           }
         })
       ).then((values) => {
-        const scheduleIds = schedulesToUpdate.map((s: IScheduledPlan) => s.id);
-
+        this.log("Action Complete");
         this.setState({
           runningUpdate: false,
-          notificationMessage: `Schedules ${scheduleIds} reassigned to user ${UserMapTo}`,
+          notificationMessage: `Schedules reassigned to user ${UserMapTo}`,
         });
       });
     } catch (error) {
@@ -434,28 +503,36 @@ export class SchedulesPage extends React.Component<
         return;
       }
 
-      if (DEBUG) {
-        console.log("Schedules to Update:");
-        console.log(emailSchedules);
-      }
+      const scheduleIds = emailSchedules.map((s: IScheduledPlan) => s.id);
+      await this.log(
+        `Updating destinations for scheduled plans: ${scheduleIds}`
+      );
 
-      // TODO if run_as_recipiant is enabled and email is not a Looker account, will return 422
       await Promise.all(
         emailSchedules.map(async (s: IScheduledPlan) => {
-          const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.update_scheduled_plan(s.id!, s)
+          const newDestinations = String(
+            s.scheduled_plan_destination!.map((a: any) => a.address)
           );
-          if (DEBUG) {
-            console.log(`Update schedule response for: ${response.id}`);
-            console.log(JSON.stringify(response, null, 2)); // todo return when 422
+
+          try {
+            const response = await this.context.core40SDK.ok(
+              this.context.core40SDK.update_scheduled_plan(s.id!, s)
+            );
+            await this.log(
+              `Schedule destinations updated to [${newDestinations}] for schedule plan: ${response.id}`
+            );
+          } catch (error) {
+            // generally this is because run_as_recipiant is enabled and email is not a Looker account, will return 422
+            await this.log(
+              `ERROR: schedule ${s.id}: Unable to update to [${newDestinations}]. Message: '${error.message}'`
+            );
           }
         })
       ).then((values) => {
-        const scheduleIds = emailSchedules.map((s: IScheduledPlan) => s.id);
-
+        this.log("Action Complete");
         this.setState({
           runningUpdate: false,
-          notificationMessage: `Emails successfully updated for schedules: ${scheduleIds}`,
+          notificationMessage: `Update email destinations complete`,
         });
       });
     } catch (error) {
@@ -547,42 +624,32 @@ export class SchedulesPage extends React.Component<
     });
 
     try {
+      await this.log(
+        `Resending failed jobs for scheduled plans: ${selections}`
+      );
+
       const schedulePlanIds = selections.map((s: string) => Number(s));
-
-      const allSchedules = await this.context.core40SDK.ok(
-        this.context.core40SDK.all_scheduled_plans({
-          all_users: true,
-        })
-      );
-
-      const schedulesToSend = allSchedules.filter((s: IScheduledPlan) =>
-        schedulePlanIds.includes(s.id!)
-      );
-
-      if (DEBUG) {
-        console.log(
-          `Resending failed jobs for scheduled plans: ${schedulePlanIds}`
-        );
-        console.log(schedulesToSend);
-      }
 
       // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
       const delay = (i: number) => new Promise((r) => setTimeout(r, i));
 
-      for (let i = 0; i < schedulesToSend.length; i++) {
-        await delay(200);
-        const response = await this.context.core40SDK.ok(
-          this.context.core40SDK.scheduled_plan_run_once(schedulesToSend[i])
-        );
-
-        if (DEBUG) {
-          console.log(
-            `Run schedule once response for schedule ID ${schedulesToSend[i].id}`
+      for (let i = 0; i < schedulePlanIds.length; i++) {
+        try {
+          await delay(200);
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.scheduled_plan_run_once_by_id(
+              schedulePlanIds[i]
+            )
           );
-          console.log(JSON.stringify(response, null, 2));
+          await this.log(`Resent schedule for schedule plan: ${response.id}`);
+        } catch (error) {
+          await this.log(
+            `ERROR: schedule ${schedulePlanIds[i]}: Unable to resend. Message: '${error.message}'`
+          );
         }
       }
 
+      await this.log("Action Complete");
       this.setState({
         runningUpdate: false,
         notificationMessage: "Schedules have been resent",
@@ -597,11 +664,6 @@ export class SchedulesPage extends React.Component<
 
   // Get scheduled plans by System Activity Query ID
   GlobalSelectByQuery = async (querySlug: string) => {
-    this.setState({
-      errorMessage: undefined,
-      notificationMessage: undefined,
-    });
-
     let saResults: any;
     try {
       const saQuery = await this.context.core40SDK.ok(
@@ -627,7 +689,7 @@ export class SchedulesPage extends React.Component<
 
     if (!/\d/.test(planIds)) {
       this.setState({
-        errorMessage: `Error retrieving schedule plan IDs from query. Plan IDs: ${planIds}`,
+        errorMessage: `Error retrieving schedule plan IDs from query. Field scheduled_plan.id is not in query`,
       });
       return [];
     }
@@ -688,8 +750,15 @@ export class SchedulesPage extends React.Component<
     scheduledPlansData: string[],
     action: string
   ) => {
-    console.table(scheduledPlansData);
-    console.log(action);
+    this.setState({
+      runningUpdate: true,
+      errorMessage: undefined,
+      notificationMessage: undefined,
+    });
+
+    await this.log(
+      `Running action '${action}' for scheduled plans: ${scheduledPlansData}`
+    );
 
     switch (action) {
       case "enable":
@@ -703,11 +772,19 @@ export class SchedulesPage extends React.Component<
 
           action === "enable" ? (plan.enabled = true) : (plan.enabled = false);
 
-          const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.update_scheduled_plan(planID, plan)
-          );
-          if (DEBUG) {
-            console.log(`${action}d schedule plan: ${planID}`);
+          try {
+            const response = await this.context.core40SDK.ok(
+              this.context.core40SDK.update_scheduled_plan(planID, plan)
+            );
+            await this.log(
+              `${action[0].toUpperCase()}${action.slice(1)}d schedule plan: ${
+                response.id
+              }`
+            );
+          } catch (error) {
+            await this.log(
+              `ERROR: schedule ${planID}: Unable to ${action}. Message: '${error.message}'`
+            );
           }
         }
         break;
@@ -720,11 +797,15 @@ export class SchedulesPage extends React.Component<
 
           await delay(200);
 
-          const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.scheduled_plan_run_once_by_id(planID)
-          );
-          if (DEBUG) {
-            console.log(`schedule plan ${action}: ${planID}`);
+          try {
+            const response = await this.context.core40SDK.ok(
+              this.context.core40SDK.scheduled_plan_run_once_by_id(planID)
+            );
+            await this.log(`Resent schedule for schedule plan: ${response.id}`);
+          } catch (error) {
+            await this.log(
+              `ERROR: schedule ${planID}: Unable to resend. Message: '${error.message}'`
+            );
           }
         }
         break;
@@ -733,16 +814,25 @@ export class SchedulesPage extends React.Component<
         for (let i = 0; i < scheduledPlansData.length; i++) {
           const planID = Number(scheduledPlansData[i]);
 
-          const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.delete_scheduled_plan(planID)
-          );
-          if (DEBUG) {
-            console.log(`${action}d schedule plan: ${planID}`);
+          try {
+            const response = await this.context.core40SDK.ok(
+              this.context.core40SDK.delete_scheduled_plan(planID)
+            );
+            await this.log(`Deleted schedule plan: ${planID}`);
+          } catch (error) {
+            await this.log(
+              `ERROR: schedule ${planID}: Unable to delete. Message: '${error.message}'`
+            );
           }
         }
         break;
     }
 
+    await this.log("Action Complete");
+    this.setState({
+      runningUpdate: false,
+      notificationMessage: `Select by query action ${action} complete`,
+    });
     return;
   };
 
@@ -865,7 +955,7 @@ export class SchedulesPage extends React.Component<
     formattedRow.timezone = s.timezone;
     formattedRow.include_links = s.include_links;
 
-    formattedRow.owner_id = s.user.id.toString(); // change from number to string for better compatability with Select
+    formattedRow.owner_id = s.user.id!.toString(); // change from number to string for better compatability with Select
     formattedRow.crontab = s.crontab === null ? "" : s.crontab;
     formattedRow.datagroup = s.datagroup === null ? "" : s.datagroup;
     formattedRow.run_as_recipient =
@@ -1125,65 +1215,69 @@ export class SchedulesPage extends React.Component<
 
   // create new schedule plan
   createSchedule = async (newSchedule: IScheduledPlanTable) => {
-    const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-      newSchedule
-    );
-    const filtersString = this.stringifyFilters(newSchedule);
+    try {
+      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
+        newSchedule
+      );
+      const filtersString = this.stringifyFilters(newSchedule);
 
-    const writeScheduledPlan = this.writeScheduledPlanObject(
-      newSchedule,
-      scheduledPlanDestinations,
-      filtersString
-    );
+      const writeScheduledPlan = this.writeScheduledPlanObject(
+        newSchedule,
+        scheduledPlanDestinations,
+        filtersString
+      );
 
-    const response = await this.context.core40SDK.ok(
-      this.context.core40SDK.create_scheduled_plan(writeScheduledPlan)
-    );
+      const response = await this.context.core40SDK.ok(
+        this.context.core40SDK.create_scheduled_plan(writeScheduledPlan)
+      );
+      await this.log(
+        `Schedule ${newSchedule.name} created with schedule plan ID: ${response.id}`
+      );
 
-    if (DEBUG) {
-      console.log("Create new schedule response:");
-      console.log(JSON.stringify(response, null, 2)); // todo return when 422
+      return response;
+    } catch (error) {
+      await this.log(
+        `ERROR: schedule ${newSchedule.name}: Unable to create. Message: '${error.message}'`
+      );
     }
-
-    return response;
   };
 
   // update schedule with new data in table
   updateSchedule = async (currentSchedule: any, storedSchedule: any) => {
     if (isEqual(currentSchedule, storedSchedule)) {
-      if (DEBUG) {
-        console.log(`No update for schedule id: ${currentSchedule.details.id}`);
-      }
-
+      await this.log(
+        `No update for schedule id: ${currentSchedule.details.id}`
+      );
       return;
     }
 
-    const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-      currentSchedule
-    );
-    const filtersString = this.stringifyFilters(currentSchedule);
-
-    const updateScheduledPlan = this.writeScheduledPlanObject(
-      currentSchedule,
-      scheduledPlanDestinations,
-      filtersString
-    );
-
-    const response = await this.context.core40SDK.ok(
-      this.context.core40SDK.update_scheduled_plan(
-        currentSchedule.details.id,
-        updateScheduledPlan
-      )
-    );
-
-    if (DEBUG) {
-      console.log(
-        `Update schedule response for: ${currentSchedule.details.id}`
+    try {
+      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
+        currentSchedule
       );
-      console.log(JSON.stringify(response, null, 2)); // todo return when 422
-    }
+      const filtersString = this.stringifyFilters(currentSchedule);
 
-    return response;
+      const updateScheduledPlan = this.writeScheduledPlanObject(
+        currentSchedule,
+        scheduledPlanDestinations,
+        filtersString
+      );
+
+      const response = await this.context.core40SDK.ok(
+        this.context.core40SDK.update_scheduled_plan(
+          currentSchedule.details.id,
+          updateScheduledPlan
+        )
+      );
+      await this.log(
+        `Schedule ${currentSchedule.name} updated. Schedule plan ID: ${response.id}`
+      );
+      return response;
+    } catch (error) {
+      await this.log(
+        `ERROR: schedule ${currentSchedule.name}: Unable to update. Message: '${error.message}'`
+      );
+    }
   };
 
   /////////////////////////////////////////////////////////////////
@@ -1279,35 +1373,44 @@ export class SchedulesPage extends React.Component<
   // delete row from table and scheduled_plan (if it exists)
   // rows coming in descending order to slice rows off table one at a time
   deleteRow = async (rows: { rowIndex: number; scheduleId: string }[]) => {
-    if (DEBUG) {
-      console.log("Deleting Rows:");
-      console.table(rows);
-    }
-
     this.setState({
       runningUpdate: true,
       errorMessage: undefined,
       notificationMessage: undefined,
     });
 
-    const newArray = cloneDeep(this.state.schedulesArray);
+    await this.log(`Deleting rows from table`);
 
+    const newArray = cloneDeep(this.state.schedulesArray);
     for (let i = 0; i < rows.length; i++) {
       const rowIndex = rows[i].rowIndex;
       const scheduleId = rows[i].scheduleId;
       if (scheduleId !== undefined) {
-        const response = await this.context.core40SDK.ok(
-          this.context.core40SDK.delete_scheduled_plan(parseInt(scheduleId))
-        );
+        try {
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.delete_scheduled_plan(Number(scheduleId))
+          );
 
-        if (DEBUG) {
-          console.log(`Delete schedule response for: ${scheduleId}`);
-          console.log(JSON.stringify(response, null, 2));
+          await this.log(`Deleted schedule plan: ${scheduleId}`);
+        } catch (error) {
+          await this.log(
+            `ERROR: schedule ${scheduleId}: Unable to delete. Message: '${error.message}'`
+          );
         }
+      } else {
+        await this.log(
+          `Deleted row (no schedule plan): ${Number(rowIndex) + 1}`
+        );
       }
 
       newArray.splice(rowIndex, 1);
     }
+
+    await this.log("Action Complete");
+    this.setState({
+      runningUpdate: false,
+      notificationMessage: "Row(s) Deleted",
+    });
 
     // if no more rows, recreate table
     if (newArray.length === 0) {
@@ -1323,9 +1426,6 @@ export class SchedulesPage extends React.Component<
       this.setState({
         schedulesArray: scheduleHeader,
         schedulesArrayBackup: scheduleHeader,
-        runningUpdate: false,
-        errorMessage: undefined,
-        notificationMessage: "Row(s) Deleted",
       });
       return;
     }
@@ -1333,19 +1433,11 @@ export class SchedulesPage extends React.Component<
     this.setState({
       schedulesArray: newArray,
       schedulesArrayBackup: newArray,
-      runningUpdate: false,
-      errorMessage: undefined,
-      notificationMessage: "Row(s) Deleted",
     });
   };
 
   // create/update schedule - updates scheduled_plan or creates new if it doesn't exist
   updateRow = async (rowIndex: number[], schedulesToAdd: any[]) => {
-    if (DEBUG) {
-      console.log("Creating / Updating rows:");
-      console.table(schedulesToAdd);
-    }
-
     this.setState({
       runningUpdate: true,
       errorMessage: undefined,
@@ -1354,18 +1446,10 @@ export class SchedulesPage extends React.Component<
 
     const updateTable = cloneDeep(this.state.schedulesArray);
 
-    if (!this.state.currentDash) {
-      this.setState({
-        runningUpdate: false,
-        notificationMessage: "Dashboard not found",
-      });
-      return;
-    }
-
     try {
       const schedulesToCheck = await this.getScheduledPlans(
         this.state.selectedDashId,
-        this.state.currentDash
+        this.state.currentDash!
       );
 
       // ensure all key fields are filled out
@@ -1376,18 +1460,20 @@ export class SchedulesPage extends React.Component<
         )
       ) {
         this.setState({
+          toggleLog: false,
           errorMessage:
             "Required fields missing. Ensure all fields have values: " +
             REQUIRED_FIELDS.join(", ") +
             ", " +
             REQUIRED_TRIGGER_FIELDS.join(" or "),
-          notificationMessage: undefined,
           runningUpdate: false,
         });
         return;
       }
 
       // todo validate cron, owner_id, recipients
+
+      await this.log(`Creating and updating rows`);
 
       // creates new scheduled_plan if it doesn't exist, or, update scheduled_plan if it's been modified
       for (let i = 0; i < schedulesToAdd.length; i++) {
@@ -1410,39 +1496,34 @@ export class SchedulesPage extends React.Component<
         const response = await this.updateSchedule(
           schedulesToAdd[i],
           storedSchedule
-        );
-
-        if (response !== undefined) {
-          const responseJson: IScheduledPlanTable = JSON.parse(
-            JSON.stringify(response)
-          );
-          updateTable[rowIndex[i]] = this.assignRowValues(responseJson);
-        }
+        ).then((response) => {
+          if (response !== undefined) {
+            const responseJson: IScheduledPlanTable = JSON.parse(
+              JSON.stringify(response)
+            );
+            updateTable[rowIndex[i]] = this.assignRowValues(responseJson);
+          }
+        });
       }
 
+      await this.log("Action Complete");
       this.setState({
         schedulesArray: updateTable,
         schedulesArrayBackup: updateTable,
         runningUpdate: false,
-        errorMessage: undefined,
-        notificationMessage: "Row(s) Updated",
+        notificationMessage: "Row(s) Created and Updated",
       });
     } catch (error) {
+      await this.log("FATAL: unhandled exception while running action");
       this.setState({
         runningUpdate: false,
         errorMessage: `Error updating schedules: ${error}`,
-        notificationMessage: undefined,
       });
     }
   };
 
   // run once - send 1:all rows to scheduled_plan_run_once
   testRow = async (rowIndex: number[], schedulesToTest: any[]) => {
-    if (DEBUG) {
-      console.log("Testing rows:");
-      console.table(schedulesToTest);
-    }
-
     this.setState({
       runningUpdate: true,
       errorMessage: undefined,
@@ -1458,12 +1539,12 @@ export class SchedulesPage extends React.Component<
         )
       ) {
         this.setState({
+          toggleLog: false,
           errorMessage:
             "Required fields missing. Ensure all fields have values: " +
             REQUIRED_FIELDS.join(", ") +
             ", " +
             REQUIRED_TRIGGER_FIELDS.join(" or "),
-          notificationMessage: undefined,
           runningUpdate: false,
         });
         return;
@@ -1471,57 +1552,53 @@ export class SchedulesPage extends React.Component<
 
       // todo validate cron, owner_id, recipients
 
+      await this.log("Running and sending schedules plans");
+
       // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
       const delay = (i: number) => new Promise((r) => setTimeout(r, i));
 
       for (let i = 0; i < schedulesToTest.length; i++) {
-        const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-          schedulesToTest[i]
-        );
-        const filtersString = this.stringifyFilters(schedulesToTest[i]);
-
-        const testScheduledPlan = this.writeScheduledPlanObject(
-          schedulesToTest[i],
-          scheduledPlanDestinations,
-          filtersString
-        );
-
-        await delay(200);
-        const response = await this.context.core40SDK.ok(
-          this.context.core40SDK.scheduled_plan_run_once(testScheduledPlan)
-        );
-
-        if (DEBUG) {
-          console.log(
-            `Run schedule once response for row ${
-              rowIndex[i] + 1
-            } schedule ID: ${schedulesToTest[i].details.id}`
+        try {
+          const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
+            schedulesToTest[i]
           );
-          console.log(JSON.stringify(response, null, 2));
+          const filtersString = this.stringifyFilters(schedulesToTest[i]);
+
+          const testScheduledPlan = this.writeScheduledPlanObject(
+            schedulesToTest[i],
+            scheduledPlanDestinations,
+            filtersString
+          );
+
+          await delay(200);
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.scheduled_plan_run_once(testScheduledPlan)
+          );
+
+          await this.log(`Resent schedule for schedule plan: ${response.id}`);
+        } catch (error) {
+          await this.log(
+            `ERROR: schedule ${schedulesToTest[i].name}: Unable to resend. Message: '${error.message}'`
+          );
         }
       }
 
+      await this.log("Action Complete");
       this.setState({
         runningUpdate: false,
-        errorMessage: undefined,
         notificationMessage: "Schedule(s) Sent",
       });
     } catch (error) {
+      await this.log("FATAL: unhandled exception while running action");
       this.setState({
         runningUpdate: false,
-        errorMessage: `Error testing schedules: ${error}`,
-        notificationMessage: undefined,
+        errorMessage: `Error sending schedules: ${error}`,
       });
     }
   };
 
   // disabling 1:all rows
   disableRow = async (rowIndex: number[], schedulesToDisable: any[]) => {
-    if (DEBUG) {
-      console.log("Disabling rows:");
-      console.table(schedulesToDisable);
-    }
-
     this.setState({
       runningUpdate: true,
       errorMessage: undefined,
@@ -1537,67 +1614,65 @@ export class SchedulesPage extends React.Component<
         )
       ) {
         this.setState({
+          toggleLog: false,
           errorMessage: "Cannot disable schedule(s) that are not created.",
-          notificationMessage: undefined,
           runningUpdate: false,
         });
         return;
       }
 
+      await this.log("Disabling rows");
+
       const updateTable = cloneDeep(this.state.schedulesArray);
 
       for (let i = 0; i < schedulesToDisable.length; i++) {
-        const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-          schedulesToDisable[i]
-        );
-        const filtersString = this.stringifyFilters(schedulesToDisable[i]);
-
-        const disabledScheduledPlan = this.writeScheduledPlanObject(
-          schedulesToDisable[i],
-          scheduledPlanDestinations,
-          filtersString
-        );
-        disabledScheduledPlan.enabled = false;
-
-        const response = await this.context.core40SDK.ok(
-          this.context.core40SDK.update_scheduled_plan(
-            schedulesToDisable[i].details.id,
-            disabledScheduledPlan
-          )
-        );
-        updateTable[rowIndex[i]].details.enabled = response.enabled; // update table with enabled=false
-
-        if (DEBUG) {
-          console.log(
-            `Disable schedule response for: ${schedulesToDisable[i].details.id}`
+        try {
+          const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
+            schedulesToDisable[i]
           );
-          console.log(JSON.stringify(response, null, 2)); // todo return when 422
+          const filtersString = this.stringifyFilters(schedulesToDisable[i]);
+
+          const disabledScheduledPlan = this.writeScheduledPlanObject(
+            schedulesToDisable[i],
+            scheduledPlanDestinations,
+            filtersString
+          );
+          disabledScheduledPlan.enabled = false;
+
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.update_scheduled_plan(
+              schedulesToDisable[i].details.id,
+              disabledScheduledPlan
+            )
+          );
+          updateTable[rowIndex[i]].details.enabled = response.enabled; // update table with enabled=false
+
+          await this.log(`Disabled schedule plan: ${response.id}`);
+        } catch (error) {
+          await this.log(
+            `ERROR: schedule ${schedulesToDisable[i].name}: Unable to disable. Message: '${error.message}'`
+          );
         }
       }
 
+      await this.log("Action Complete");
       this.setState({
         schedulesArray: updateTable,
         schedulesArrayBackup: updateTable,
         runningUpdate: false,
-        errorMessage: undefined,
         notificationMessage: "Schedule(s) have been disabled",
       });
     } catch (error) {
+      await this.log("FATAL: unhandled exception while running action");
       this.setState({
         runningUpdate: false,
         errorMessage: `Error disabling schedules: ${error}`,
-        notificationMessage: undefined,
       });
     }
   };
 
   // enable 1:all rows
   enableRow = async (rowIndex: number[], schedulesToEnable: any[]) => {
-    if (DEBUG) {
-      console.log("Enabling rows:");
-      console.table(schedulesToEnable);
-    }
-
     this.setState({
       runningUpdate: true,
       errorMessage: undefined,
@@ -1613,55 +1688,59 @@ export class SchedulesPage extends React.Component<
         )
       ) {
         this.setState({
+          toggleLog: false,
           errorMessage: "Cannot enable schedule(s) that are not created.",
-          notificationMessage: undefined,
           runningUpdate: false,
         });
         return;
       }
 
+      await this.log("Enabling rows");
+
       const updateTable = cloneDeep(this.state.schedulesArray);
 
       for (let i = 0; i < schedulesToEnable.length; i++) {
-        const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-          schedulesToEnable[i]
-        );
-        const filtersString = this.stringifyFilters(schedulesToEnable[i]);
-
-        const enabledScheduledPlan = this.writeScheduledPlanObject(
-          schedulesToEnable[i],
-          scheduledPlanDestinations,
-          filtersString
-        );
-        enabledScheduledPlan.enabled = true;
-
-        const response = await this.context.core40SDK.ok(
-          this.context.core40SDK.update_scheduled_plan(
-            schedulesToEnable[i].details.id,
-            enabledScheduledPlan
-          )
-        );
-        updateTable[rowIndex[i]].details.enabled = response.enabled; // update table with enabled=true
-        if (DEBUG) {
-          console.log(
-            `Enable schedule response for: ${schedulesToEnable[i].details.id}`
+        try {
+          const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
+            schedulesToEnable[i]
           );
-          console.log(JSON.stringify(response, null, 2)); // todo return when 422
+          const filtersString = this.stringifyFilters(schedulesToEnable[i]);
+
+          const enabledScheduledPlan = this.writeScheduledPlanObject(
+            schedulesToEnable[i],
+            scheduledPlanDestinations,
+            filtersString
+          );
+          enabledScheduledPlan.enabled = true;
+
+          const response = await this.context.core40SDK.ok(
+            this.context.core40SDK.update_scheduled_plan(
+              schedulesToEnable[i].details.id,
+              enabledScheduledPlan
+            )
+          );
+          updateTable[rowIndex[i]].details.enabled = response.enabled; // update table with enabled=true
+
+          await this.log(`Enabling schedule plan: ${response.id}`);
+        } catch (error) {
+          await this.log(
+            `ERROR: schedule ${schedulesToEnable[i].name}: Unable to enable. Message: '${error.message}'`
+          );
         }
       }
 
+      await this.log("Action Complete");
       this.setState({
         schedulesArray: updateTable,
         schedulesArrayBackup: updateTable,
         runningUpdate: false,
-        errorMessage: undefined,
         notificationMessage: "Schedule(s) have been enabled",
       });
     } catch (error) {
+      await this.log("FATAL: unhandled exception while running action");
       this.setState({
         runningUpdate: false,
         errorMessage: `Error enabling schedules: ${error}`,
-        notificationMessage: undefined,
       });
     }
   };
@@ -1735,6 +1814,7 @@ export class SchedulesPage extends React.Component<
                     <FlexItem mx="xxxsmall">
                       <GeneratePlans
                         users={this.state.users}
+                        toggleLog={this.toggleLog}
                         handleGeneratePlansSubmit={
                           this.handleGeneratePlansSubmit
                         }
@@ -1761,9 +1841,11 @@ export class SchedulesPage extends React.Component<
                   </>
                 )}
 
+                {/* GlobalActions */}
                 <FlexItem mx="xxxsmall">
                   <GlobalActions
                     users={this.state.users}
+                    toggleLog={this.toggleLog}
                     openExploreWindow={this.openExploreWindow}
                     GlobalReassignOwnership={this.GlobalReassignOwnership}
                     GlobalFindReplaceEmail={this.GlobalFindReplaceEmail}
@@ -1774,6 +1856,50 @@ export class SchedulesPage extends React.Component<
                     GlobalSelectByQuery={this.GlobalSelectByQuery}
                     GlobalSelectByQueryRun={this.GlobalSelectByQueryRun}
                   />
+                </FlexItem>
+
+                {/* Logger */}
+                <FlexItem>
+                  <>
+                    <Dialog
+                      isOpen={this.state.toggleLog}
+                      onClose={this.toggleLog}
+                      width={`${this.logWidth() * 0.75}em`}
+                      maxWidth="80vw"
+                    >
+                      <ConfirmLayout
+                        title="Schedules Log"
+                        message={
+                          <>
+                            <Paragraph mb="small" width="50rem">
+                              Execution log:
+                            </Paragraph>
+                            <MonospaceTextArea
+                              readOnly
+                              resize
+                              height="50vh"
+                              value={this.state.logMessages.join("\n")}
+                            />
+                          </>
+                        }
+                        primaryButton={
+                          this.state.runningUpdate ? (
+                            <Button disabled>In Progress</Button>
+                          ) : (
+                            <Button onClick={this.toggleLog}>Close</Button>
+                          )
+                        }
+                        secondaryButton={
+                          <ButtonOutline onClick={this.clearLog}>
+                            Clear Log
+                          </ButtonOutline>
+                        }
+                      />
+                    </Dialog>
+                    <Button color="neutral" onClick={this.toggleLog}>
+                      View Log
+                    </Button>
+                  </>
                 </FlexItem>
               </Flex>
             </FlexItem>
@@ -1829,6 +1955,7 @@ export class SchedulesPage extends React.Component<
               enableRow={this.enableRow}
               openExploreDrillWindow={this.openExploreDrillWindow}
               openDashboardWindow={this.openDashboardWindow}
+              toggleLog={this.toggleLog}
             />
           </Flex>
         </Box>
