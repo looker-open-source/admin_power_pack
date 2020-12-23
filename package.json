@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@looker/components": "0.9.14",
-    "@looker/extension-sdk": "^0.12.0",
-    "@looker/extension-sdk-react": "^0.6.4",
+    "@looker/extension-sdk": "0.12.6",
+    "@looker/extension-sdk-react": "0.6.7",
     "@looker/sdk": "^0.3.4-beta.2",
     "@types/jest": "^26.0.0",
     "@types/papaparse": "^5.0.6",

@@ -93,6 +93,7 @@ export class UsersPage extends React.Component {
         })
     }
 
+    // no longer required - overriding chatty default timeout to 90 seconds via chattyTimeout
     allUsersPaginated = async () => {
         const pageSize = 1000 // bigger page sizes take longer to return. 1k users returns between 10-15s
         let pagesAtTime = 6 // connections will stall if more than 6 sent at same time
@@ -122,27 +123,19 @@ export class UsersPage extends React.Component {
     loadUsersAndStuff = async () => {
         this.setState({ isLoading: true, errorMessage: undefined })
         try {
-            //throw "test"
-            //await new Promise(r => setTimeout(r, 5000))
 
-            // Requests that take longer than 30s will hit the default chatty timeout limit, the all_users endpoint can hit this limit for >30k users
-            // We can split the all_users request with paginations, however this results in ~3x performance hit for smaller user counts
-            // Therefore we first obtain user count via System Activity query and only use pagination requests for instances with >20k users
-            // Not ideal, but this is the fastest way to function for instances of all sizes  
-            const userQuery = await this.lookerRequest('create_query', {model: 'system__activity', view: 'user', fields: ['user.count'], limit: '1'})
-            const userCount = await this.lookerRequest('run_query', {query_id: Number(userQuery.id), result_format: 'json', cache: false}).then(response => response[0]['user.count'])
-            let userGrabber
-
-            if (userCount > 20000) {
-                userGrabber = this.allUsersPaginated();
-            } else {
-                userGrabber = this.lookerRequest('all_users', {fields: USER_FIELDS});
-            }
+            // const userQuery = await this.lookerRequest('create_query', {model: 'system__activity', view: 'user', fields: ['user.count'], limit: '1'})
+            // const userCount = await this.lookerRequest('run_query', {query_id: Number(userQuery.id), result_format: 'json', cache: false}).then(response => response[0]['user.count'])
+            // let userGrabber
+            // if (userCount > 20000) {
+            //     userGrabber = this.allUsersPaginated();
+            // } else {
+            //     userGrabber = this.lookerRequest('all_users', {fields: USER_FIELDS});
+            // }
 
             const [userResult, groupsResult, rolesResult, userAttResult] = await Promise.all([
-                // this.lookerRequest('all_users', {fields: USER_FIELDS}),
-                // this.allUsersPaginated(),
-                userGrabber,
+                // userGrabber,                
+                this.lookerRequest('all_users', {fields: USER_FIELDS}),
                 this.lookerRequest('all_groups', {}),
                 this.lookerRequest('all_roles', {}),
                 this.lookerRequest('all_user_attributes', {}),

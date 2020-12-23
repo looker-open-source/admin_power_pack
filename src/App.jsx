@@ -140,6 +140,7 @@ function AppInternal(props) {
 
     const extension = (
         <ExtensionProvider 
+            chattyTimeout={90000} // overriding default chatty timeout from 30s to 90s
             loadingComponent={loadingComponent}
             requiredLookerVersion='>=7.2.0'
             onRouteChange={onRouteChange}
