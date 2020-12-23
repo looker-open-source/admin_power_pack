@@ -164,6 +164,10 @@ export function ActionsBar(props) {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'deleteUsers'})
     }
 
+    const openLogoutUsers = (type) => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'logoutUsers'})
+    }
+
     const openSetUserAtt = (type) => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'setUserAtt'})
     }
@@ -298,9 +302,18 @@ export function ActionsBar(props) {
         runInWorkflow(async () => 
             runOnSelectedUsers(
                 deleteUserFunc, 
-                'delete users'
+                'delete'
             )
         ).then(props.setNewSelectedUserIds(new Set()))
+    }
+
+    const runLogoutUsers = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                logoutUserFunc, 
+                'logout'
+            )
+        )
     }
 
     const runSetUserAtt = () => {
@@ -644,6 +657,24 @@ export function ActionsBar(props) {
             log(`ERROR: user ${user.id}: unable to delete. Message: '${error.message}'`)
         }
         return;
+    }
+
+    const logoutUserFunc = async (user) => {
+        const sessions = await asyncLookerCall("all_user_sessions", user.id)
+        if (sessions.length === 0) {
+            log(`User ${user.id}: No active sessions to delete`);
+        } else {
+            const sessionPromises = sessions.map(async (s) => {
+                try {
+                    const response = await asyncLookerCall("delete_user_session", user.id, s.id)
+                    log(`User ${user.id}: ${s.credentials_type} session ${s.id} deleted`);
+                } catch (error) {
+                    log(`ERROR: user ${user.id}: unable to delete session ${s.id}. Message: '${error.message}'`)
+                }
+            })
+            return Promise.allSettled(sessionPromises)
+        }
+        return
     }
     
     const setUserAttFunc = async (user) => {
@@ -1048,6 +1079,7 @@ export function ActionsBar(props) {
                         <MenuItem icon="User" onClick={() => openEnableDisable("Enable")}> Enable users</MenuItem>
                         <MenuItem icon="User" onClick={() => openEnableDisable("Disable")}> Disable users</MenuItem>
                         <MenuItem icon="Trash" onClick={() => openDeleteUsers()}> {ACTION_INFO.deleteUsers.menuTitle}</MenuItem>
+                        <MenuItem icon="Logout" onClick={() => openLogoutUsers()}> {ACTION_INFO.logoutUsers.menuTitle}</MenuItem>
                     </MenuGroup>
                     <MenuGroup label="User Attributes">
                         <MenuItem icon="UserAttributes" onClick={() => openSetUserAtt()}> {ACTION_INFO.setUserAtt.menuTitle}</MenuItem>
@@ -1124,6 +1156,40 @@ export function ActionsBar(props) {
                     </>
                 }
                 primaryButton={<Button color="critical" onClick={runDeleteUsers}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            {/*
+            ******************* FORCE LOGOUT Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("logoutUsers")}
+              onClose={handleClose}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.logoutUsers.dialogTitle}
+                message={
+                    <>
+                    <SpaceVertical>
+                        <Paragraph>
+                            This will force logout the <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users.
+                        </Paragraph>
+                        <Paragraph>
+                            If&nbsp;
+                            <Link onClick={() => context.extensionSDK.openBrowserWindow("https://docs.looker.com/admin-options/security/persistent-sessions#concurrent_sessions", '_blank')}>
+                            Concurrent Sessions
+                            </Link>
+                            &nbsp;is enabled, users may have multiple sessions from different browsers and devices 
+                            simultaneously. This function will terminate all sessions for each user.
+                        </Paragraph> 
+                        <Paragraph>
+                            If users are authenticated with an IdP, any group membership changes in the IdP will be updated in Looker
+                            the next time the user logs in.
+                        </Paragraph> 
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button color="critical" onClick={runLogoutUsers}>Run</Button>}
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>

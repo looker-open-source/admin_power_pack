@@ -123,6 +123,10 @@ export const ACTION_INFO = Object.freeze({
         menuTitle: "Delete users",
         dialogTitle: "Permanently Delete Users"
     },
+    logoutUsers: {
+        menuTitle: "Logout users",
+        dialogTitle: "Terminate User Sessions"
+    },
     setUserAtt: {
         menuTitle: "Set User Attributes",
         dialogTitle: "Set User Attributes for Users"
