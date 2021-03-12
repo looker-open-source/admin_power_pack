@@ -38,7 +38,7 @@ import {
     List, ListItem,
     Text, Paragraph,
     FieldCheckbox, FieldText,
-    TextArea, InputText,
+    TextArea, InputSearch, InputText,
     Link,
     SpaceVertical
   } from '@looker/components'
@@ -823,13 +823,11 @@ export function ActionsBar(props) {
             <>
             <Menu>
                 <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Manage Email</ButtonOutline>
+                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Bulk Mappings</ButtonOutline>
                 </MenuDisclosure>
                 <MenuList placement="right-start">
-                    <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
-                    <MenuItem icon="VisTable" onClick={openEmailMap}>{ACTION_INFO.emailMap.menuTitle}</MenuItem>
                     <MenuItem icon="UserAttributes" onClick={openEmailCreate}>{ACTION_INFO.emailCreate.menuTitle}</MenuItem>
-                    <MenuItem icon="SendEmail" onClick={openEmailSend}>{ACTION_INFO.emailSend.menuTitle}</MenuItem>
+                    <MenuItem icon="VisTable" onClick={openEmailMap}>{ACTION_INFO.emailMap.menuTitle}</MenuItem>
                 </MenuList>
             </Menu>
             
@@ -974,16 +972,6 @@ export function ActionsBar(props) {
     function renderDeleteCreds() {
         return (
             <>
-            <Menu>
-                <MenuDisclosure>
-                    <ButtonOutline iconAfter="ArrowDown" mr="xsmall">Delete Creds</ButtonOutline>
-                </MenuDisclosure>
-                <MenuList placement="right-start">
-                    {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
-                        return <MenuItem key={credType} onClick={() => openDelete(credType)}>{credType}</MenuItem>
-                    })}
-                </MenuList>
-            </Menu>
             {/*
             ******************* DELETE CRED Dialog *******************
             */}
@@ -1043,27 +1031,33 @@ export function ActionsBar(props) {
     }
 
     function GroupFields(groupSelectProps) { 
+        const [groupNameSearch, set_groupNameSearch] = useState("")
         const groups = Array.from(props.groupsMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
         const validGroups = groups.filter(g => g.label !== 'All Users')
+            .filter(g => g.label.toLowerCase().indexOf(groupNameSearch.toLowerCase()) >= 0)
         return (
-            <>
+            <SpaceVertical>
+                <InputSearch placeholder="Type your search" value={groupNameSearch} onChange={e => set_groupNameSearch(e.target.value)} hideControls={true}/>
                 {validGroups.map(g => (
                     <FieldCheckbox name={g.value} label={g.label} key={g.value} checked={groupSelectProps.values.get(g.value)} onChange={groupSelectProps.handleChange} inline />
-                ))} 
-            </>
+                ))}
+            </SpaceVertical> 
         )
     }
     
     function RoleFields() {
+        const [roleNameSearch, set_roleNameSearch] = useState("")
         const roles = chain(Array.from(props.rolesMap, ([key, value]) => {return {label: value.name, value: key.toString()}}))
             .sortBy(["label"])
-            .value();
+            .value()
+            .filter(r => r.label.toLowerCase().indexOf(roleNameSearch.toLowerCase()) >= 0);
         return (
-            <>
+            <SpaceVertical>
+                <InputSearch placeholder="Type your search" value={roleNameSearch} onChange={e => set_roleNameSearch(e.target.value)} hideControls={true}/>
                 {roles.map(r => (
                     <FieldCheckbox name={r.value} label={r.label} key={r.value} checked={setUsersRoles.get(r.value)} onChange={onChangeSetUserRoles} inline />
                 ))} 
-            </>
+            </SpaceVertical>
         )
     }
     
@@ -1091,6 +1085,13 @@ export function ActionsBar(props) {
                     </MenuGroup>
                     <MenuGroup label="Roles">
                         <MenuItem icon="Tune" onClick={() => openSetUsersRoles()}>{ACTION_INFO.setUsersRoles.menuTitle}</MenuItem>
+                    </MenuGroup>
+                    <MenuGroup label="Manage Credentials">
+                        <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
+                        <MenuItem icon="SendEmail" onClick={openEmailSend}>{ACTION_INFO.emailSend.menuTitle}</MenuItem>
+                        {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
+                            return <MenuItem icon="CircleRemove" key={credType} onClick={() => openDelete(credType)}>{"Delete " + credType}</MenuItem>
+                        })}
                     </MenuGroup>
                 </MenuList>
             </Menu>

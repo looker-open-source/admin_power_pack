@@ -247,7 +247,7 @@ export class SchedulesPage extends React.Component<
 
   // use await if logging right after setting state
   log = async (entry: string) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve: any) => {
       this.setState(
         { logMessages: this.state.logMessages.concat(entry) },
         resolve

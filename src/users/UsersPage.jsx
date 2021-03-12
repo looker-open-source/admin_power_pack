@@ -310,6 +310,9 @@ export class UsersPage extends React.Component {
             case "lookerSupport":
                 filteredUsers = filteredUsers.filter(u => u.verified_looker_employee)
                 break
+            case "selected":
+                filteredUsers = filteredUsers.filter(u => this.state.selectedUserIds.has(u.id))
+                break
         }
 
         // Step 2: filter according to the button toggles
@@ -449,10 +452,11 @@ export class UsersPage extends React.Component {
                 onChange={this.onChangeActiveShowWhoButton}
                 defaultValue="regular"
                 options={[
-                { value: 'all', label: 'All Users' },
+                  { value: 'all', label: 'All Users' },
                   { value: 'regular', label: 'Regular Users' },
                   { value: 'embed', label: 'Embed Users' },
                   { value: 'lookerSupport', label: 'Looker Support' },
+                  { value: 'selected', label: 'Only Selected' },
                 ]}
             />
              
