@@ -119,6 +119,10 @@ export const ACTION_INFO = Object.freeze({
         menuTitle: "Bulk send email creds",
         dialogTitle: "Send User Credentials to User Email"
     },
+    resetToken: {
+        menuTitle: "Bulk create password reset",
+        dialogTitle: "Create Password Reset URL"
+    },
     deleteUsers: {
         menuTitle: "Delete users",
         dialogTitle: "Permanently Delete Users"

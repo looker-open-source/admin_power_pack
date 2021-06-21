@@ -40,7 +40,7 @@ import {
     FieldCheckbox, FieldText,
     TextArea, InputSearch, InputText,
     Link,
-    SpaceVertical
+    Space, SpaceVertical
   } from '@looker/components'
 
 const MonospaceTextArea = styled(TextArea)`
@@ -63,6 +63,7 @@ export function ActionsBar(props) {
     const [addUsersGroups, set_addUsersGroups] = useState(new Map())
     const [removeUsersGroups, set_removeUsersGroups] = useState(new Map())
     const [setUsersRoles, set_setUsersRoles] = useState(new Map())
+    const [expirePasswordUrl, set_expirePasswordUrl] = useState(true)
     const [logMessages, set_logMessages] = useState([])
 
     /*
@@ -117,6 +118,7 @@ export function ActionsBar(props) {
         set_addUsersGroups(new Map());
         set_removeUsersGroups(new Map());
         set_setUsersRoles(new Map());
+        set_expirePasswordUrl(true);
         handleClose();
     }
 
@@ -150,6 +152,10 @@ export function ActionsBar(props) {
 
     const openEmailSend = () => {
         sendWorkflowEvent({type: 'CONFIGURE', appAction: 'emailSend'})
+    }
+
+    const openResetToken = () => {
+        sendWorkflowEvent({type: 'CONFIGURE', appAction: 'resetToken'})
     }
     
     const openDelete = (type) => { 
@@ -231,6 +237,10 @@ export function ActionsBar(props) {
         set_setUsersRoles(setUsersRoles.set(e.target.name, e.target.checked))
     }
 
+    const onChangeSetExpiringPasswordUrl = (e) => {
+        set_expirePasswordUrl(e.target.checked)
+    }
+
     /*
      ******************* ACTION RUNNERS *******************
      */
@@ -278,6 +288,16 @@ export function ActionsBar(props) {
                 "send email reset"
             )
         )
+    }
+
+    const runResetToken = () => {
+        runInWorkflow(async () => 
+            runOnSelectedUsers(
+                createResetToken, 
+                `create a password reset token with expire set to ${expirePasswordUrl}`
+            )
+        )
+        closeResetState()
     }
 
     const runDeleteCreds = () => { 
@@ -607,6 +627,25 @@ export function ActionsBar(props) {
         } 
         return;
     }
+
+    const createResetToken = async (user) => {
+        if (!user.credentials_email) {
+            log(`Skip: user ${user.id}: no email credentials associated with: ${user.display_name}`);
+            return;
+        } 
+        if (user.is_disabled) {
+            log(`Skip: user ${user.id}: user is disabled`);
+            return;
+        }
+        try {
+            const req = await asyncLookerCall('create_user_credentials_email_password_reset', {user_id: user.id, expires: expirePasswordUrl });
+            const resetUrl = req.logged_in_at === "" ? req.password_reset_url.replace("password/reset", "account/setup") : req.password_reset_url
+            log(`User ${user.id}: reset url created for user ${user.credentials_email.email} => ${resetUrl}`);
+        } catch (error) {
+            log(`ERROR: user ${user.id}: unable to create reset url. Message: '${error.message}'`);
+        } 
+        return;
+    }    
 
     const makeDeleteCredFunc = () => {
         const credType = deleteCredsType().toLowerCase()
@@ -958,6 +997,10 @@ export function ActionsBar(props) {
                         <ListItem>
                             Password reset URLs will expire in 60 minutes.
                         </ListItem>
+                        <ListItem>
+                            This endpoint is rate limited to 5 requests every 5 minutes. If you require higher throughput, 
+                            use the Create Password Reset URL function and share the generated URL with users manually.
+                        </ListItem>
                     </List>
                     </>
                 }
@@ -965,7 +1008,44 @@ export function ActionsBar(props) {
                 secondaryButton={<ButtonTransparent onClick={handleClose}>Cancel</ButtonTransparent>}
               />
             </Dialog>
-            </>
+            {/*
+            ******************* PASSWORD RESET TOKEN Dialog *******************
+            */}
+            <Dialog
+              isOpen={isDialogOpen("resetToken")}
+              onClose={closeResetState}
+            >
+              <ConfirmLayout
+                title={ACTION_INFO.resetToken.dialogTitle}
+                message={
+                    <>
+                    This will create a cryptographically secure random password reset URL for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users. 
+                    <SpaceVertical>
+                        <List type="bullet">
+                            <ListItem>
+                                It is your responsibility to <Text fontWeight="bold">securely share</Text> the URL with the user.
+                            </ListItem>
+                            <ListItem>
+                                If the user already has a password reset token then this invalidates the old token and creates a new one.
+                            </ListItem> 
+                            <ListItem>
+                                For users that have never logged in to Looker yet, this will create a 'account/setup' URL. For users have
+                                logged in at least once, this will create a 'password/reset' URL.
+                            </ListItem>
+                            <ListItem>
+                                The expire period is 60 minutes when enabled.
+                            </ListItem>                            
+                        </List>
+                        <FieldCheckbox label={'Expiring URL'} checked={expirePasswordUrl} onChange={onChangeSetExpiringPasswordUrl} inline />
+                        <Space/>
+                    </SpaceVertical>
+                    </>
+                }
+                primaryButton={<Button onClick={runResetToken}>Run</Button>}
+                secondaryButton={<ButtonTransparent onClick={closeResetState}>Cancel</ButtonTransparent>}
+              />
+            </Dialog>
+            </>            
         )
     }
 
@@ -1089,6 +1169,7 @@ export function ActionsBar(props) {
                     <MenuGroup label="Manage Credentials">
                         <MenuItem icon="Return" onClick={openEmailFill}>{ACTION_INFO.emailFill.menuTitle}</MenuItem>
                         <MenuItem icon="SendEmail" onClick={openEmailSend}>{ACTION_INFO.emailSend.menuTitle}</MenuItem>
+                        <MenuItem icon="Download" onClick={openResetToken}>{ACTION_INFO.resetToken.menuTitle}</MenuItem>
                         {["Email", "Google", "LDAP", "OIDC", "SAML"].map((credType) => {
                             return <MenuItem icon="CircleRemove" key={credType} onClick={() => openDelete(credType)}>{"Delete " + credType}</MenuItem>
                         })}
