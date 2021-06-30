@@ -25,7 +25,7 @@
 import cronstrue from "cronstrue";
 import styled from "styled-components";
 import { TextArea } from "@looker/components";
-import { SelectOption, GroupSelectOption } from "./constants";
+import { SelectOption, GroupSelectOption } from "../schedules/constants";
 
 export const MonospaceTextArea = styled(TextArea)`
   textarea {

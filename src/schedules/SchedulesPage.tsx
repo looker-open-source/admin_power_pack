@@ -47,7 +47,6 @@ import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
 import { IDashboard, IScheduledPlan } from "@looker/sdk/lib/sdk/4.0/models";
 import {
-  DEBUG,
   ADVANCED_FIELDS,
   FORMATTING_FIELDS,
   KEY_FIELDS,
@@ -57,12 +56,13 @@ import {
   IWriteScheduledPlanNulls,
   IScheduledPlanTable,
 } from "./constants"; // interfaces
+import { DEBUG } from "../shared/utils";
 import {
   validationTypeCron,
   translateCron,
   newGroupOptions,
   MonospaceTextArea,
-} from "./helper";
+} from "../shared/helper";
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
 import { GeneratePlans } from "./GeneratePlans";
@@ -1216,9 +1216,8 @@ export class SchedulesPage extends React.Component<
   // create new schedule plan
   createSchedule = async (newSchedule: IScheduledPlanTable) => {
     try {
-      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-        newSchedule
-      );
+      const scheduledPlanDestinations =
+        this.writeScheduledPlanDestinations(newSchedule);
       const filtersString = this.stringifyFilters(newSchedule);
 
       const writeScheduledPlan = this.writeScheduledPlanObject(
@@ -1252,9 +1251,8 @@ export class SchedulesPage extends React.Component<
     }
 
     try {
-      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-        currentSchedule
-      );
+      const scheduledPlanDestinations =
+        this.writeScheduledPlanDestinations(currentSchedule);
       const filtersString = this.stringifyFilters(currentSchedule);
 
       const updateScheduledPlan = this.writeScheduledPlanObject(

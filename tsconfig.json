@@ -4,7 +4,9 @@
     "lib": ["dom", "es2015", "esnext"],
     "sourceMap": true,
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "allowJs": true,
+    "noEmit": true
   },
   "exclude": ["node_modules"]
 }

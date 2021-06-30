@@ -56,7 +56,7 @@ import {
   ACTION_LIST_SELECT_BY_QUERY_COLUMNS,
   GlobalActionQueryProps,
 } from "./constants";
-import { MonospaceTextArea } from "./helper";
+import { MonospaceTextArea } from "../shared/helper";
 
 // used for GlobalValidateRecentSchedules and GlobalSelectByQueryRun action list tables
 const ActionListDataTable = (

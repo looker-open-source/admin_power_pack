@@ -39,7 +39,11 @@ import {
   Paragraph,
   SpaceVertical,
 } from "@looker/components";
-import { validationTypeCron, translateCron, newOptions } from "./helper";
+import {
+  validationTypeCron,
+  translateCron,
+  newOptions,
+} from "../shared/helper";
 import { GeneratePlansProps, SelectOption } from "./constants";
 
 // drawer to generate plans with results of query

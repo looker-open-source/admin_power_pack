@@ -22,10 +22,43 @@
  * THE SOFTWARE.
  */
 
-export function makeLookerCaller(sdk) {
-    return function(apiMethod, ...args) {
-      return sdk.ok(sdk[apiMethod](...args))
-    }
+import {
+  IFolder,
+  IUser,
+  IGroup,
+  IContentMeta,
+  IContentMetaGroupUser,
+} from "@looker/sdk/lib/sdk/4.0/models";
+
+////////////////////// Interfaces //////////////////////
+
+export interface ContentState {
+  // notificationMessage: string;
+  selectedFolderId: string;
+  folderSearchString: string;
+  foldersSelectOptions: {
+    label: string;
+    value: string;
+  }[];
+  totalChildCount: number;
+  childLoadComplete: number;
+  folders?: IFolder[];
+  folderTree?: FolderTree;
+  groups?: Map<number, IGroup>;
+  users?: Map<number, IUser>;
 }
 
-export const DEBUG = process.env.NODE_ENV === "development";
+export interface TreeVisProps {
+  folderTree?: FolderTree;
+  groups?: Map<number, IGroup>;
+  users?: Map<number, IUser>;
+  getContentMetadataAccessForFolder(
+    folderMetadataId: number
+  ): Promise<IContentMetaGroupUser[]>;
+}
+
+export interface FolderTree extends IFolder {
+  contentMeta?: IContentMeta;
+  contentMetaGroupUser?: IContentMetaGroupUser[];
+  children?: FolderTree[];
+}
