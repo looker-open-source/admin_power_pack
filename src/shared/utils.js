@@ -27,5 +27,3 @@ export function makeLookerCaller(sdk) {
       return sdk.ok(sdk[apiMethod](...args))
     }
 }
-
-export const DEBUG = process.env.NODE_ENV === "development";

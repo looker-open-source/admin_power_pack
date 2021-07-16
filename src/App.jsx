@@ -37,7 +37,6 @@ import { NavBar } from './shared/NavBar'
 import { HomePage } from './shared/HomePage'
 import { UsersPage } from './users/UsersPage'
 import { SchedulesPage } from './schedules/SchedulesPage'
-import { ContentPage } from './content/ContentPage'
 import { EmbedPage } from './shared/EmbedPage'
 
 const PAGES = [
@@ -59,12 +58,6 @@ const PAGES = [
         pageTitle: "⚡ Schedules++", 
         icon: "SendEmail",
         component: SchedulesPage
-    },{
-        path: "/content", 
-        navTitle: "Content",
-        pageTitle: "⚡ Content++", 
-        icon: "BrowseTable",
-        component: ContentPage
     },{
         path: "/embed", 
         navTitle: "Embed",

@@ -55,8 +55,9 @@ import {
 import { useTable, useRowSelect } from "react-table";
 import { mapValues } from "lodash";
 import { Styles } from "./Styles";
-import { translateCron, newOptions, newGroupOptions } from "../shared/helper";
+import { translateCron, newOptions, newGroupOptions } from "./helper";
 import {
+  DEBUG,
   KEY_FIELDS,
   TABLE_HEADING,
   TIMEZONES,
@@ -67,7 +68,6 @@ import {
   SchedulesTableQueryProps,
   EditableCellProps,
 } from "./constants";
-import { DEBUG } from "../shared/utils";
 
 // returns {rowIndex3: scheduleId3, rowIndex2: scheduleId2, etc.}
 const zipRows = (selectedFlatRows: any, selectedRowIds: any) => {
@@ -738,8 +738,9 @@ const ReactTable = ({
                     checked={checkboxStatus[header.Header]}
                     onChange={(e: any) => {
                       const newCheckboxStatus = checkboxStatus;
-                      newCheckboxStatus[header.Header] =
-                        !newCheckboxStatus[header.Header];
+                      newCheckboxStatus[header.Header] = !newCheckboxStatus[
+                        header.Header
+                      ];
 
                       const headerColumns = header.columns.map(
                         (c: any) => c.id
