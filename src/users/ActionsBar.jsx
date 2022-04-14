@@ -750,7 +750,7 @@ export function ActionsBar(props) {
         for (const [key, value] of addUsersGroups) {
             if (!value) continue;
             try {
-                const groupName = props.groupsMap.get(Number(key)).name
+                const groupName = props.groupsMap.get(key).name
                 const response = await asyncLookerCall('add_group_user', key, {user_id: user.id});  // returns 200 regardless if user already in group or not
                 log(`User ${user.id}: Added to group ${groupName}`);
             } catch (error) {
@@ -764,7 +764,7 @@ export function ActionsBar(props) {
         for (const [key, value] of removeUsersGroups) {
             if (!value) continue;
             try {
-                const groupName = props.groupsMap.get(Number(key)).name
+                const groupName = props.groupsMap.get(key).name
                 const response = await asyncLookerCall('delete_group_user', key, user.id);  // returns 204 regardless if user was in the group or not
                 log(`User ${user.id}: Removed from group ${groupName}`);
             } catch (error) {
@@ -777,7 +777,7 @@ export function ActionsBar(props) {
     const setUserRolesFunc = async (user) => {
         const roles = [...setUsersRoles]
             .filter(([key, value]) => Boolean(value))
-            .map(([key, value]) => Number(key))
+            .map(([key, value]) => key)
         const roleNames = roles.map(r =>  props.rolesMap.get(r).name ) 
 
         try {
@@ -1112,14 +1112,15 @@ export function ActionsBar(props) {
 
     function GroupFields(groupSelectProps) { 
         const [groupNameSearch, set_groupNameSearch] = useState("")
-        const groups = Array.from(props.groupsMap, ([key, value]) => {return {label: value.name, value: key.toString()}})
-        const validGroups = groups.filter(g => g.label !== 'All Users')
+        const groups = Array.from(props.groupsMap, ([key, value]) => {return {label: value.name, value: key.toString(), readOnly: value.externally_managed}})
+        const validGroups = groups
+            .filter(g => g.label !== 'All Users')
             .filter(g => g.label.toLowerCase().indexOf(groupNameSearch.toLowerCase()) >= 0)
         return (
             <SpaceVertical>
                 <InputSearch placeholder="Type your search" value={groupNameSearch} onChange={e => set_groupNameSearch(e.target.value)} hideControls={true}/>
                 {validGroups.map(g => (
-                    <FieldCheckbox name={g.value} label={g.label} key={g.value} checked={groupSelectProps.values.get(g.value)} onChange={groupSelectProps.handleChange} inline />
+                    <FieldCheckbox name={g.value} label={g.label} key={g.value} checked={groupSelectProps.values.get(g.value)} onChange={groupSelectProps.handleChange} readOnly={g.readOnly} inline />
                 ))}
             </SpaceVertical> 
         )

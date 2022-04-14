@@ -45,7 +45,7 @@ import Papa from "papaparse";
 import React from "react";
 import { RouteComponentProps, withRouter } from "react-router-dom";
 import { hot } from "react-hot-loader/root";
-import { IDashboard, IScheduledPlan } from "@looker/sdk/lib/sdk/4.0/models";
+import { IDashboard, IScheduledPlan } from "@looker/sdk/lib/4.0/models";
 import {
   DEBUG,
   ADVANCED_FIELDS,
@@ -373,7 +373,7 @@ export class SchedulesPage extends React.Component<
   // Change schedule ownership from list of users to new user
   GlobalReassignOwnership = async (
     UserMapFrom: string[],
-    UserMapTo: string[]
+    UserMapTo: string
   ) => {
     this.setState({
       runningUpdate: true,
@@ -382,23 +382,21 @@ export class SchedulesPage extends React.Component<
     });
 
     try {
-      const UserMapFromNumber = UserMapFrom.map((u) => Number(u));
-
       const allSchedules = await this.context.core40SDK.ok(
         this.context.core40SDK.all_scheduled_plans({
           all_users: true,
         })
       );
       const schedulesToUpdate = allSchedules
-        .filter((s) => UserMapFromNumber.includes(s.user_id!))
+        .filter((s) => UserMapFrom.includes(s.user_id!))
         .map((s) => {
-          s.user_id = Number(UserMapTo);
+          s.user_id = UserMapTo;
           return s;
         });
 
       const scheduleIds = String(schedulesToUpdate.map((s) => s.id));
       await this.log(
-        `Schedules to update from users: ${UserMapFromNumber} to user: ${UserMapTo}`
+        `Schedules to update from users: ${UserMapFrom} to user: ${UserMapTo}`
       );
       await this.log(`Schedule Plans to update: ${scheduleIds}`);
 
@@ -564,7 +562,7 @@ export class SchedulesPage extends React.Component<
 
     const maxJobResults = await this.context.core40SDK.ok(
       this.context.core40SDK.run_query({
-        query_id: Number(maxJobQuery.id),
+        query_id: maxJobQuery.id!,
         result_format: "json",
         cache: false,
       })
@@ -601,7 +599,7 @@ export class SchedulesPage extends React.Component<
 
     const latestFailuresResults = await this.context.core40SDK.ok(
       this.context.core40SDK.run_query({
-        query_id: Number(latestFailuresQuery.id),
+        query_id: latestFailuresQuery.id!,
         result_format: "json",
         cache: false,
       })
@@ -628,23 +626,19 @@ export class SchedulesPage extends React.Component<
         `Resending failed jobs for scheduled plans: ${selections}`
       );
 
-      const schedulePlanIds = selections.map((s: string) => Number(s));
-
       // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
       const delay = (i: number) => new Promise((r) => setTimeout(r, i));
 
-      for (let i = 0; i < schedulePlanIds.length; i++) {
+      for (let i = 0; i < selections.length; i++) {
         try {
           await delay(200);
           const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.scheduled_plan_run_once_by_id(
-              schedulePlanIds[i]
-            )
+            this.context.core40SDK.scheduled_plan_run_once_by_id(selections[i])
           );
           await this.log(`Resent schedule for schedule plan: ${response.id}`);
         } catch (error) {
           await this.log(
-            `ERROR: schedule ${schedulePlanIds[i]}: Unable to resend. Message: '${error.message}'`
+            `ERROR: schedule ${selections[i]}: Unable to resend. Message: '${error.message}'`
           );
         }
       }
@@ -722,7 +716,7 @@ export class SchedulesPage extends React.Component<
 
     const scheduledPlansResults = await this.context.core40SDK.ok(
       this.context.core40SDK.run_query({
-        query_id: Number(scheduledPlansQuery.id),
+        query_id: scheduledPlansQuery.id!,
         result_format: "json",
         cache: false,
       })
@@ -764,17 +758,18 @@ export class SchedulesPage extends React.Component<
       case "enable":
       case "disable":
         for (let i = 0; i < scheduledPlansData.length; i++) {
-          const planID = Number(scheduledPlansData[i]);
-
           const plan = await this.context.core40SDK.ok(
-            this.context.core40SDK.scheduled_plan(planID)
+            this.context.core40SDK.scheduled_plan(scheduledPlansData[i])
           );
 
           action === "enable" ? (plan.enabled = true) : (plan.enabled = false);
 
           try {
             const response = await this.context.core40SDK.ok(
-              this.context.core40SDK.update_scheduled_plan(planID, plan)
+              this.context.core40SDK.update_scheduled_plan(
+                scheduledPlansData[i],
+                plan
+              )
             );
             await this.log(
               `${action[0].toUpperCase()}${action.slice(1)}d schedule plan: ${
@@ -783,7 +778,7 @@ export class SchedulesPage extends React.Component<
             );
           } catch (error) {
             await this.log(
-              `ERROR: schedule ${planID}: Unable to ${action}. Message: '${error.message}'`
+              `ERROR: schedule ${scheduledPlansData[i]}: Unable to ${action}. Message: '${error.message}'`
             );
           }
         }
@@ -793,18 +788,18 @@ export class SchedulesPage extends React.Component<
         const delay = (i: number) => new Promise((r) => setTimeout(r, i)); // endpoint is rate limited to 10 calls per second so delaying 200ms between run once calls
 
         for (let i = 0; i < scheduledPlansData.length; i++) {
-          const planID = Number(scheduledPlansData[i]);
-
           await delay(200);
 
           try {
             const response = await this.context.core40SDK.ok(
-              this.context.core40SDK.scheduled_plan_run_once_by_id(planID)
+              this.context.core40SDK.scheduled_plan_run_once_by_id(
+                scheduledPlansData[i]
+              )
             );
             await this.log(`Resent schedule for schedule plan: ${response.id}`);
           } catch (error) {
             await this.log(
-              `ERROR: schedule ${planID}: Unable to resend. Message: '${error.message}'`
+              `ERROR: schedule ${scheduledPlansData[i]}: Unable to resend. Message: '${error.message}'`
             );
           }
         }
@@ -812,16 +807,16 @@ export class SchedulesPage extends React.Component<
 
       case "delete":
         for (let i = 0; i < scheduledPlansData.length; i++) {
-          const planID = Number(scheduledPlansData[i]);
-
           try {
             const response = await this.context.core40SDK.ok(
-              this.context.core40SDK.delete_scheduled_plan(planID)
+              this.context.core40SDK.delete_scheduled_plan(
+                scheduledPlansData[i]
+              )
             );
-            await this.log(`Deleted schedule plan: ${planID}`);
+            await this.log(`Deleted schedule plan: ${scheduledPlansData[i]}`);
           } catch (error) {
             await this.log(
-              `ERROR: schedule ${planID}: Unable to delete. Message: '${error.message}'`
+              `ERROR: schedule ${scheduledPlansData[i]}: Unable to delete. Message: '${error.message}'`
             );
           }
         }
@@ -945,10 +940,10 @@ export class SchedulesPage extends React.Component<
     formattedRow.details = {
       id: s.id,
       enabled: s.enabled,
-      created_at: this.formatDate(s.created_at),
-      updated_at: this.formatDate(s.updated_at),
-      next_run_at: this.formatDate(s.next_run_at),
-      last_run_at: this.formatDate(s.last_run_at),
+      created_at: this.formatDate(s.created_at!),
+      updated_at: this.formatDate(s.updated_at!),
+      next_run_at: this.formatDate(s.next_run_at!),
+      last_run_at: this.formatDate(s.last_run_at!),
     };
 
     formattedRow.name = s.name;
@@ -996,7 +991,7 @@ export class SchedulesPage extends React.Component<
   getScheduledPlans = async (dash_id: string, dash: IDashboard) => {
     const schedules = await this.context.core40SDK.ok(
       this.context.core40SDK.scheduled_plans_for_dashboard({
-        dashboard_id: Number(dash_id),
+        dashboard_id: dash_id,
         all_users: true,
         fields:
           "enabled,id,name,filters_string,crontab,datagroup,scheduled_plan_destination(type,address,message,format,apply_vis,apply_formatting),run_as_recipient,include_links,timezone,long_tables,pdf_paper_size,pdf_landscape,user(id,display_name),created_at,updated_at, next_run_at,last_run_at",
@@ -1175,9 +1170,9 @@ export class SchedulesPage extends React.Component<
     filtersString: string
   ) => {
     const writeScheduledPlan: IWriteScheduledPlanNulls = {
-      user_id: Number(rowDetails.owner_id),
+      user_id: rowDetails.owner_id,
       name: rowDetails.name,
-      dashboard_id: Number(this.state.selectedDashId),
+      dashboard_id: this.state.selectedDashId,
       timezone: rowDetails.timezone,
       include_links: rowDetails.include_links,
       run_as_recipient: rowDetails.run_as_recipient,
@@ -1388,7 +1383,7 @@ export class SchedulesPage extends React.Component<
       if (scheduleId !== undefined) {
         try {
           const response = await this.context.core40SDK.ok(
-            this.context.core40SDK.delete_scheduled_plan(Number(scheduleId))
+            this.context.core40SDK.delete_scheduled_plan(scheduleId)
           );
 
           await this.log(`Deleted schedule plan: ${scheduleId}`);

@@ -125,7 +125,7 @@ export class UsersPage extends React.Component {
         try {
 
             // const userQuery = await this.lookerRequest('create_query', {model: 'system__activity', view: 'user', fields: ['user.count'], limit: '1'})
-            // const userCount = await this.lookerRequest('run_query', {query_id: Number(userQuery.id), result_format: 'json', cache: false}).then(response => response[0]['user.count'])
+            // const userCount = await this.lookerRequest('run_query', {query_id: userQuery.id, result_format: 'json', cache: false}).then(response => response[0]['user.count'])
             // let userGrabber
             // if (userCount > 20000) {
             //     userGrabber = this.allUsersPaginated();

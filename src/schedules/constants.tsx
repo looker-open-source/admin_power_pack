@@ -28,7 +28,7 @@ import {
   IScheduledPlanDestination,
   IUserPublic,
   IWriteScheduledPlan,
-} from "@looker/sdk/lib/sdk/4.0/models";
+} from "@looker/sdk/lib/4.0/models";
 
 export const DEBUG = process.env.NODE_ENV === "development";
 
@@ -137,7 +137,7 @@ export interface GlobalActionQueryProps {
   users: SelectOption[];
   toggleLog(): void;
   openExploreWindow(): void;
-  GlobalReassignOwnership(UserMapFrom: string[], UserMapTo: string[]): void;
+  GlobalReassignOwnership(UserMapFrom: string[], UserMapTo: string): void;
   GlobalFindReplaceEmail(EmailMap: string): void;
   GlobalValidateRecentSchedules(timeframe: string): any;
   GlobalResendRecentFailures(failureData: any): void;

@@ -201,7 +201,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
   const ToggleSBQR = () => setisToggledSBQR((on) => !on);
 
   const [UserMapFrom, setUserMapFrom] = React.useState([]);
-  const [UserMapTo, setUserMapTo] = React.useState([]);
+  const [UserMapTo, setUserMapTo] = React.useState("");
   const [EmailMap, setEmailMap] = React.useState("");
   const [Timeframe, setTimeframe] = React.useState("");
   const [Selections, setSelections] = React.useState([]);
@@ -222,7 +222,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
         onClose={() => {
           ToggleGRO();
           setUserMapFrom([]);
-          setUserMapTo([]);
+          setUserMapTo("");
         }}
       >
         <DialogContent>
@@ -260,12 +260,12 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
             }
             primaryButton={
               <Button
-                disabled={UserMapFrom.length === 0 || UserMapTo.length === 0}
+                disabled={UserMapFrom.length === 0 || UserMapTo === ""}
                 onClick={() => {
                   GlobalReassignOwnership(UserMapFrom, UserMapTo);
                   ToggleGRO();
                   setUserMapFrom([]);
-                  setUserMapTo([]);
+                  setUserMapTo("");
                   toggleLog();
                 }}
               >
@@ -277,7 +277,7 @@ export const GlobalActions = (qp: GlobalActionQueryProps): JSX.Element => {
                 onClick={() => {
                   ToggleGRO();
                   setUserMapFrom([]);
-                  setUserMapTo([]);
+                  setUserMapTo("");
                 }}
               >
                 Cancel
