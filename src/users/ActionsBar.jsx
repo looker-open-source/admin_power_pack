@@ -64,6 +64,7 @@ export function ActionsBar(props) {
     const [removeUsersGroups, set_removeUsersGroups] = useState(new Map())
     const [setUsersRoles, set_setUsersRoles] = useState(new Map())
     const [expirePasswordUrl, set_expirePasswordUrl] = useState(true)
+    const [lowerCaseEmail, set_lowerCaseEmail] = useState(false)
     const [logMessages, set_logMessages] = useState([])
 
     /*
@@ -239,6 +240,10 @@ export function ActionsBar(props) {
 
     const onChangeSetExpiringPasswordUrl = (e) => {
         set_expirePasswordUrl(e.target.checked)
+    }
+
+    const onChangeSetLowerCaseEmail = (e) => {
+        set_lowerCaseEmail(e.target.checked)
     }
 
     /*
@@ -512,8 +517,9 @@ export function ActionsBar(props) {
             return 
         }
         try { 
-            await asyncLookerCall('create_user_credentials_email', user.id, {email: user.email})
-            log(`User ${user.id}: created credentials_email ${user.email}`)
+            const emailUpdate = lowerCaseEmail ? user.email.toLowerCase() : user.email
+            await asyncLookerCall('create_user_credentials_email', user.id, {email: emailUpdate})
+            log(`User ${user.id}: created credentials_email ${emailUpdate}`)
         } catch (error) {
             log(`ERROR: user ${user.id}: unable to create credentials_email. Message: '${error.message}'`)
         }
@@ -882,17 +888,21 @@ export function ActionsBar(props) {
                 message={
                     <>
                     This will create <Text fontWeight="bold">email</Text> creds for <Text fontWeight="bold">{props.selectedUserIds.size}</Text> selected users. 
-                    <List type="bullet">
-                        <ListItem>
-                            It will use the email address already assigned to the user by the other cred types.
-                        </ListItem> 
-                        <ListItem>
-                            It won't do anything for accounts that already have an email cred.
-                        </ListItem>
-                        <ListItem>
-                            Later you can update the address manually or by using a bulk mapping.
-                        </ListItem>
-                    </List>
+                    <SpaceVertical>
+                        <List type="bullet">
+                            <ListItem>
+                                It will use the email address already assigned to the user by the other cred types.
+                            </ListItem> 
+                            <ListItem>
+                                It won't do anything for accounts that already have an email cred.
+                            </ListItem>
+                            <ListItem>
+                                Later you can update the address manually or by using a bulk mapping.
+                            </ListItem>
+                        </List>
+                        <FieldCheckbox label={'Convert email addresses to lowercase'} checked={lowerCaseEmail} onChange={onChangeSetLowerCaseEmail} inline />
+                        <Space/>
+                    </SpaceVertical>
                     </>
                 }
                 primaryButton={<Button onClick={runEmailFill}>Run</Button>}
