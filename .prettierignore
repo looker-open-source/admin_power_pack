@@ -1,0 +1,4 @@
+# ignore users files
+src/users/*
+src/shared/*
+App.jsx
