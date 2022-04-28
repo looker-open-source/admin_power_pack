@@ -3,6 +3,7 @@
 # Logs
 logs
 *.log
+*.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -83,7 +84,6 @@ web_modules/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -107,6 +107,7 @@ dist
 .tern-port
 
 # Stores VSCode versions used for testing VSCode extensions
+.vscode
 .vscode-test
 
 # yarn v2

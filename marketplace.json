@@ -1,0 +1,24 @@
+{
+  "label": "Admin Power Pack",
+  "category_label": "Applications",
+  "branding": {
+    "image_uri": "https://looker-open-source.github.io/admin_power_pack/images/icon_app.png",
+    "tagline": "The APP for Looker Admins."
+  },
+  "constants": {
+    "CONNECTION_NAME": {
+      "label": "Connection Name",
+      "value_constraint": "connection"
+    },
+    "VERSION": {
+      "label": "Version",
+      "description": "APP Version Tag"
+    }
+  },
+  "models": [
+    {
+      "name": "admin-power-pack",
+      "connection_constant": "CONNECTION_NAME"
+    }
+  ]
+}
