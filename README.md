@@ -144,10 +144,7 @@ LookML Projects are backed by git repositories. This repo has been set up with a
      - _Note: For Looker instances on a release before 22.4, use the commit SHA from the previous [major release](https://github.com/looker-open-source/admin_power_pack/releases/tag/v0.1.7) of the Admin Power Pack: `35eb28417ff5de04b1d9f09e19df000087feb501`. This is due to [breaking changes](https://developers.looker.com/api/advanced-usage/version-4-ga) to the API 4.0 endpoints. For Looker instances on the 22.4+ release, use the current major release of the Admin Power Pack._
    - Accept the extension project permissions
    - Select the connection name used in Step 1 and click Install
-1. Configure Model
-   - Once installed, go to the Manage LookML Projects page and select the "Configure" button for the `admin_power_pack` model
-   - You should see that the only allowed connection is the one selected in Step 2. Click Save
-   - After saving the configuration, you will now see "Admin Power Pack" in the Browse menu
+1. To update the APP for new releases, navigate to Marketplace => Manage, and remove and re-add the tool
 
 ## Option 2 - Roll your own
 
