@@ -45,7 +45,7 @@ export function PermissionsChecker(props) {
                 try {
                     const lookerRequest = makeLookerCaller(context.core40SDK)
                     
-                    me = await lookerRequest('me', ["id", "display_name", "role_ids"])
+                    me = await lookerRequest('me', ["id", "display_name", "role_ids"].toString())
                     
 
                     // this logic is kinda moot because non-admins can't call the role endpoints anyway...

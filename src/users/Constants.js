@@ -49,7 +49,7 @@ export const USER_FIELDS = Object.freeze(
         "is_disabled",
         "verified_looker_employee"
     )
-)
+).toString()
 
 export const TABLE_COLUMNS = [
     {
