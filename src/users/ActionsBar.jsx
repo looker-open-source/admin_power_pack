@@ -500,7 +500,7 @@ export function ActionsBar(props) {
             return
         }
 
-        const ids = new Set(results.map(row => row['user.id']))
+        const ids = new Set(results.map(row => row['user.id'].toString()))
         log(`Found ${results.length} rows; ${ids.size} distinct user ids`)
 
         await props.setNewSelectedUserIds(ids)
