@@ -5,6 +5,7 @@
   "main": "dist/bundle.js",
   "scripts": {
     "start": "webpack-dev-server --hot --disable-host-check --port 8080",
+    "start:https": "webpack-dev-server --hot --disable-host-check --port 8080 --https",
     "start-no-hot": "webpack-dev-server --no-inline --no-hot --port 8080",
     "build": "tsc --noEmit --skipLibCheck && export BABEL_ENV=build && webpack --mode=production --config webpack.prod.config.js",
     "test": "jest"
@@ -12,7 +13,7 @@
   "author": "Looker",
   "license": "MIT",
   "engines": {
-    "node": ">=10"
+    "node": ">=10 <18"
   },
   "dependencies": {
     "@looker/components": "0.9.14",

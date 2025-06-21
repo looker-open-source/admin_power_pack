@@ -76,6 +76,25 @@ export class UsersTable extends React.Component {
                 </Link>
             </ActionListItemAction>
         )
+
+        // Use embed-specific rendering when embed filter is active
+        if (this.props.activeShowWhoButton === "embed") {
+            return (
+                <ActionListItem
+                    key={user.id}
+                    id={user.id}
+                    actions={actions}
+                >
+                    <ActionListItemColumn>{formatIfDisabled(user.id)}</ActionListItemColumn>
+                    <ActionListItemColumn>{formatIfDisabled(this.renderDisplayName(user))}</ActionListItemColumn>
+                    <ActionListItemColumn>{formatIfDisabled(this.renderEmbedUserId(user))}</ActionListItemColumn>
+                    <ActionListItemColumn>{formatIfDisabled(this.renderExternalGroupId(user))}</ActionListItemColumn>
+                    <ActionListItemColumn>{formatIfDisabled(groups.map(g => g.name).join(", "))}</ActionListItemColumn>
+                </ActionListItem>
+            )
+        }
+
+        // Regular user rendering
         return (
             <ActionListItem
                 key={user.id}
@@ -144,10 +163,55 @@ export class UsersTable extends React.Component {
         )
     }
 
+    renderEmbedUserId(user) {
+        if (user.credentials_embed && user.credentials_embed.length > 0) {
+            return user.credentials_embed.map((embedCred, index) => (
+                <Box key={`user-${user.id}-embed-${index}`}>
+                    <Text fontSize="xsmall">
+                        {embedCred.external_user_id ? (
+                            <Link 
+                                onClick={() => this.props.onExternalUserIdClick(embedCred.external_user_id)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                {embedCred.external_user_id}
+                            </Link>
+                        ) : (
+                            'No external user ID'
+                        )}
+                    </Text>
+                </Box>
+            ))
+        }
+        return <Text fontSize="xsmall" color="neutral">No embed credentials</Text>
+    }
+
+    renderExternalGroupId(user) {
+        if (user.credentials_embed && user.credentials_embed.length > 0) {
+            return user.credentials_embed.map((embedCred, index) => (
+                <Box key={`user-${user.id}-group-${index}`}>
+                    <Text fontSize="xsmall">
+                        {embedCred.external_group_id ? (
+                            <Link 
+                                onClick={() => this.props.onExternalGroupIdClick(embedCred.external_group_id)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                {embedCred.external_group_id}
+                            </Link>
+                        ) : (
+                            'No external group ID'
+                        )}
+                    </Text>
+                </Box>
+            ))
+        }
+        return <Text fontSize="xsmall" color="neutral">No embed credentials</Text>
+    }
+
     renderCounts() {
+        const userTypeText = this.props.activeShowWhoButton === "embed" ? "embed users" : "users"
         return (
             <Text fontSize="small">
-            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} in filtered table • {this.props.totalUsersCount} total users
+            {this.props.selectedUserIds.size} selected • {this.props.usersList.length} in filtered table • {this.props.totalUsersCount} total {userTypeText}
             </Text>
         )
     }

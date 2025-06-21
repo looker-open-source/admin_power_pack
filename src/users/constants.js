@@ -93,6 +93,54 @@ export const TABLE_COLUMNS = [
     },
 ]
 
+export const EMBED_USER_FIELDS = [
+    "id",
+    "email",
+    "credentials_email",
+    "credentials_embed",
+    "display_name",
+    "role_ids",
+    "group_ids",
+    "is_disabled",
+    "verified_looker_employee"
+].join(',')
+
+export const EMBED_TABLE_COLUMNS = [
+    {
+        id: 'id',
+        title: 'ID',
+        primaryKey: true,
+        canSort: true,
+        type: 'number',
+        widthPercent: 10,
+    },
+    {
+        id: 'display_name',
+        title: 'Name',
+        canSort: true,
+        type: 'string',
+        widthPercent: 15
+    },
+    {
+        id: 'embed_user_id',
+        title: 'Embed User ID',
+        type: 'string',
+        widthPercent: 25
+    },
+    {
+        id: 'external_group_id',
+        title: 'External Group ID',
+        type: 'string',
+        widthPercent: 25
+    },
+    {
+        id: 'groups',
+        title: 'Groups',
+        type: 'string',
+        widthPercent: 25
+    },
+]
+
 export const ACTION_INFO = Object.freeze({
     selectByAttribute: {
         menuTitle: "User ID or email address",
