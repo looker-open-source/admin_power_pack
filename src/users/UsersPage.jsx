@@ -152,15 +152,6 @@ export class UsersPage extends React.Component {
                 this.lookerRequest('all_roles', {}),
                 this.lookerRequest('all_user_attributes', {}),
             ])
-
-            // console.log("~~~~~ All Users (count) ~~~~")
-            // console.log(userResult)
-            // console.log("~~~~~ All Groups ~~~~")
-            // console.log(groupsResult)
-            // console.log("~~~~~ All Roles ~~~~")
-            // console.log(rolesResult)
-            // console.log("~~~~~ All User Attributes ~~~~")
-            // console.log(userAttResult)
             
             const new_usersMap = new Map(userResult.map(u => [u.id, u]))
             const new_groupsMap = new Map(groupsResult.map(g => [g.id, g]))
@@ -182,7 +173,7 @@ export class UsersPage extends React.Component {
             })
 
         } catch (error) {
-            console.log(error)
+            console.error(error)
             this.setState({
                 usersMap: new Map(),
                 groupsMap: new Map(),
@@ -207,11 +198,6 @@ export class UsersPage extends React.Component {
                 }),
                 this.lookerRequest('all_groups', {}),
             ])
-
-            console.log("~~~~~ Embed Users (count) ~~~~")
-            console.log(userResult)
-            console.log("~~~~~ All Groups ~~~~")
-            console.log(groupsResult)
             
             const new_usersMap = new Map(userResult.map(u => [u.id, u]))
             const new_groupsMap = new Map(groupsResult.map(g => [g.id, g]))
@@ -230,7 +216,7 @@ export class UsersPage extends React.Component {
             })
 
         } catch (error) {
-            console.log(error)
+            console.error(error)
             this.setState({
                 usersMap: new Map(),
                 groupsMap: new Map(),
@@ -564,7 +550,7 @@ export class UsersPage extends React.Component {
                 })
             }
         } catch (error) {
-            console.log(error)
+            console.error(error)
             this.setState({
                 usersList: [],
                 usersMap: new Map(),
@@ -640,7 +626,7 @@ export class UsersPage extends React.Component {
             const userResult = await this.lookerRequest('search_users', {
                 fields: EMBED_USER_FIELDS,
                 embed_user: true,
-                group_id: lookerGroupId.join(',')
+                group_id: lookerGroupId?.length ? lookerGroupId.join(',') : undefined
             })
             
             if (userResult && userResult.length > 0) {
@@ -668,7 +654,7 @@ export class UsersPage extends React.Component {
                 })
             }
         } catch (error) {
-            console.log(error)
+            console.error(error)
             this.setState({
                 usersList: [],
                 usersMap: new Map(),
