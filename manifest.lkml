@@ -18,7 +18,7 @@ application: admin_power_pack {
       "me", "user", "create_user", "update_user", "delete_user", "send_user_credentials_email_password_reset", "create_user_credentials_email_password_reset",
       "all_user_attributes", "set_user_attribute_user_value", "delete_user_attribute_user_value",
       "add_group_user", "delete_group_user", "set_user_roles",
-      "all_dashboards", "dashboard", "run_query", "query_for_slug", "create_query",
+      "search_dashboards", "dashboard", "run_query", "query_for_slug", "create_query",
       "scheduled_plan", "all_scheduled_plans", "scheduled_plans_for_dashboard", "scheduled_plan_run_once", "scheduled_plan_run_once_by_id",
       "create_scheduled_plan", "update_scheduled_plan", "delete_scheduled_plan",
       "create_user_credentials_email", "update_user_credentials_email",
