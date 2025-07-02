@@ -91,48 +91,35 @@ export const SchedulePageDashboardSelect: React.FC<
     [context.core40SDK]
   );
 
-  // Load initial dashboards
+  const isInitialMount = React.useRef(true);
+
   useEffect(() => {
-    const loadInitialDashboards = async () => {
+    if (!context.core40SDK) return;
+
+    const performSearch = async () => {
       setIsLoading(true);
       setError(null);
-
       try {
-        const initialDashboards = await searchDashboards("");
-        setDashboards(initialDashboards);
+        const results = await searchDashboards(searchTerm);
+        setDashboards(results);
       } catch (err) {
-        setError("Failed to load dashboards");
-        console.error("Error loading initial dashboards:", err);
+        const errorMessage = isInitialMount.current
+          ? "Failed to load dashboards"
+          : "Failed to search dashboards";
+        setError(errorMessage);
+        console.error(`${errorMessage}:`, err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (context.core40SDK) {
-      loadInitialDashboards();
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      performSearch();
+    } else {
+      const timeoutId = setTimeout(performSearch, 300);
+      return () => clearTimeout(timeoutId);
     }
-  }, [context.core40SDK, searchDashboards]);
-
-  // Handle search term changes with debouncing
-  useEffect(() => {
-    if (!context.core40SDK) return;
-
-    const timeoutId = setTimeout(async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const searchResults = await searchDashboards(searchTerm);
-        setDashboards(searchResults);
-      } catch (err) {
-        setError("Failed to search dashboards");
-        console.error("Error searching dashboards:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300); // 300ms debounce
-
-    return () => clearTimeout(timeoutId);
   }, [searchTerm, context.core40SDK, searchDashboards]);
 
   // Handle filter input
