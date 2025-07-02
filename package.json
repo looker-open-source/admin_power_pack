@@ -68,7 +68,7 @@
     "typescript": "^3.6.3",
     "webpack": "^4.42.1",
     "webpack-cli": "^3.3.9",
-    "webpack-dev-server": "^3.8.1"
+    "webpack-dev-server": "^5.2.1"
   },
   "babel": {
     "presets": [
