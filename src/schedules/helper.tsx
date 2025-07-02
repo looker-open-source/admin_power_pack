@@ -78,7 +78,7 @@ export const newGroupOptions = (
   searchTerm: string,
   options: GroupSelectOption[]
 ) => {
-  if (searchTerm === "") return options;
+  if (searchTerm === "" || !options) return options || [];
 
   let newOptions: any = [];
 

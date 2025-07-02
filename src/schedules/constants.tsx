@@ -38,8 +38,6 @@ export const DEBUG = process.env.NODE_ENV === "development";
 export interface ExtensionState {
   currentDash?: IDashboard;
   selectedDashId: string;
-  dashSearchString: string;
-  dashboards: any[]; // array of dashboard and folder names/ids for Select
   datagroups: SelectOption[]; // array of datagroup string names
   users: SelectOption[]; // array of user ids and display names
   schedulesArray: any; // IScheduledPlanTable[] - array of schedules (can be edited)

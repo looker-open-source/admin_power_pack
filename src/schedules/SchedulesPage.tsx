@@ -66,6 +66,7 @@ import {
 import { SchedulesTable } from "./SchedulesTable";
 import { GlobalActions } from "./GlobalActions";
 import { GeneratePlans } from "./GeneratePlans";
+import { SchedulePageDashboardSelect } from "./SchedulePageDashboardSelect";
 
 export class SchedulesPage extends React.Component<
   RouteComponentProps,
@@ -79,8 +80,6 @@ export class SchedulesPage extends React.Component<
     this.state = {
       currentDash: undefined,
       selectedDashId: "",
-      dashSearchString: "",
-      dashboards: [],
       datagroups: [],
       users: [],
       schedulesArray: [],
@@ -102,26 +101,19 @@ export class SchedulesPage extends React.Component<
       return;
     }
 
-    this.setState({
-      notificationMessage: "Retrieving all dashboards...",
-    });
-
     try {
-      const [dashboards, datagroups, users] = await Promise.all([
-        this.getAllDashboards(),
+      const [datagroups, users] = await Promise.all([
         this.getDatagroups(),
         this.getAllUsers(),
       ]);
 
       this.setState({
-        dashboards: dashboards,
         datagroups: datagroups,
         users: users,
-        notificationMessage: "Retrieving all dashboards...Done",
       });
     } catch (error) {
       this.setState({
-        errorMessage: `Unable to load Dashboards: ${error}`,
+        errorMessage: `Unable to load data: ${error}`,
         runningQuery: false,
         notificationMessage: undefined,
       });
@@ -130,45 +122,9 @@ export class SchedulesPage extends React.Component<
     }
   };
 
-  // get all Dashboards for drop down Select
-  getAllDashboards = async () => {
-    const dashboards: any = await this.context.core40SDK.ok(
-      this.context.core40SDK.all_dashboards("id,title,folder(id,name)")
-    );
-
-    const dashboardList = chain(dashboards)
-      .filter((d: any) => d.folder.id !== "lookml")
-      .map((d: any) => {
-        return {
-          label: d.title + " - " + d.id,
-          value: d.id,
-          folder: d.folder.name + " - " + d.folder.id,
-        };
-      })
-      .sortBy(["folder", "label"]) // TODO fix dash sort per folder. currently case sensitive.
-      .groupBy("folder")
-      .map((value, key) => ({
-        label: key,
-        options: value,
-      })) // 'key' is groups name (folder), 'value' is the array of dashboard value/labels
-      .value(); // ok keeping folder in options
-
-    if (DEBUG) {
-      console.log("All Dashboards found:");
-      console.log(dashboardList);
-    }
-
-    return dashboardList;
-  };
-
-  onDashSelectChange = (e: any) => {
-    this.setState({ selectedDashId: e });
-
-    this.getDash(e);
-  };
-
-  handleDashSelectFilter = (term: string) => {
-    this.setState({ dashSearchString: term });
+  onDashSelectChange = (dashId: string) => {
+    this.setState({ selectedDashId: dashId });
+    this.getDash(dashId);
   };
 
   // get all datagroups defined on instance to use as schedule option
@@ -1211,9 +1167,8 @@ export class SchedulesPage extends React.Component<
   // create new schedule plan
   createSchedule = async (newSchedule: IScheduledPlanTable) => {
     try {
-      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-        newSchedule
-      );
+      const scheduledPlanDestinations =
+        this.writeScheduledPlanDestinations(newSchedule);
       const filtersString = this.stringifyFilters(newSchedule);
 
       const writeScheduledPlan = this.writeScheduledPlanObject(
@@ -1247,9 +1202,8 @@ export class SchedulesPage extends React.Component<
     }
 
     try {
-      const scheduledPlanDestinations = this.writeScheduledPlanDestinations(
-        currentSchedule
-      );
+      const scheduledPlanDestinations =
+        this.writeScheduledPlanDestinations(currentSchedule);
       const filtersString = this.stringifyFilters(currentSchedule);
 
       const updateScheduledPlan = this.writeScheduledPlanObject(
@@ -1764,18 +1718,9 @@ export class SchedulesPage extends React.Component<
                   <Text variant="secondary">Select A Dashboard: </Text>
                 </FlexItem>
                 <FlexItem mx="medium">
-                  <Select
-                    options={newGroupOptions(
-                      this.state.dashSearchString,
-                      this.state.dashboards
-                    )}
-                    onChange={this.onDashSelectChange}
-                    onFilter={this.handleDashSelectFilter}
-                    value={this.state.selectedDashId}
-                    isFilterable
-                    autoResize
-                    minWidth="160"
-                    maxWidth="320"
+                  <SchedulePageDashboardSelect
+                    selectedDashId={this.state.selectedDashId}
+                    onDashSelectChange={this.onDashSelectChange}
                   />
                 </FlexItem>
               </Flex>
@@ -1923,14 +1868,6 @@ export class SchedulesPage extends React.Component<
                 />
               </Flex>
             </>
-          )}
-
-          {this.state.dashboards.length === 0 && (
-            <Flex justifyContent="center" height="500px">
-              <FlexItem alignSelf="center">
-                <Spinner color="black" />
-              </FlexItem>
-            </Flex>
           )}
 
           <Flex width="100%">
