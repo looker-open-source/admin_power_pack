@@ -23,7 +23,7 @@ application: admin_power_pack {
       "create_scheduled_plan", "update_scheduled_plan", "delete_scheduled_plan",
       "create_user_credentials_email", "update_user_credentials_email",
       "delete_user_credentials_email", "delete_user_credentials_google", "delete_user_credentials_ldap", "delete_user_credentials_oidc", "delete_user_credentials_saml",
-      "all_user_sessions", "delete_user_session"    
+      "all_user_sessions", "delete_user_session", "user_for_credential", "search_users", "search_groups"    
     ]
   } 
 }

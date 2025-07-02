@@ -69,6 +69,14 @@ export function UsersPageLayout(props) {
                 </Flex>
                 {props.searchInput}
             </JustifiedSection>
+            {props.embedSearchFields ? <JustifiedSection>
+                <Flex justifyContent="flex-start" alignItems="center">
+                    <Text variant="secondary" mr="small">Embed User Search</Text>
+                    <Box px="small" >
+                        {props.embedSearchFields}
+                    </Box>
+                </Flex>
+            </JustifiedSection> : null}
             <Box px='large' py='xsmall'>
                 {props.usersTable}
             </Box>

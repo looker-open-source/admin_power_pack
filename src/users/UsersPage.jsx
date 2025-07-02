@@ -28,12 +28,17 @@ import asyncPool from "tiny-async-pool"; // limit concurrency with Looker API
 import { UsersPageLayout } from './UsersPageLayout'
 import { ActionsBar } from './ActionsBar'
 import { UsersTable } from './UsersTable'
-import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO } from './constants'
+import { USER_FIELDS, TABLE_COLUMNS, CREDENTIALS_INFO, EMBED_USER_FIELDS, EMBED_TABLE_COLUMNS } from './constants'
 import { makeLookerCaller } from '../shared/utils'
 import { 
     Banner, 
     doDefaultActionListSort,
-    InputSearch, ButtonGroup, ButtonItem, Select
+    InputSearch, ButtonGroup, ButtonItem, Select,
+    SpaceVertical,
+    Label,
+    Text,
+    Box,
+    Space
 } from '@looker/components'
 
 export class UsersPage extends React.Component {
@@ -54,6 +59,10 @@ export class UsersPage extends React.Component {
             activeShowWhoButton: "regular",
             activeFilterButtons: [],
             searchText: '',
+            credentialSearchText: '',
+            credentialSearchError: '',
+            groupSearchText: '',
+            groupSearchError: '',
             currentPage: 1,
             pageSize: 20,
             usersList: [],
@@ -63,7 +72,10 @@ export class UsersPage extends React.Component {
             rolesMap: new Map(),
             selectedUserIds: new Set(),
             isLoading: false,
-            errorMessage: undefined
+            errorMessage: undefined,
+            totalUsersCount: 0,
+            isCredentialSearch: false,
+            isGroupSearch: false
         }
     }
 
@@ -140,15 +152,6 @@ export class UsersPage extends React.Component {
                 this.lookerRequest('all_roles', {}),
                 this.lookerRequest('all_user_attributes', {}),
             ])
-
-            // console.log("~~~~~ All Users (count) ~~~~")
-            // console.log(userResult)
-            // console.log("~~~~~ All Groups ~~~~")
-            // console.log(groupsResult)
-            // console.log("~~~~~ All Roles ~~~~")
-            // console.log(rolesResult)
-            // console.log("~~~~~ All User Attributes ~~~~")
-            // console.log(userAttResult)
             
             const new_usersMap = new Map(userResult.map(u => [u.id, u]))
             const new_groupsMap = new Map(groupsResult.map(g => [g.id, g]))
@@ -166,17 +169,60 @@ export class UsersPage extends React.Component {
                 rolesMap: new_rolesMap,
                 userAtt: userAttResult,
                 isLoading: false,
+                totalUsersCount: userResult.length
             })
 
         } catch (error) {
-            console.log(error)
+            console.error(error)
             this.setState({
                 usersMap: new Map(),
                 groupsMap: new Map(),
                 rolesMap: new Map(),
                 userAtt: [],
                 isLoading: false,
-                errorMessage: `Error loading users/groups/roles: "${error}"`
+                errorMessage: `Error loading users/groups/roles: "${error}"`,
+                totalUsersCount: 0
+            })
+        }
+    }
+
+    loadEmbedUsersAndStuff = async () => {
+        this.setState({ isLoading: true, errorMessage: undefined })
+        try {
+
+            // Search for embed users specifically
+            const [userResult, groupsResult] = await Promise.all([
+                this.lookerRequest('search_users', {
+                    fields: EMBED_USER_FIELDS,
+                    embed_user: true
+                }),
+                this.lookerRequest('all_groups', {}),
+            ])
+            
+            const new_usersMap = new Map(userResult.map(u => [u.id, u]))
+            const new_groupsMap = new Map(groupsResult.map(g => [g.id, g]))
+
+            // This method gets called after actions run, which means there
+            // may be sorts & filters already. Reapply them so the same records are in view.
+            const filteredUsers = this.makeFilteredUsersList(new_usersMap)
+            const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
+
+            this.setState({
+                usersList: new_usersList,
+                usersMap: new_usersMap,
+                groupsMap: new_groupsMap,
+                isLoading: false,
+                totalUsersCount: userResult.length
+            })
+
+        } catch (error) {
+            console.error(error)
+            this.setState({
+                usersMap: new Map(),
+                groupsMap: new Map(),
+                isLoading: false,
+                errorMessage: `Error loading embed users/groups: "${error}"`,
+                totalUsersCount: 0
             })
         }
     }
@@ -272,12 +318,20 @@ export class UsersPage extends React.Component {
         // Update the button state right away
         this.setState({activeShowWhoButton: new_activeShowWhoButton})
         
-        // Re-filter and re-sort. new_activeShowWhoButton passed in to avoid race condition on state
-        const filteredUsers = this.makeFilteredUsersList(undefined, undefined, undefined, new_activeShowWhoButton)
-        const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
-        
-        // Persist
-        this.setState({usersList: new_usersList, currentPage: 1})
+        // Load embed users if embed filter is selected
+        if (new_activeShowWhoButton === "embed") {
+            this.setState({ tableColumns: EMBED_TABLE_COLUMNS.slice() })
+            this.loadEmbedUsersAndStuff()
+        } else {
+            // Reset to regular table columns
+            this.setState({ tableColumns: TABLE_COLUMNS.slice() })
+            // Re-filter and re-sort. new_activeShowWhoButton passed in to avoid race condition on state
+            const filteredUsers = this.makeFilteredUsersList(undefined, undefined, undefined, new_activeShowWhoButton)
+            const {data: new_usersList} = this.makeSortedUsersList(filteredUsers)
+            
+            // Persist
+            this.setState({usersList: new_usersList, currentPage: 1})
+        }
     }
 
     makeFilteredUsersList(usersMap = undefined, 
@@ -429,6 +483,213 @@ export class UsersPage extends React.Component {
     }
 
     /*
+     ******************* EMBED CREDENTIAL SEARCH stuff *******************
+     */
+    onCredentialSearchChange = (e) => {
+        const credentialSearchText = e.currentTarget.value
+        this.setState({
+            credentialSearchText: credentialSearchText,
+            credentialSearchError: '', // Clear error when user types
+            groupSearchText: '',
+            groupSearchError: '',
+            isGroupSearch: false
+        })
+    }
+
+    onCredentialSearchKeyPress = async (e) => {
+        if (e.key === 'Enter') {
+            const credentialValue = this.state.credentialSearchText.trim()
+            if (credentialValue) {
+                await this.searchByCredential(credentialValue)
+            }
+        }
+    }
+
+    onCredentialSearchClear = async () => {
+        this.setState({
+            credentialSearchText: '',
+            credentialSearchError: '',
+            isCredentialSearch: false
+        })
+        await this.loadEmbedUsersAndStuff()
+    }
+
+    searchByCredential = async (credentialValue) => {
+        this.setState({ 
+            isLoading: true, 
+            errorMessage: undefined,
+            credentialSearchError: '' // Clear previous errors
+        })
+        try {
+            // Search for user by embed credential
+            const userResult = await this.lookerRequest('user_for_credential', 'embed', credentialValue)
+            
+            if (userResult) {
+                // Create a map with just this user
+                const new_usersMap = new Map([[userResult.id, userResult]])
+                
+                // Update state to show only this user
+                this.setState({
+                    usersList: [userResult],
+                    usersMap: new_usersMap,
+                    isLoading: false,
+                    totalUsersCount: 1,
+                    isCredentialSearch: true,
+                    currentPage: 1,
+                    credentialSearchError: ''
+                })
+            } else {
+                this.setState({
+                    usersList: [],
+                    usersMap: new Map(),
+                    isLoading: false,
+                    totalUsersCount: 0,
+                    isCredentialSearch: true,
+                    currentPage: 1,
+                    credentialSearchError: `Could not find user with embed credential: ${credentialValue}`
+                })
+            }
+        } catch (error) {
+            console.error(error)
+            this.setState({
+                usersList: [],
+                usersMap: new Map(),
+                isLoading: false,
+                totalUsersCount: 0,
+                isCredentialSearch: true,
+                currentPage: 1,
+                credentialSearchError: `Error searching for credential: ${error}`
+            })
+        }
+    }
+
+    /*
+     ******************* EMBED GROUP SEARCH stuff *******************
+     */
+    onGroupSearchChange = (e) => {
+        const groupSearchText = e.currentTarget.value
+        this.setState({
+            groupSearchText: groupSearchText,
+            groupSearchError: '', // Clear error when user types
+            credentialSearchText: '',
+            credentialSearchError: '',
+            isCredentialSearch: false
+        })
+    }
+
+    onGroupSearchKeyPress = async (e) => {
+        if (e.key === 'Enter') {
+            const groupValue = this.state.groupSearchText.trim()
+            if (groupValue) {
+                await this.searchByGroup(groupValue)
+            }
+        }
+    }
+
+    onGroupSearchClear = async () => {
+        this.setState({
+            groupSearchText: '',
+            groupSearchError: '',
+            isGroupSearch: false
+        })
+        await this.loadEmbedUsersAndStuff()
+    }
+
+    searchByGroup = async (externalGroupId) => {
+        this.setState({ 
+            isLoading: true, 
+            errorMessage: undefined,
+            groupSearchError: '' // Clear previous errors
+        })
+        try {
+            const groupResult = await this.lookerRequest('search_groups', {
+                external_group_id: externalGroupId,
+                fields: 'id'
+            }, )
+            let lookerGroupId = null
+            if (groupResult && groupResult.length > 0) {    
+                lookerGroupId = groupResult.map(g => g.id)
+            } 
+            if (!lookerGroupId) {
+                this.setState({
+                    groupSearchError: `Could not find group with external group ID: ${externalGroupId}`,
+                    isLoading: false,
+                    usersList: [],
+                    usersMap: new Map(),
+                    totalUsersCount: 0,
+                    isGroupSearch: true,
+                    currentPage: 1,
+                })
+                return
+            }
+            // Search for users by embed group
+            const userResult = await this.lookerRequest('search_users', {
+                fields: EMBED_USER_FIELDS,
+                embed_user: true,
+                group_id: lookerGroupId?.length ? lookerGroupId.join(',') : undefined
+            })
+            
+            if (userResult && userResult.length > 0) {
+                const new_usersMap = new Map(userResult.map(u => [u.id, u]))
+                
+                // Update state to show only these users
+                this.setState({
+                    usersList: userResult,
+                    usersMap: new_usersMap,
+                    isLoading: false,
+                    totalUsersCount: userResult.length,
+                    isGroupSearch: true,
+                    currentPage: 1,
+                    groupSearchError: ''
+                })
+            } else {
+                this.setState({
+                    usersList: [],
+                    usersMap: new Map(),
+                    isLoading: false,
+                    totalUsersCount: 0,
+                    isGroupSearch: true,
+                    currentPage: 1,
+                    groupSearchError: `Could not find users with external group ID: ${externalGroupId}`
+                })
+            }
+        } catch (error) {
+            console.error(error)
+            this.setState({
+                usersList: [],
+                usersMap: new Map(),
+                isLoading: false,
+                totalUsersCount: 0,
+                isGroupSearch: true,
+                currentPage: 1,
+                groupSearchError: `Error searching for group: ${error}`
+            })
+        }
+    }
+
+    onExternalUserIdClick = (externalUserId) => {
+        this.setState({
+            credentialSearchText: externalUserId,
+            credentialSearchError: '',
+            groupSearchText: '',
+            groupSearchError: '',
+            isGroupSearch: false
+        })
+        this.searchByCredential(externalUserId)
+    }
+
+    onExternalGroupIdClick = (externalGroupId) => {
+        this.setState({
+            groupSearchText: externalGroupId,
+            groupSearchError: '',
+            credentialSearchText: '',
+            credentialSearchError: '',
+            isCredentialSearch: false
+        })
+        this.searchByGroup(externalGroupId)
+    }
+
+    /*
      ******************* RENDERING *******************
      */    
     render() {
@@ -456,10 +717,10 @@ export class UsersPage extends React.Component {
                   { value: 'regular', label: 'Regular Users' },
                   { value: 'embed', label: 'Embed Users' },
                   { value: 'lookerSupport', label: 'Looker Support' },
-                  { value: 'selected', label: 'Only Selected' },
+                  { value: 'selected', label: 'Selected Users' }
                 ]}
             />
-             
+
         const quickFilterGroup = 
             <ButtonGroup value={this.state.activeFilterButtons} onChange={this.onChangeActiveFilterButtons}>
                 <ButtonItem value="blankName">Blank name</ButtonItem>
@@ -470,31 +731,86 @@ export class UsersPage extends React.Component {
                 <ButtonItem value="disabled">Disabled</ButtonItem>
                 <ButtonItem value="notDisabled">Not Disabled</ButtonItem>
             </ButtonGroup>
-                  
+                   
         const searchInput = 
-            <InputSearch 
-                value={this.state.searchText} 
-                onChange={this.onChangeSearch} 
+            <InputSearch
                 width="20rem" 
                 placeholder="Search by name, email, id"
+                value={this.state.searchText}
+                onChange={this.onChangeSearch}
             />
-               
+
+        // Show embed-specific search fields when embed filter is selected
+        const embedSearchFields = this.state.activeShowWhoButton === "embed" ? (
+            <Space>
+                <SpaceVertical gap="small">
+                    <Label>Search by Embed Credential</Label>
+                    <InputSearch
+                        placeholder="your_external_user_id"
+                        value={this.state.credentialSearchText}
+                        onChange={this.onCredentialSearchChange}
+                        onKeyPress={this.onCredentialSearchKeyPress}
+                        onClear={this.onCredentialSearchClear}
+                    />
+                    
+                    {this.state.credentialSearchError ? (
+                        <Text fontSize="xsmall" color="critical">{this.state.credentialSearchError}</Text>
+                    ) : (
+                        <Label 
+                            style={{alignSelf: 'flex-end', color: 'grey', fontWeight: "400"}} 
+                            fontSize="xxsmall" 
+                            color="secondary"
+                        >
+                            {"Exact match only"}
+                        </Label>
+                    )}
+                </SpaceVertical>
+                <SpaceVertical gap="small">
+                    <Label>Search by External Group ID</Label>
+                    <InputSearch
+                        placeholder="your_external_group_id"
+                        value={this.state.groupSearchText}
+                        onChange={this.onGroupSearchChange}
+                        onKeyPress={this.onGroupSearchKeyPress}
+                        onClear={this.onGroupSearchClear}
+                    />
+                    {this.state.groupSearchError ? (
+                        <Text fontSize="xsmall" color="critical">{this.state.groupSearchError}</Text>
+                    ): (
+                        <Label 
+                            style={{alignSelf: 'flex-end', color: 'grey', fontWeight: "400"}} 
+                            fontSize="xxsmall" 
+                            color="secondary"
+                        >
+                            {"Accepts wildcards ( _, % )"}
+                        </Label>
+                    )}
+                </SpaceVertical>
+            </Space>
+        ) : null
+                
         const usersTable = 
-            <UsersTable
+            <UsersTable 
                 isLoading={this.state.isLoading}
                 usersList={this.state.usersList}
+                usersMap={this.state.usersMap}
                 groupsMap={this.state.groupsMap}
                 rolesMap={this.state.rolesMap}
                 selectedUserIds={this.state.selectedUserIds}
-                totalUsersCount={this.state.usersMap.size}
+                totalUsersCount={this.state.totalUsersCount}
                 onSelectRow={this.onSelectRow}
                 onSelectAll={this.onSelectAll}
                 tableColumns={this.state.tableColumns}
+                sortColumn={this.state.sortColumn}
+                sortDirection={this.state.sortDirection}
                 onSort={this.onSort}
                 pageSize={this.state.pageSize}
                 currentPage={this.state.currentPage}
                 onChangePage={this.onChangePage}
                 onChangePageSize={this.onChangePageSize}
+                activeShowWhoButton={this.state.activeShowWhoButton}
+                onExternalUserIdClick={this.onExternalUserIdClick}
+                onExternalGroupIdClick={this.onExternalGroupIdClick}
             />
 
         return (
@@ -504,6 +820,7 @@ export class UsersPage extends React.Component {
                 showWhoToggle={showWhoToggle}
                 quickFilterGroup={quickFilterGroup}
                 searchInput={searchInput}
+                embedSearchFields={embedSearchFields}
                 usersTable={usersTable}
             />
         )
